@@ -105,49 +105,49 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIST-01 | — | Pending |
-| LIST-02 | — | Pending |
-| LIST-03 | — | Pending |
-| LIST-04 | — | Pending |
-| LIST-05 | — | Pending |
-| PARS-01 | — | Pending |
-| PARS-02 | — | Pending |
-| PARS-03 | — | Pending |
-| PARS-04 | — | Pending |
-| PARS-05 | — | Pending |
-| PARS-06 | — | Pending |
-| PARS-07 | — | Pending |
-| DB-01 | — | Pending |
-| DB-02 | — | Pending |
-| DB-03 | — | Pending |
-| DB-04 | — | Pending |
-| TERM-01 | — | Pending |
-| TERM-02 | — | Pending |
-| TERM-03 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| DASH-05 | — | Pending |
-| DASH-06 | — | Pending |
-| DASH-07 | — | Pending |
-| ANAL-01 | — | Pending |
-| ANAL-02 | — | Pending |
-| ANAL-03 | — | Pending |
-| ANAL-04 | — | Pending |
-| ANAL-05 | — | Pending |
-| ANAL-06 | — | Pending |
-| ANAL-07 | — | Pending |
-| ANAL-08 | — | Pending |
-| OPER-01 | — | Pending |
-| OPER-02 | — | Pending |
-| OPER-03 | — | Pending |
+| LIST-01 | Phase 1 | Pending |
+| LIST-02 | Phase 1 | Pending |
+| LIST-03 | Phase 1 | Pending |
+| LIST-04 | Phase 1 | Pending |
+| LIST-05 | Phase 1 | Pending |
+| PARS-01 | Phase 1 | Pending |
+| PARS-02 | Phase 1 | Pending |
+| PARS-03 | Phase 1 | Pending |
+| PARS-04 | Phase 1 | Pending |
+| PARS-05 | Phase 1 | Pending |
+| PARS-06 | Phase 1 | Pending |
+| PARS-07 | Phase 1 | Pending |
+| DB-01 | Phase 1 | Pending |
+| DB-02 | Phase 1 | Pending |
+| DB-03 | Phase 1 | Pending |
+| DB-04 | Phase 1 | Pending |
+| TERM-01 | Phase 1 | Pending |
+| TERM-02 | Phase 1 | Pending |
+| TERM-03 | Phase 1 | Pending |
+| OPER-02 | Phase 1 | Pending |
+| OPER-03 | Phase 1 | Pending |
+| DASH-01 | Phase 2 | Pending |
+| DASH-02 | Phase 2 | Pending |
+| DASH-03 | Phase 2 | Pending |
+| DASH-04 | Phase 2 | Pending |
+| DASH-05 | Phase 2 | Pending |
+| DASH-06 | Phase 2 | Pending |
+| DASH-07 | Phase 2 | Pending |
+| ANAL-01 | Phase 3 | Pending |
+| ANAL-02 | Phase 3 | Pending |
+| ANAL-03 | Phase 3 | Pending |
+| ANAL-04 | Phase 3 | Pending |
+| ANAL-05 | Phase 3 | Pending |
+| ANAL-06 | Phase 3 | Pending |
+| ANAL-07 | Phase 3 | Pending |
+| ANAL-08 | Phase 3 | Pending |
+| OPER-01 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 37 total
-- Mapped to phases: 0
-- Unmapped: 37 ⚠️
+- Mapped to phases: 37
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after initial definition*
+*Last updated: 2026-04-02 after roadmap creation*

@@ -1,0 +1,68 @@
+# Roadmap: HelperTips — Futebol Virtual
+
+## Overview
+
+Build a personal betting analytics system in three sequential phases. Phase 1 lays the irreplaceable data foundation: a Telethon listener that captures signals and result edits from the VIP Telegram group, a regex parser that structures them, and a PostgreSQL store that persists them via upsert — all validated with real data before any dashboard is built. Phase 2 delivers the primary user value: a Plotly Dash dashboard answering "are these signals profitable?" with filters, ROI simulation, and signal history. Phase 3 deepens the analytics with dimensional breakdowns, equity curves, and cross-filtering once enough data has accumulated.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 1: Foundation** - Listener pipeline captures signals into PostgreSQL with terminal validation
+- [ ] **Phase 2: Core Dashboard** - Plotly Dash dashboard with aggregate stats, filters, ROI simulation, and signal history
+- [ ] **Phase 3: Analytics Depth** - Dimensional breakdowns, equity curve, cross-filtering, and parser coverage tracking
+
+## Phase Details
+
+### Phase 1: Foundation
+**Goal**: Signals from the VIP Telegram group land correctly in PostgreSQL and the pipeline can be trusted before any dashboard is built
+**Depends on**: Nothing (first phase)
+**Requirements**: OPER-02, OPER-03, DB-01, DB-02, DB-03, DB-04, PARS-01, PARS-02, PARS-03, PARS-04, PARS-05, PARS-06, PARS-07, LIST-01, LIST-02, LIST-03, LIST-04, LIST-05, TERM-01, TERM-02, TERM-03
+**Success Criteria** (what must be TRUE):
+  1. Running `python listener.py` connects to the VIP group and prints a startup summary with total signals, greens, reds, and win rate
+  2. A new signal from the Telegram group appears as a row in the signals table within seconds of being sent
+  3. When a signal message is edited with a result (GREEN/RED), the existing database row is updated without creating a duplicate
+  4. The listener can be stopped with Ctrl+C and restarted without losing any previously captured data
+  5. A `.env` file holds all credentials; `.session` and `.env` are in `.gitignore` before the first commit
+**Plans**: TBD
+
+### Phase 2: Core Dashboard
+**Goal**: Users can open a web dashboard and immediately answer "are these signals profitable?" with live data from PostgreSQL
+**Depends on**: Phase 1
+**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06, DASH-07
+**Success Criteria** (what must be TRUE):
+  1. Opening the dashboard URL shows a card with total signals, greens, reds, win rate, and percentages drawn from the live database
+  2. Selecting a liga from the filter updates all stats and charts to show only signals from that league
+  3. Selecting an entrada from the filter updates all stats to show only signals of that bet type
+  4. The ROI simulation card shows profit/loss for a configurable fixed stake applied to all filtered signals
+  5. The signal history table lists past signals with pagination and pending signals (no result yet) are visually distinct
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 3: Analytics Depth
+**Goal**: Users can identify which leagues, bet types, time slots, and days of the week produce the best results, and track bankroll growth over time
+**Depends on**: Phase 2
+**Requirements**: ANAL-01, ANAL-02, ANAL-03, ANAL-04, ANAL-05, ANAL-06, ANAL-07, ANAL-08, OPER-01
+**Success Criteria** (what must be TRUE):
+  1. A heatmap shows win rate by time of day and a bar chart shows win rate by day of the week, both updating with active filters
+  2. Applying combined filters (liga + entrada + period) produces a cross-dimensional breakdown of win rate and signal count
+  3. The equity curve chart shows cumulative bankroll over time with a fixed stake, revealing winning and losing streaks visually
+  4. A Gale analysis panel shows win rate at gale levels 1, 2, and 3, and a streak tracker shows the current and longest win/loss streaks
+  5. The dashboard header or footer displays the parser coverage rate (percentage of messages successfully parsed)
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Foundation | 0/? | Not started | - |
+| 2. Core Dashboard | 0/? | Not started | - |
+| 3. Analytics Depth | 0/? | Not started | - |
