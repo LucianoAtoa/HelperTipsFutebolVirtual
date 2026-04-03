@@ -12,18 +12,18 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Escutar mensagens do grupo Telegram em tempo real (sinais novos e edições com resultado) — Validated in Phase 1: Foundation
+- [x] Parsear mensagens extraindo: liga, entrada, horários, resultado (GREEN/RED), placares — Validated in Phase 1: Foundation
+- [x] Salvar sinais e resultados no PostgreSQL com deduplicação — Validated in Phase 1: Foundation
+- [x] Exibir estatísticas no terminal ao iniciar (total, greens, reds, taxa de acerto) — Validated in Phase 1: Foundation
+- [x] Dashboard web elaborado com filtros interativos e gráficos dinâmicos — Validated in Phase 2: Core Dashboard
+- [x] Simulação de ROI com stake fixa — Validated in Phase 2: Core Dashboard
+- [x] Estatísticas completas cruzando todas as dimensões: liga, entrada, horário, período, dia da semana — Validated in Phase 3: Analytics Depth
+- [x] Percentuais de GREEN/RED por período e por entrada — Validated in Phase 3: Analytics Depth
 
 ### Active
 
-- [ ] Escutar mensagens do grupo Telegram em tempo real (sinais novos e edições com resultado)
-- [ ] Parsear mensagens extraindo: liga, entrada, horários, resultado (GREEN/RED), placares
-- [ ] Salvar sinais e resultados no PostgreSQL com deduplicação
-- [ ] Exibir estatísticas no terminal ao iniciar (total, greens, reds, taxa de acerto)
-- [ ] Dashboard web elaborado com filtros interativos e gráficos dinâmicos
-- [ ] Estatísticas completas cruzando todas as dimensões: liga, entrada, horário, período, dia da semana
-- [ ] Percentuais de GREEN/RED por período e por entrada
-- [ ] Simulação de ROI com stake fixa
+(All v1.0 requirements validated — see above)
 
 ### Out of Scope
 
@@ -52,9 +52,10 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Telethon (client de usuário) em vez de Bot API | Precisa escutar grupo sem ser admin | — Pending |
-| PostgreSQL em vez de SQLite | Suporte a concorrência, pronto para AWS RDS futuro | — Pending |
-| Dashboard web no v1 | Usuário quer análise visual elaborada desde o início | — Pending |
+| Telethon (client de usuário) em vez de Bot API | Precisa escutar grupo sem ser admin | Validated — Phase 1 |
+| PostgreSQL em vez de SQLite | Suporte a concorrência, pronto para AWS RDS futuro | Validated — Phase 1 |
+| Dashboard web no v1 | Usuário quer análise visual elaborada desde o início | Validated — Phase 2 |
+| Plotly Dash + dbc.Tabs para analytics depth | Tabs temáticas (Temporal, Volume, Equity) organizam 10+ componentes | Validated — Phase 3 |
 
 ## Evolution
 
@@ -74,4 +75,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after initialization*
+*Last updated: 2026-04-03 after Phase 3: Analytics Depth completion — all v1.0 milestone phases complete*
