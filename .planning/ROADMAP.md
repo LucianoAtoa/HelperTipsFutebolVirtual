@@ -54,7 +54,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Configurar ruff lint, corrigir codigo existente, criar CI workflow e badge (GH-02)
+- [x] 05-01-PLAN.md — Configurar ruff lint, corrigir codigo existente, criar CI workflow e badge (GH-02)
 - [ ] 05-02-PLAN.md — Publicar repositorio no GitHub, verificar CI verde (GH-01, GH-02)
 
 ### Phase 6: AWS Infrastructure
@@ -111,7 +111,7 @@ Plans:
 | 2.1 Market Config | v1.0 | 4/4 | Complete | 2026-04-03 |
 | 3. Analytics Depth | v1.0 | 4/4 | Complete | 2026-04-03 |
 | 4. Security Audit | v1.1 | 2/2 | Complete   | 2026-04-03 |
-| 5. GitHub Publication | v1.1 | 0/2 | Planned | - |
+| 5. GitHub Publication | v1.1 | 1/2 | In Progress|  |
 | 6. AWS Infrastructure | v1.1 | 0/3 | Not started | - |
 | 7. Listener Deployment | v1.1 | 0/1 | Not started | - |
 | 8. Dashboard & Proxy | v1.1 | 0/2 | Not started | - |
