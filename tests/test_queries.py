@@ -6,11 +6,13 @@ Tests for helpertips/queries.py:
   - get_signal_history: ordered history with filters and limit
   - get_distinct_values: dropdown options for liga and entrada
   - calculate_roi: pure Python ROI calculation for Stake Fixa and Gale modes
+  - get_complementares_config: DB query that returns complementary market config
+  - calculate_roi_complementares: pure Python ROI for complementary markets with Gale
 
 DB-dependent tests require a live PostgreSQL connection configured via .env.
 If the database is not available, those tests are skipped automatically.
 
-Pure-Python tests (calculate_roi) always run — no DB required.
+Pure-Python tests (calculate_roi, calculate_roi_complementares) always run — no DB required.
 """
 import os
 import pytest
@@ -28,6 +30,8 @@ try:
         calculate_roi,
         _parse_placar,
         validar_complementar,
+        get_complementares_config,
+        calculate_roi_complementares,
     )
     _IMPORTS_OK = True
 except ImportError as e:
@@ -518,3 +522,197 @@ def test_validar_complementar_placar_ausente_principal_green():
 def test_validar_complementar_regra_invalida():
     """Regra desconhecida retorna RED (comportamento conservador)."""
     assert validar_complementar("regra_invalida", "3-2", "GREEN") == "RED"
+
+
+# ---------------------------------------------------------------------------
+# get_complementares_config tests — requer DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_complementares_config_over_2_5(db_conn):
+    """get_complementares_config('over_2_5') retorna 7 complementares."""
+    result = get_complementares_config(db_conn, "over_2_5")
+
+    assert isinstance(result, list), f"Esperado list, recebido {type(result)}"
+    assert len(result) == 7, f"Esperado 7 complementares para over_2_5, recebido {len(result)}"
+
+
+def test_get_complementares_config_ambas_marcam(db_conn):
+    """get_complementares_config('ambas_marcam') retorna 7 complementares."""
+    result = get_complementares_config(db_conn, "ambas_marcam")
+
+    assert isinstance(result, list)
+    assert len(result) == 7, f"Esperado 7 complementares para ambas_marcam, recebido {len(result)}"
+
+
+def test_get_complementares_config_chaves(db_conn):
+    """Cada dict retornado tem as chaves: id, slug, nome_display, percentual, odd_ref, regra_validacao."""
+    result = get_complementares_config(db_conn, "over_2_5")
+
+    assert len(result) > 0, "Precisa de pelo menos 1 resultado para verificar chaves"
+    expected_keys = {"id", "slug", "nome_display", "percentual", "odd_ref", "regra_validacao"}
+    assert expected_keys == set(result[0].keys()), (
+        f"Chaves incorretas: esperado {expected_keys}, recebido {set(result[0].keys())}"
+    )
+
+
+def test_get_complementares_config_ordenacao(db_conn):
+    """Primeiro resultado e over_3_5 (percentual 0.20, maior percentual)."""
+    result = get_complementares_config(db_conn, "over_2_5")
+
+    assert len(result) > 0
+    assert result[0]["slug"] == "over_3_5", (
+        f"Esperado primeiro slug 'over_3_5', recebido '{result[0]['slug']}'"
+    )
+
+
+def test_get_complementares_config_slug_inexistente(db_conn):
+    """Slug inexistente retorna lista vazia."""
+    result = get_complementares_config(db_conn, "slug_inexistente")
+
+    assert result == [], f"Esperado lista vazia, recebido {result}"
+
+
+# ---------------------------------------------------------------------------
+# calculate_roi_complementares tests — puro Python, sem DB
+# ---------------------------------------------------------------------------
+
+
+# Config simulada para over_2_5 — espelha seed data do banco
+_OVER_2_5_CONFIG = [
+    {"id": 1, "slug": "over_3_5",        "nome_display": "Over 3.5",        "percentual": 0.20, "odd_ref": 4.00, "regra_validacao": "over_3_5"},
+    {"id": 2, "slug": "empate_3_3_4_4",  "nome_display": "Empate 3-3 / 4-4","percentual": 0.01, "odd_ref": 30.00,"regra_validacao": "empate_3_3_4_4"},
+    {"id": 3, "slug": "over_5_plus",     "nome_display": "Over 5+",         "percentual": 0.10, "odd_ref": 8.00, "regra_validacao": "over_5_plus"},
+    {"id": 4, "slug": "gols_casa_4",     "nome_display": "Gols Casa = 4",   "percentual": 0.01, "odd_ref": 25.00,"regra_validacao": "gols_casa_4"},
+    {"id": 5, "slug": "gols_fora_4",     "nome_display": "Gols Fora = 4",   "percentual": 0.01, "odd_ref": 25.00,"regra_validacao": "gols_fora_4"},
+    {"id": 6, "slug": "gols_casa_5_plus","nome_display": "Gols Casa 5+",    "percentual": 0.01, "odd_ref": 50.00,"regra_validacao": "gols_casa_5_plus"},
+    {"id": 7, "slug": "gols_fora_5_plus","nome_display": "Gols Fora 5+",    "percentual": 0.01, "odd_ref": 50.00,"regra_validacao": "gols_fora_5_plus"},
+]
+
+
+def test_calculate_roi_complementares_empty():
+    """Lista vazia retorna zeros e por_mercado vazio."""
+    result = calculate_roi_complementares([], _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
+
+    assert result == {
+        "profit": 0.0,
+        "roi_pct": 0.0,
+        "total_invested": 0.0,
+        "por_mercado": [],
+    }
+
+
+def test_calculate_roi_complementares_pending_ignorado():
+    """Sinais com resultado=None (pendentes) sao ignorados no calculo."""
+    signals = [{"resultado": None, "placar": "3-2", "tentativa": 1}]
+
+    result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
+
+    assert result["total_invested"] == 0.0
+    assert result["profit"] == 0.0
+    assert result["por_mercado"] == []
+
+
+def test_calculate_roi_complementares_green_t1_stake_fixa():
+    """
+    1 sinal GREEN placar='3-2' tentativa=1, stake=100, gale_on=False, config over_2_5:
+    - over_3_5: GREEN (total=5 > 3.5) -> stake_comp=100*0.20=20, lucro=20*(4.00-1)=60, investido=20
+    - empate_3_3_4_4: RED -> stake_comp=100*0.01=1, lucro=-1, investido=1
+    - over_5_plus: RED (total=5 < 6) -> stake_comp=100*0.10=10, lucro=-10, investido=10
+    - gols_casa_4: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
+    - gols_fora_4: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
+    - gols_casa_5_plus: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
+    - gols_fora_5_plus: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
+    - Total investido=35, profit=60-1-10-1-1-1-1=45
+    """
+    signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
+
+    result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
+
+    assert result["total_invested"] == pytest.approx(35.0)
+    assert result["profit"] == pytest.approx(45.0)
+    assert result["roi_pct"] == pytest.approx(45.0 / 35.0 * 100)
+
+
+def test_calculate_roi_complementares_por_mercado_chaves():
+    """por_mercado retorna lista de dicts com: slug, nome_display, greens, reds, lucro, investido."""
+    signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
+
+    result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
+
+    assert len(result["por_mercado"]) == 7
+    expected_keys = {"slug", "nome_display", "greens", "reds", "lucro", "investido"}
+    for entry in result["por_mercado"]:
+        assert expected_keys == set(entry.keys()), (
+            f"Chaves incorretas em por_mercado: {set(entry.keys())}"
+        )
+
+
+def test_calculate_roi_complementares_por_mercado_over_3_5():
+    """over_3_5 no por_mercado tem greens=1, reds=0, lucro=60, investido=20."""
+    signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
+
+    result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
+
+    over_3_5 = next(m for m in result["por_mercado"] if m["slug"] == "over_3_5")
+    assert over_3_5["greens"] == 1
+    assert over_3_5["reds"] == 0
+    assert over_3_5["lucro"] == pytest.approx(60.0)
+    assert over_3_5["investido"] == pytest.approx(20.0)
+
+
+def test_calculate_roi_complementares_gale_t2():
+    """
+    1 sinal GREEN placar='3-2' tentativa=2, stake=100, gale_on=True:
+    - stake_principal_T2 = 100 * 2^(2-1) = 200
+    - over_3_5: GREEN
+      - stake_comp_winning = 200 * 0.20 = 40
+      - prior_losses (T1) = 100 * 0.20 = 20
+      - lucro = 40*(4.00-1) - 20 = 120 - 20 = 100
+      - investido = 100*(2^2-1)*0.20 = 100*3*0.20 = 60
+    """
+    signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 2}]
+
+    result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=True)
+
+    over_3_5 = next(m for m in result["por_mercado"] if m["slug"] == "over_3_5")
+    assert over_3_5["investido"] == pytest.approx(60.0)   # 100*(2^2-1)*0.20
+    assert over_3_5["lucro"] == pytest.approx(100.0)       # 120 - 20
+
+
+def test_calculate_roi_complementares_gale_red_t4():
+    """
+    1 sinal RED tentativa=4, stake=100, gale_on=True:
+    - Todas complementares RED (D-08)
+    - over_3_5: investido = 100*(2^4-1)*0.20 = 100*15*0.20 = 300
+    """
+    signals = [{"resultado": "RED", "placar": "1-1", "tentativa": 4}]
+
+    result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=True)
+
+    over_3_5 = next(m for m in result["por_mercado"] if m["slug"] == "over_3_5")
+    assert over_3_5["investido"] == pytest.approx(300.0)   # 100*(2^4-1)*0.20
+    assert over_3_5["lucro"] == pytest.approx(-300.0)
+
+
+def test_calculate_roi_complementares_decimal_percentual():
+    """
+    Verifica que Decimal do PostgreSQL (simulado como float) e tratado corretamente
+    — percentual e odd_ref como float nativo (sem erro de tipo Decimal*float).
+    """
+    from decimal import Decimal
+
+    config_decimal = [
+        {
+            "id": 1, "slug": "over_3_5", "nome_display": "Over 3.5",
+            "percentual": Decimal("0.20"), "odd_ref": Decimal("4.00"),
+            "regra_validacao": "over_3_5",
+        }
+    ]
+    signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
+
+    # Nao deve lancar TypeError mesmo com Decimal
+    result = calculate_roi_complementares(signals, config_decimal, stake=100.0, gale_on=False)
+
+    over_3_5 = next(m for m in result["por_mercado"] if m["slug"] == "over_3_5")
+    assert over_3_5["lucro"] == pytest.approx(60.0)
