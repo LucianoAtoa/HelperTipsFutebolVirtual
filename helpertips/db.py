@@ -68,10 +68,14 @@ def ensure_schema(conn):
                 dia_semana  SMALLINT,
                 resultado   TEXT,
                 placar      TEXT,
+                tentativa   SMALLINT,
                 raw_text    TEXT NOT NULL,
                 received_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at  TIMESTAMPTZ DEFAULT NOW()
             );
+
+            -- Add tentativa column to existing tables that were created before this migration
+            ALTER TABLE signals ADD COLUMN IF NOT EXISTS tentativa SMALLINT;
 
             CREATE INDEX IF NOT EXISTS idx_signals_liga        ON signals(liga);
             CREATE INDEX IF NOT EXISTS idx_signals_entrada     ON signals(entrada);

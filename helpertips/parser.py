@@ -1,7 +1,9 @@
 """
 parser.py — Signal Message Parser
 
-Pure function that extracts structured fields from Telegram signal messages.
+Pure function that extracts structured fields from Telegram signal messages
+from the {VIP} ExtremeTips group.
+
 Zero external dependencies — only stdlib (re, datetime).
 
 The parser is the bridge between raw Telegram text and structured database
@@ -9,43 +11,82 @@ records. If parsing fails, no data is captured.
 
 Architecture note: This module intentionally has NO imports from db, store,
 or telethon. It is a pure function: same input always produces same output.
+
+Real message format (as observed in {VIP} ExtremeTips group):
+
+  New signal (PENDENTE):
+    ⚽ {VIP} ExtremeTips - Futebol Virtual Bet365
+    🏆 Liga: [Nome da Liga]
+    📈 Entrada recomendada: 🔥 [Mercado] 🔥
+    1️⃣ roboextremetips.com.br ⏳ HH:MM
+    2️⃣ roboextremetips.com.br ⏳ HH:MM
+    3️⃣ roboextremetips.com.br ⏳ HH:MM
+    4️⃣ roboextremetips.com.br ⏳ HH:MM
+
+  GREEN (edited):
+    ... same as new signal ...
+    2️⃣ roboextremetips.com.br ⏳ HH:MM ✅ (2-1)
+    ...
+    GREEN 💰💰💰😎😜😎
+    ✅✅✅✅✅✅✅✅✅
+
+  RED (edited):
+    ... same as new signal (no ✅ on any tentativa) ...
+    ✖ Red
 """
 
 import re
 from datetime import datetime
 
 # ---------------------------------------------------------------------------
-# Regex patterns for field extraction
+# Regex patterns for field extraction — tuned to real message format
 # ---------------------------------------------------------------------------
 
-# LIGA: optional soccer emoji, then "LIGA:" label
+# GATE: The message must contain the group header or the Liga label.
+# Either "{VIP} ExtremeTips" in the header OR "🏆 Liga:" line.
+GATE_PATTERN = re.compile(
+    r'ExtremeTips|🏆\s*Liga:',
+    re.IGNORECASE,
+)
+
+# LIGA: after the trophy emoji and "Liga:" label
 LIGA_PATTERN = re.compile(
-    r'(?:⚽\s*)?LIGA\s*:\s*(.+?)(?:\n|$)',
+    r'Liga:\s*(.+?)(?:\n|$)',
     re.IGNORECASE,
 )
 
-# ENTRADA: optional target emoji, then "Entrada:" label
+# ENTRADA (mercado): after "Entrada recomendada:", surrounded by optional 🔥
 ENTRADA_PATTERN = re.compile(
-    r'(?:🎯\s*)?Entrada\s*:\s*(.+?)(?:\n|$)',
+    r'Entrada recomendada:\s*🔥?\s*(.+?)\s*🔥?\s*(?:\n|$)',
     re.IGNORECASE,
 )
 
-# HORARIO: optional clock emoji, then "Horario:"/"Horário:" label, HH:MM
-HORARIO_PATTERN = re.compile(
-    r'(?:⏰\s*)?Hor[aá]rio\s*:\s*(\d{1,2}:\d{2})(?:\n|$)',
+# HORARIOS: all four tentativa lines — captures the time from each
+# Format: 1️⃣ roboextremetips.com.br ⏳ HH:MM
+TENTATIVA_PATTERN = re.compile(
+    r'([1-4])️⃣[^\n]*?(\d{2}:\d{2})',
+)
+
+# GREEN result: the word "GREEN" as a standalone line (may have trailing emojis)
+RESULTADO_GREEN_PATTERN = re.compile(
+    r'\bGREEN\b',
     re.IGNORECASE,
 )
 
-# RESULTADO: checkmark (✅) or X (❌) emoji followed by GREEN or RED
-RESULTADO_PATTERN = re.compile(
-    r'(?:✅|❌)\s*(GREEN|RED)',
+# RED result: ✖ or ✗ followed by "Red" (the real format uses ✖)
+RESULTADO_RED_PATTERN = re.compile(
+    r'[✖✗]\s*Red',
     re.IGNORECASE,
 )
 
-# PLACAR: "Placar: X-Y" format
+# PLACAR: from the tentativa line that has ✅ — format: ✅ (X-Y)
 PLACAR_PATTERN = re.compile(
-    r'Placar\s*:\s*(\d+-\d+)',
-    re.IGNORECASE,
+    r'✅\s*\((\d+-\d+)\)',
+)
+
+# TENTATIVA: which number (1-4) has the ✅ on its line
+TENTATIVA_HIT_PATTERN = re.compile(
+    r'([1-4])️⃣[^\n]*?✅',
 )
 
 # ---------------------------------------------------------------------------
@@ -70,44 +111,64 @@ def parse_message(text: str, message_id: int) -> dict | None:
     -------
     dict | None
         Structured signal data if the message looks like a valid signal,
-        None otherwise (empty text, no LIGA field, or unrecognizable format).
+        None otherwise (empty text, no Liga field, or unrecognizable format).
 
     Return dict keys
     ----------------
-    - message_id  : int   — same as the input message_id
-    - liga        : str   — league name (e.g. "Euro League")
-    - entrada     : str | None — bet type (e.g. "Over 1.5 Gols")
-    - horario     : str | None — time as "HH:MM"
-    - periodo     : None  — not parsed from message; reserved for future use
-    - dia_semana  : str   — short weekday label derived from current date
+    - message_id  : int        — same as the input message_id
+    - liga        : str        — league name (e.g. "Superliga")
+    - entrada     : str | None — bet type (e.g. "Over 2.5")
+    - horario     : str | None — first tentativa time as "HH:MM"
+    - periodo     : None       — not parsed; reserved for future use
+    - dia_semana  : str        — short weekday label derived from current date
     - resultado   : str | None — "GREEN" or "RED", None if not yet available
-    - placar      : str | None — score "X-Y", None if not present
-    - raw_text    : str   — original input text, always stored verbatim
+    - placar      : str | None — score "X-Y" from the ✅ tentativa line
+    - tentativa   : int | None — which attempt hit (1-4), None if no result
+    - raw_text    : str        — original input text, always stored verbatim
     """
     # Guard: empty or None text
     if not text:
         return None
 
-    # Gate: LIGA must be present — this is what distinguishes a signal
-    # from regular chat messages. If no LIGA, return None immediately.
+    # Gate: must look like a signal from {VIP} ExtremeTips
+    # (either group header present, or Liga: label present)
+    if not GATE_PATTERN.search(text):
+        return None
+
+    # LIGA must be present — this confirms it is a structured signal
     liga_match = LIGA_PATTERN.search(text)
     if not liga_match:
         return None
 
     liga = liga_match.group(1).strip()
 
-    # Extract remaining fields — each may be absent (None)
+    # ENTRADA (mercado) — optional but always present in real signals
     entrada_match = ENTRADA_PATTERN.search(text)
     entrada = entrada_match.group(1).strip() if entrada_match else None
 
-    horario_match = HORARIO_PATTERN.search(text)
-    horario = horario_match.group(1).strip() if horario_match else None
+    # HORARIO — use the FIRST tentativa time as the signal reference time
+    tentativa_times = TENTATIVA_PATTERN.findall(text)
+    if tentativa_times:
+        # tentativa_times is a list of (number, time) tuples, sorted by number
+        horario = sorted(tentativa_times, key=lambda t: int(t[0]))[0][1]
+    else:
+        horario = None
 
-    resultado_match = RESULTADO_PATTERN.search(text)
-    resultado = resultado_match.group(1).upper() if resultado_match else None
+    # RESULTADO — check for GREEN first, then RED
+    if RESULTADO_GREEN_PATTERN.search(text):
+        resultado = "GREEN"
+    elif RESULTADO_RED_PATTERN.search(text):
+        resultado = "RED"
+    else:
+        resultado = None
 
+    # PLACAR — from the tentativa line with ✅ (X-Y) annotation
     placar_match = PLACAR_PATTERN.search(text)
     placar = placar_match.group(1).strip() if placar_match else None
+
+    # TENTATIVA — which attempt number (1-4) hit the result
+    tentativa_hit_match = TENTATIVA_HIT_PATTERN.search(text)
+    tentativa = int(tentativa_hit_match.group(1)) if tentativa_hit_match else None
 
     # Derive dia_semana from current date at parse time
     dia_semana = _WEEKDAY_LABELS[datetime.now().weekday()]
@@ -121,5 +182,6 @@ def parse_message(text: str, message_id: int) -> dict | None:
         "dia_semana": dia_semana,
         "resultado": resultado,
         "placar": placar,
+        "tentativa": tentativa,
         "raw_text": text,
     }

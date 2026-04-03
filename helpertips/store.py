@@ -37,15 +37,16 @@ def upsert_signal(conn, data: dict) -> None:
             """
             INSERT INTO signals (
                 message_id, liga, entrada, horario, periodo,
-                dia_semana, resultado, placar, raw_text, received_at, updated_at
+                dia_semana, resultado, placar, tentativa, raw_text, received_at, updated_at
             ) VALUES (
                 %(message_id)s, %(liga)s, %(entrada)s, %(horario)s, %(periodo)s,
-                %(dia_semana)s, %(resultado)s, %(placar)s, %(raw_text)s,
+                %(dia_semana)s, %(resultado)s, %(placar)s, %(tentativa)s, %(raw_text)s,
                 NOW(), NOW()
             )
             ON CONFLICT (message_id) DO UPDATE SET
                 resultado  = EXCLUDED.resultado,
                 placar     = EXCLUDED.placar,
+                tentativa  = EXCLUDED.tentativa,
                 liga       = EXCLUDED.liga,
                 entrada    = EXCLUDED.entrada,
                 updated_at = NOW()
