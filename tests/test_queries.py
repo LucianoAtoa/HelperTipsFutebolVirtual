@@ -32,6 +32,10 @@ try:
         validar_complementar,
         get_complementares_config,
         calculate_roi_complementares,
+        get_heatmap_data,
+        get_winrate_by_dow,
+        calculate_equity_curve,
+        calculate_streaks,
     )
     _IMPORTS_OK = True
 except ImportError as e:
@@ -716,3 +720,224 @@ def test_calculate_roi_complementares_decimal_percentual():
 
     over_3_5 = next(m for m in result["por_mercado"] if m["slug"] == "over_3_5")
     assert over_3_5["lucro"] == pytest.approx(60.0)
+
+
+# ---------------------------------------------------------------------------
+# calculate_equity_curve tests — puro Python, sem DB
+# ---------------------------------------------------------------------------
+
+
+def test_calculate_equity_curve():
+    """3 sinais GREEN, GREEN, RED (DESC) -> y_fixa=[9.0, 18.0, 8.0], cores corretas."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    signals_desc = [
+        {"resultado": "RED", "tentativa": 1},    # mais recente (DESC)
+        {"resultado": "GREEN", "tentativa": 1},
+        {"resultado": "GREEN", "tentativa": 1},   # mais antigo
+    ]
+    result = calculate_equity_curve(signals_desc, stake=10.0, odd=1.90)
+    assert result["x"] == [1, 2, 3]
+    assert result["y_fixa"] == [9.0, 18.0, 8.0]
+    assert result["colors"] == ["#28a745", "#28a745", "#dc3545"]
+
+
+def test_calculate_equity_curve_with_gale():
+    """Sinais com tentativa variavel: y_gale diverge de y_fixa."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    signals_desc = [
+        {"resultado": "GREEN", "tentativa": 1},
+        {"resultado": "GREEN", "tentativa": 2},   # gale 2a tentativa
+        {"resultado": "RED", "tentativa": 1},
+    ]
+    # Reversal: RED(t=1), GREEN(t=2), GREEN(t=1) cronologico
+    result = calculate_equity_curve(signals_desc, stake=10.0, odd=1.90)
+    # RED t=1: fixa=-10, gale=-10
+    # GREEN t=2: fixa=+9->-1, gale=winning=20*(0.9)-10=+8->-2
+    # GREEN t=1: fixa=+9->+8, gale=+9->+7
+    assert result["y_fixa"][-1] == pytest.approx(8.0)
+    assert result["y_gale"][-1] != result["y_fixa"][-1]  # gale diverge
+
+
+def test_equity_curve_reversal():
+    """Confirma que sinais DESC sao revertidos: RED (oldest) vira primeiro ponto."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    signals_desc = [
+        {"resultado": "GREEN", "tentativa": 1, "id": "newest"},
+        {"resultado": "RED", "tentativa": 1, "id": "oldest"},
+    ]
+    result = calculate_equity_curve(signals_desc, stake=10.0, odd=1.90)
+    # Primeiro ponto deve ser RED (oldest), nao GREEN
+    assert result["colors"][0] == "#dc3545"  # RED primeiro (cronologico)
+    assert result["colors"][1] == "#28a745"  # GREEN depois
+
+
+def test_equity_curve_empty():
+    """Sem sinais resolvidos -> estrutura vazia com todas as listas vazias."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    result = calculate_equity_curve([], stake=10.0, odd=1.90)
+    assert result == {"x": [], "y_fixa": [], "y_gale": [], "colors": [], "annotations": []}
+
+
+def test_equity_curve_annotations():
+    """Streak >= 5 consecutivos -> annotations nao vazio."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    signals_desc = [{"resultado": "GREEN", "tentativa": 1} for _ in range(6)]
+    result = calculate_equity_curve(signals_desc, stake=10.0, odd=1.90)
+    assert len(result["annotations"]) >= 1
+    assert "5" in result["annotations"][0]["text"] or "streak" in result["annotations"][0]["text"].lower()
+
+
+# ---------------------------------------------------------------------------
+# calculate_streaks tests — puro Python, sem DB
+# ---------------------------------------------------------------------------
+
+
+def test_calculate_streaks():
+    """[G,G,G,R,G] em DESC -> current=1, current_type=GREEN, max_green=3, max_red=1."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    signals_desc = [
+        {"resultado": "GREEN"},  # mais recente (DESC)
+        {"resultado": "RED"},
+        {"resultado": "GREEN"},
+        {"resultado": "GREEN"},
+        {"resultado": "GREEN"},  # mais antigo
+    ]
+    result = calculate_streaks(signals_desc)
+    assert result["current"] == 1
+    assert result["current_type"] == "GREEN"
+    assert result["max_green"] == 3
+    assert result["max_red"] == 1
+
+
+def test_calculate_streaks_all_green():
+    """[G,G,G] em DESC -> current=3, max_green=3, max_red=0."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    signals_desc = [{"resultado": "GREEN"} for _ in range(3)]
+    result = calculate_streaks(signals_desc)
+    assert result == {"current": 3, "current_type": "GREEN", "max_green": 3, "max_red": 0}
+
+
+def test_calculate_streaks_empty():
+    """Lista vazia -> todos zeros e current_type=None."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"helpertips.queries import failed: {_IMPORT_ERROR}")
+    result = calculate_streaks([])
+    assert result == {"current": 0, "current_type": None, "max_green": 0, "max_red": 0}
+
+
+# ---------------------------------------------------------------------------
+# get_heatmap_data tests — requer DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_heatmap_data(db_conn):
+    """3 sinais em horas/dias diferentes -> z com valores corretos nas celulas."""
+    import datetime
+    # Sinal 1: segunda (DOW=1), hora 10 -> GREEN
+    # Sinal 2: segunda (DOW=1), hora 10 -> RED (total=2, greens=1, win_rate=50%)
+    # Sinal 3: sexta (DOW=5), hora 20 -> GREEN (total=1, greens=1, win_rate=100%)
+    monday_10h = datetime.datetime(2026, 3, 30, 10, 0, 0)   # segunda-feira hora 10
+    friday_20h = datetime.datetime(2026, 4, 3, 20, 0, 0)    # sexta-feira hora 20
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (8001, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", monday_10h, monday_10h),
+        )
+        cur.execute(
+            """
+            INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (8002, "Liga A", "Over 2.5", "10:00", "RED", "raw", monday_10h, monday_10h),
+        )
+        cur.execute(
+            """
+            INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (8003, "Liga A", "Over 2.5", "20:00", "GREEN", "raw", friday_20h, friday_20h),
+        )
+    db_conn.commit()
+
+    result = get_heatmap_data(db_conn)
+
+    assert result["x"] == ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
+    assert result["y"] == [f"{h:02d}h" for h in range(24)]
+    assert len(result["z"]) == 24
+    assert len(result["z"][0]) == 7
+
+    # Segunda (DOW=1), hora 10: 1 GREEN de 2 -> 50.0%
+    assert result["z"][10][1] == pytest.approx(50.0)
+    # Sexta (DOW=5), hora 20: 1 GREEN de 1 -> 100.0%
+    assert result["z"][20][5] == pytest.approx(100.0)
+    # Celulas sem dados sao None
+    assert result["z"][0][0] is None
+
+
+def test_get_heatmap_data_empty(db_conn):
+    """Sem sinais -> z com todas as celulas None."""
+    result = get_heatmap_data(db_conn)
+
+    assert result["x"] == ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
+    assert result["y"] == [f"{h:02d}h" for h in range(24)]
+    assert result["z"] == [[None] * 7 for _ in range(24)]
+
+
+# ---------------------------------------------------------------------------
+# get_winrate_by_dow tests — requer DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_winrate_by_dow(db_conn):
+    """4 sinais em 2 dias diferentes -> lista de dicts com win_rate por dia."""
+    import datetime
+    monday = datetime.datetime(2026, 3, 30, 10, 0, 0)   # segunda (DOW=1)
+    friday = datetime.datetime(2026, 4, 3, 10, 0, 0)    # sexta (DOW=5)
+
+    with db_conn.cursor() as cur:
+        # Segunda: 2 GREEN, 1 RED -> win_rate = 66.7%
+        for mid, res, ts in [(7001, "GREEN", monday), (7002, "GREEN", monday), (7003, "RED", monday)]:
+            cur.execute(
+                "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (mid, "Liga A", "Over 2.5", "10:00", res, "raw", ts, ts),
+            )
+        # Sexta: 1 GREEN -> win_rate = 100%
+        cur.execute(
+            "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (7004, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", friday, friday),
+        )
+    db_conn.commit()
+
+    result = get_winrate_by_dow(db_conn)
+
+    assert isinstance(result, list)
+    assert len(result) == 2  # apenas segunda e sexta
+
+    dias = {r["dia"]: r for r in result}
+    assert 1 in dias  # segunda
+    assert 5 in dias  # sexta
+    assert dias[1]["dia_nome"] == "Seg"
+    assert dias[5]["dia_nome"] == "Sex"
+    assert dias[1]["greens"] == 2
+    assert dias[1]["total"] == 3
+    assert dias[1]["win_rate"] == pytest.approx(66.7)
+    assert dias[5]["win_rate"] == pytest.approx(100.0)
+
+
+def test_get_winrate_by_dow_empty(db_conn):
+    """Sem sinais resolvidos -> lista vazia."""
+    result = get_winrate_by_dow(db_conn)
+    assert result == []
