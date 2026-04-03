@@ -92,7 +92,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — Camada de dados temporal: heatmap, win rate por dia, equity curve, streaks (TDD)
-- [ ] 03-02-PLAN.md — Camada de dados Gale + volume + cross-dimensional + parse failures (TDD)
+- [x] 03-02-PLAN.md — Camada de dados Gale + volume + cross-dimensional + parse failures (TDD)
 - [ ] 03-03-PLAN.md — Dashboard integration: tabs, badge, modal, callbacks
 
 ## Progress
