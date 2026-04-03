@@ -107,6 +107,7 @@ def test_layout_has_required_component_ids():
         "kpi-streak-max-green",
         "kpi-streak-max-red",
         "table-cross-dimensional",
+        "table-periodo",
     }
 
     found_ids = collect_ids(app.layout)

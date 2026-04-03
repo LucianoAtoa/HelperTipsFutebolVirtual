@@ -408,6 +408,11 @@ app.layout = dbc.Container(
                                 dbc.CardHeader(html.H5("Volume de Sinais", className="fw-bold mb-0")),
                                 dbc.CardBody(dcc.Graph(id="graph-volume", style={"height": "280px"})),
                             ], className="mt-3"),
+                            # Win rate por periodo (ANAL-03, D-02)
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Win Rate por Periodo", className="fw-bold mb-0")),
+                                dbc.CardBody(id="table-periodo"),
+                            ], className="mt-3"),
                             # Cross-dimensional breakdown (ANAL-04)
                             dbc.Card([
                                 dbc.CardHeader(html.H5("Breakdown Cross-Dimensional", className="fw-bold mb-0")),
@@ -594,6 +599,30 @@ def _build_cross_table(data: list) -> dbc.Table | html.P:
             html.Td(str(d["total"]), className="text-end"),
         ], className=row_class))
     return dbc.Table([header, html.Tbody(rows)], size="sm", bordered=False, hover=True, dark=True)
+
+
+def _build_periodo_table(periodo_data: list):
+    """Constroi dbc.Table com win rate por periodo (1T/2T/FT). ANAL-03."""
+    if not periodo_data:
+        return html.P("Sem dados de periodo disponveis.", className="text-muted")
+    header = html.Thead(html.Tr([
+        html.Th("Periodo"),
+        html.Th("Greens"),
+        html.Th("Total"),
+        html.Th("Win Rate"),
+    ]))
+    rows = []
+    for row in periodo_data:
+        wr = row["win_rate"]
+        cls = "table-success" if wr >= 60 else ""
+        rows.append(html.Tr([
+            html.Td(row["periodo"]),
+            html.Td(str(row["greens"])),
+            html.Td(str(row["total"])),
+            html.Td(f"{wr:.1f}%"),
+        ], className=cls))
+    body = html.Tbody(rows)
+    return dbc.Table([header, body], size="sm", bordered=False, hover=True, dark=True, responsive=True)
 
 
 # ---------------------------------------------------------------------------
@@ -850,6 +879,7 @@ def update_dashboard(liga, entrada, date_start, date_end, gale_on, stake, odd, _
     Output("kpi-streak-max-red", "children"),
     Output("graph-volume", "figure"),
     Output("table-cross-dimensional", "children"),
+    Output("table-periodo", "children"),
     Input("tabs-analytics", "active_tab"),
     Input("filter-liga", "value"),
     Input("filter-entrada", "value"),
@@ -880,7 +910,7 @@ def update_tabs(active_tab, liga, entrada, date_start, date_end, stake, odd, _n)
             dow_data = get_winrate_by_dow(conn, liga, entrada, date_start, date_end)
             dow_fig = _make_dow_figure(dow_data)
 
-            return heatmap_fig, equity_fig, dow_fig, no_update, no_update, no_update, no_update, no_update, no_update
+            return heatmap_fig, equity_fig, dow_fig, no_update, no_update, no_update, no_update, no_update, no_update, no_update
 
         elif active_tab == "tab-gale":
             # Gale analysis (ANAL-07, D-10 a D-12)
@@ -894,20 +924,24 @@ def update_tabs(active_tab, liga, entrada, date_start, date_end, stake, odd, _n)
             max_green_label = f"{streaks['max_green']} wins" if streaks["max_green"] > 0 else "Sem dados"
             max_red_label = f"{streaks['max_red']} losses" if streaks["max_red"] > 0 else "Sem dados"
 
-            return no_update, no_update, no_update, gale_fig, current_label, max_green_label, max_red_label, no_update, no_update
+            return no_update, no_update, no_update, gale_fig, current_label, max_green_label, max_red_label, no_update, no_update, no_update
 
         elif active_tab == "tab-volume":
             # Volume (ANAL-08, D-18)
             vol_data = get_volume_by_day(conn, liga, entrada, date_start, date_end)
             vol_fig = _make_volume_figure(vol_data)
 
+            # Win rate por periodo (ANAL-03)
+            periodo_data = get_winrate_by_periodo(conn, liga, entrada, date_start, date_end)
+            periodo_table = _build_periodo_table(periodo_data)
+
             # Cross-dimensional (ANAL-04, D-17)
             cross_data = get_cross_dimensional(conn, liga, entrada, date_start, date_end)
             cross_table = _build_cross_table(cross_data)
 
-            return no_update, no_update, no_update, no_update, no_update, no_update, no_update, vol_fig, cross_table
+            return no_update, no_update, no_update, no_update, no_update, no_update, no_update, vol_fig, cross_table, periodo_table
 
-        return (no_update,) * 9
+        return (no_update,) * 10
     finally:
         conn.close()
 
