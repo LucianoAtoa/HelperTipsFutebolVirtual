@@ -36,6 +36,11 @@ try:
         get_winrate_by_dow,
         calculate_equity_curve,
         calculate_streaks,
+        get_gale_analysis,
+        get_volume_by_day,
+        get_cross_dimensional,
+        get_parse_failures_detail,
+        get_winrate_by_periodo,
     )
     _IMPORTS_OK = True
 except ImportError as e:
@@ -108,6 +113,7 @@ def db_conn():
     # Setup: clear any pre-existing data so tests start from a clean state
     with conn.cursor() as cur:
         cur.execute("DELETE FROM signals")
+        cur.execute("DELETE FROM parse_failures")
     conn.commit()
 
     yield conn
@@ -115,6 +121,7 @@ def db_conn():
     # Teardown: remove all test data
     with conn.cursor() as cur:
         cur.execute("DELETE FROM signals")
+        cur.execute("DELETE FROM parse_failures")
     conn.commit()
     conn.close()
 
@@ -940,4 +947,222 @@ def test_get_winrate_by_dow(db_conn):
 def test_get_winrate_by_dow_empty(db_conn):
     """Sem sinais resolvidos -> lista vazia."""
     result = get_winrate_by_dow(db_conn)
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_gale_analysis tests — requer DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_gale_analysis(db_conn):
+    """5 sinais com tentativa variada -> lista com 3 dicts com win_rate correto por tentativa."""
+    # tentativa=1: 2 sinais (1 GREEN, 1 RED) -> win_rate=50.0%
+    # tentativa=2: 2 sinais (2 GREEN) -> win_rate=100.0%
+    # tentativa=3: 1 sinal (1 RED) -> win_rate=0.0%
+    with db_conn.cursor() as cur:
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (5001, "Liga A", "Over 2.5", "GREEN", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (5002, "Liga A", "Over 2.5", "RED", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (5003, "Liga A", "Over 2.5", "GREEN", 2, "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (5004, "Liga A", "Over 2.5", "GREEN", 2, "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (5005, "Liga A", "Over 2.5", "RED", 3, "raw"))
+    db_conn.commit()
+
+    result = get_gale_analysis(db_conn)
+
+    assert len(result) == 3
+    assert result[0]["tentativa"] == 1
+    assert result[0]["win_rate"] == 50.0
+    assert result[1]["tentativa"] == 2
+    assert result[1]["win_rate"] == 100.0
+    assert result[2]["tentativa"] == 3
+    assert result[2]["win_rate"] == 0.0
+
+
+def test_get_gale_analysis_excludes_null(db_conn):
+    """Sinais com tentativa=None sao excluidos da analise de gale."""
+    with db_conn.cursor() as cur:
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (5010, "Liga A", "Over 2.5", "GREEN", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (5011, "Liga A", "Over 2.5", "RED", None, "raw"))
+    db_conn.commit()
+
+    result = get_gale_analysis(db_conn)
+
+    assert len(result) == 1
+    assert result[0]["tentativa"] == 1
+
+
+def test_get_gale_analysis_empty(db_conn):
+    """Sem sinais com tentativa definida -> lista vazia."""
+    result = get_gale_analysis(db_conn)
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_volume_by_day tests — requer DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_volume_by_day(db_conn):
+    """5 sinais em 2 dias diferentes -> lista com 2 dicts {data, count}."""
+    import datetime
+    day1 = datetime.datetime(2026, 3, 30, 10, 0, 0)
+    day2 = datetime.datetime(2026, 4, 1, 10, 0, 0)
+
+    with db_conn.cursor() as cur:
+        for mid in [6001, 6002, 6003]:
+            cur.execute(
+                "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (mid, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", day1, day1),
+            )
+        for mid in [6004, 6005]:
+            cur.execute(
+                "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (mid, "Liga A", "Over 2.5", "10:00", "RED", "raw", day2, day2),
+            )
+    db_conn.commit()
+
+    result = get_volume_by_day(db_conn)
+
+    assert len(result) == 2
+    assert result[0]["count"] + result[1]["count"] == 5
+    assert all("data" in r and "count" in r for r in result)
+
+
+def test_get_volume_by_day_empty(db_conn):
+    """Sem sinais -> lista vazia."""
+    result = get_volume_by_day(db_conn)
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_cross_dimensional tests — requer DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_cross_dimensional(db_conn):
+    """Sinais com combinacoes de liga/entrada -> breakdown cross-dimensional ordenado por win_rate DESC."""
+    with db_conn.cursor() as cur:
+        # (Liga A, Over 2.5): 2 GREEN, 0 RED -> win_rate=100%
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
+                    (4001, "Liga A", "Over 2.5", "GREEN", "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
+                    (4002, "Liga A", "Over 2.5", "GREEN", "raw"))
+        # (Liga A, Ambas Marcam): 1 GREEN, 1 RED -> win_rate=50%
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
+                    (4003, "Liga A", "Ambas Marcam", "GREEN", "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
+                    (4004, "Liga A", "Ambas Marcam", "RED", "raw"))
+        # (Liga B, Over 2.5): 0 GREEN, 1 RED -> win_rate=0%
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
+                    (4005, "Liga B", "Over 2.5", "RED", "raw"))
+    db_conn.commit()
+
+    result = get_cross_dimensional(db_conn)
+
+    assert len(result) >= 2
+    assert all(k in result[0] for k in ("liga", "entrada", "win_rate", "total"))
+    # Ordenado por win_rate DESC
+    assert result[0]["win_rate"] >= result[-1]["win_rate"]
+
+
+def test_get_cross_dimensional_empty(db_conn):
+    """Sem sinais -> lista vazia."""
+    result = get_cross_dimensional(db_conn)
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_parse_failures_detail tests — requer DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_parse_failures_detail(db_conn):
+    """3 parse_failures inseridas -> lista de 3 dicts com raw_text, failure_reason, received_at."""
+    with db_conn.cursor() as cur:
+        for i in range(3):
+            cur.execute("INSERT INTO parse_failures (raw_text, failure_reason) VALUES (%s, %s)",
+                        (f"msg {i}", "no_liga_match"))
+    db_conn.commit()
+
+    result = get_parse_failures_detail(db_conn)
+
+    assert len(result) == 3
+    assert "raw_text" in result[0]
+    assert "failure_reason" in result[0]
+    assert "received_at" in result[0]
+
+
+def test_get_parse_failures_detail_limit(db_conn):
+    """Inserir 5 falhas, chamar com limit=2 -> retorna apenas 2."""
+    with db_conn.cursor() as cur:
+        for i in range(5):
+            cur.execute("INSERT INTO parse_failures (raw_text, failure_reason) VALUES (%s, %s)",
+                        (f"msg {i}", "no_liga_match"))
+    db_conn.commit()
+
+    result = get_parse_failures_detail(db_conn, limit=2)
+
+    assert len(result) == 2
+
+
+def test_get_parse_failures_detail_empty(db_conn):
+    """Sem falhas -> lista vazia."""
+    result = get_parse_failures_detail(db_conn)
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_winrate_by_periodo tests — requer DB (ANAL-03)
+# ---------------------------------------------------------------------------
+
+
+def test_get_winrate_by_periodo(db_conn):
+    """Sinais com periodo definido -> lista com win_rate por periodo (1T/2T), excluindo NULL."""
+    with db_conn.cursor() as cur:
+        # 2 sinais periodo='1T': 1 GREEN, 1 RED -> win_rate=50%
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (10001, "Liga A", "Over 2.5", "GREEN", "1T", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (10002, "Liga A", "Over 2.5", "RED", "1T", 1, "raw"))
+        # 2 sinais periodo='2T': 2 GREEN -> win_rate=100%
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (10003, "Liga B", "Over 2.5", "GREEN", "2T", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (10004, "Liga B", "Over 2.5", "GREEN", "2T", 1, "raw"))
+        # 1 sinal com periodo=None (deve ser excluido)
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (10005, "Liga A", "Over 2.5", "GREEN", None, 1, "raw"))
+    db_conn.commit()
+
+    result = get_winrate_by_periodo(db_conn)
+
+    assert len(result) == 2
+    assert all(k in result[0] for k in ("periodo", "greens", "total", "win_rate"))
+
+    periodo_1t = next(r for r in result if r["periodo"] == "1T")
+    assert periodo_1t["win_rate"] == 50.0
+
+    periodo_2t = next(r for r in result if r["periodo"] == "2T")
+    assert periodo_2t["win_rate"] == 100.0
+
+
+def test_get_winrate_by_periodo_empty(db_conn):
+    """Sem sinais com periodo definido -> lista vazia."""
+    # Inserir sinal com periodo=None (deve ser excluido)
+    with db_conn.cursor() as cur:
+        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (10010, "Liga A", "Over 2.5", "GREEN", None, "raw"))
+    db_conn.commit()
+
+    result = get_winrate_by_periodo(db_conn)
     assert result == []
