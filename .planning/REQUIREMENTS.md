@@ -17,13 +17,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Parser
 
-- [ ] **PARS-01**: Parser extrai liga da mensagem do sinal
-- [ ] **PARS-02**: Parser extrai entrada recomendada (tipo de aposta)
-- [ ] **PARS-03**: Parser extrai horários dos jogos
-- [ ] **PARS-04**: Parser extrai resultado (GREEN/RED) de mensagens editadas
-- [ ] **PARS-05**: Parser extrai placares individuais quando disponíveis
-- [ ] **PARS-06**: Parser armazena texto original (raw_text) para recuperação em caso de falha
-- [ ] **PARS-07**: Parser registra taxa de cobertura (% de mensagens parseadas vs descartadas)
+- [x] **PARS-01**: Parser extrai liga da mensagem do sinal
+- [x] **PARS-02**: Parser extrai entrada recomendada (tipo de aposta)
+- [x] **PARS-03**: Parser extrai horários dos jogos
+- [x] **PARS-04**: Parser extrai resultado (GREEN/RED) de mensagens editadas
+- [x] **PARS-05**: Parser extrai placares individuais quando disponíveis
+- [x] **PARS-06**: Parser armazena texto original (raw_text) para recuperação em caso de falha
+- [x] **PARS-07**: Parser registra taxa de cobertura (% de mensagens parseadas vs descartadas)
 
 ### Database
 
@@ -110,13 +110,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIST-03 | Phase 1 | Pending |
 | LIST-04 | Phase 1 | Pending |
 | LIST-05 | Phase 1 | Pending |
-| PARS-01 | Phase 1 | Pending |
-| PARS-02 | Phase 1 | Pending |
-| PARS-03 | Phase 1 | Pending |
-| PARS-04 | Phase 1 | Pending |
-| PARS-05 | Phase 1 | Pending |
-| PARS-06 | Phase 1 | Pending |
-| PARS-07 | Phase 1 | Pending |
+| PARS-01 | Phase 1 | Complete |
+| PARS-02 | Phase 1 | Complete |
+| PARS-03 | Phase 1 | Complete |
+| PARS-04 | Phase 1 | Complete |
+| PARS-05 | Phase 1 | Complete |
+| PARS-06 | Phase 1 | Complete |
+| PARS-07 | Phase 1 | Complete |
 | DB-01 | Phase 1 | Complete |
 | DB-02 | Phase 1 | Pending |
 | DB-03 | Phase 1 | Pending |

@@ -28,11 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. When a signal message is edited with a result (GREEN/RED), the existing database row is updated without creating a duplicate
   4. The listener can be stopped with Ctrl+C and restarted without losing any previously captured data
   5. A `.env` file holds all credentials; `.session` and `.env` are in `.gitignore` before the first commit
-**Plans:** 1/7 plans executed
+**Plans:** 2/7 plans executed
 
 Plans:
 - [x] 01-01-PLAN.md — Project bootstrap: .gitignore, .env config validation, DB schema, dependencies
-- [ ] 01-02-PLAN.md — Signal message parser (TDD): pure-function regex extraction of liga, entrada, horario, resultado, placar
+- [x] 01-02-PLAN.md — Signal message parser (TDD): pure-function regex extraction of liga, entrada, horario, resultado, placar
 - [ ] 01-03-PLAN.md — Store repository layer: upsert_signal with ON CONFLICT, get_stats for terminal summary
 - [ ] 01-04-PLAN.md — Listener integration: Telethon event handlers, startup summary, graceful shutdown, auto-reconnect
 - [ ] 01-05-PLAN.md — Reestruturacao em pacote Python: helpertips/ + pyproject.toml + pip install -e .
@@ -72,6 +72,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/7 | In Progress|  |
+| 1. Foundation | 2/7 | In Progress|  |
 | 2. Core Dashboard | 0/? | Not started | - |
 | 3. Analytics Depth | 0/? | Not started | - |

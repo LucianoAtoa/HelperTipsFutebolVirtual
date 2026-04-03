@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation 01-01-PLAN.md
-last_updated: "2026-04-03T10:06:21.323Z"
+stopped_at: Completed 01-foundation 01-02-PLAN.md (Signal Message Parser)
+last_updated: "2026-04-03T10:07:11.601Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 7
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-foundation P01 | 2min | 2 tasks | 7 files |
+| Phase 01-foundation P02 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - [Init]: Upsert-only write path (ON CONFLICT) — no SELECT-then-INSERT; handles both new signals and result edits atomically
 - [Phase 01-foundation]: Upgraded Telethon from 1.40.0 to 1.42.0 (required by CLAUDE.md pin ~=1.42)
 - [Phase 01-foundation]: validate_config() collects ALL missing vars before raising SystemExit — better UX than fail-on-first
+- [Phase 01-foundation]: LIGA field is the signal gate in parser.py — returns None immediately if no LIGA match, preventing non-signal messages from being stored
+- [Phase 01-foundation]: parser.py imports only re and datetime (stdlib) — zero external deps ensures listener integration requires no additional packages
 
 ### Pending Todos
 
@@ -79,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T10:06:21.321Z
-Stopped at: Completed 01-foundation 01-01-PLAN.md
+Last session: 2026-04-03T10:07:11.598Z
+Stopped at: Completed 01-foundation 01-02-PLAN.md (Signal Message Parser)
 Resume file: None
