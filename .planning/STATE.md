@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: MVP
-status: completed
-stopped_at: v1.0 milestone completed and archived
-last_updated: "2026-04-03T22:10:00.000Z"
+milestone: v1.1
+milestone_name: Cloud Deploy
+status: planning
+stopped_at: Defining requirements for v1.1
+last_updated: "2026-04-03T22:15:00.000Z"
 last_activity: 2026-04-03
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Planning next milestone
+**Current focus:** v1.1 Cloud Deploy — security review, GitHub, AWS deployment
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: v1.0 MVP shipped
-Last activity: 2026-04-03
+Status: Defining requirements
+Last activity: 2026-04-03 — Milestone v1.1 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 

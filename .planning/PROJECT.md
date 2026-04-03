@@ -38,9 +38,19 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Mercados complementares com validação independente por placar e Martingale — v1.0
 - ✓ Analytics avançados: heatmap, equity curve, gale analysis, streaks, volume — v1.0
 
+## Current Milestone: v1.1 Cloud Deploy
+
+**Goal:** Subir o HelperTips para a AWS com custo mínimo, garantindo segurança antes de expor na nuvem, e publicar o repositório no GitHub.
+
+**Target features:**
+- Revisão de segurança (secrets, credenciais, exposição)
+- Publicação no GitHub (repo, .gitignore, README)
+- Deploy na AWS (listener + dashboard, custo mínimo)
+- Configuração de infraestrutura para rodar 24/7
+
 ### Active
 
-(Awaiting v1.1 milestone definition — run `/gsd:new-milestone`)
+(Awaiting v1.1 requirements definition)
 
 ### Out of Scope
 
@@ -100,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-03 after v1.0 MVP milestone completion*
+*Last updated: 2026-04-03 after v1.1 Cloud Deploy milestone started*
