@@ -95,6 +95,11 @@ def db_conn():
 
     ensure_schema(conn)
 
+    # Setup: clear any pre-existing data so tests start from a clean state
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM signals")
+    conn.commit()
+
     yield conn
 
     # Teardown: remove all test data
