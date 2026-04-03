@@ -69,13 +69,13 @@ Plans:
   3. Sinal RED (sem placar) faz todas complementares retornarem RED automaticamente
   4. Card ROI Complementares no dashboard mostra tabela de breakdown por mercado quando entrada filtrada
   5. Card mostra alerta "Selecione uma entrada" quando sem filtro de entrada
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 02.1-01-PLAN.md — Schema extension: tabelas mercados + complementares + seed data em ensure_schema()
 - [x] 02.1-02-PLAN.md — Validacao de complementares por placar (TDD): _parse_placar, _REGRA_VALIDATORS, validar_complementar
 - [x] 02.1-03-PLAN.md — ROI complementares (TDD): get_complementares_config + calculate_roi_complementares
-- [ ] 02.1-04-PLAN.md — Dashboard card ROI Complementares + verificacao visual
+- [x] 02.1-04-PLAN.md — Dashboard card ROI Complementares + verificacao visual
 
 ### Phase 3: Analytics Depth
 **Goal**: Users can identify which leagues, bet types, time slots, and days of the week produce the best results, and track bankroll growth over time

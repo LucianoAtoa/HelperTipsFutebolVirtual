@@ -53,10 +53,10 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **MKT-01**: Tabelas PostgreSQL `mercados` e `complementares` com seed data de 2 mercados principais e 14 complementares
 - [x] **MKT-02**: Validação independente de GREEN/RED por entrada complementar baseada no placar do sinal principal
 - [x] **MKT-03**: Cálculo de stakes Martingale para complementares (stake_comp = stake_principal * percentual * 2^(N-1))
-- [ ] **MKT-04**: Cálculo de ROI complementares puro Python com breakdown por mercado
-- [ ] **MKT-05**: Query get_complementares_config() para carregar configuração do banco
-- [ ] **MKT-06**: Card ROI Complementares no dashboard com tabela de breakdown por mercado
-- [ ] **MKT-07**: ROI total considera investimento principal + todas complementares
+- [x] **MKT-04**: Cálculo de ROI complementares puro Python com breakdown por mercado
+- [x] **MKT-05**: Query get_complementares_config() para carregar configuração do banco
+- [x] **MKT-06**: Card ROI Complementares no dashboard com tabela de breakdown por mercado
+- [x] **MKT-07**: ROI total considera investimento principal + todas complementares
 
 ### Dashboard — Análises Avançadas
 
@@ -146,10 +146,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MKT-01 | Phase 2.1 | Complete |
 | MKT-02 | Phase 2.1 | Complete |
 | MKT-03 | Phase 2.1 | Complete |
-| MKT-04 | Phase 2.1 | Pending |
-| MKT-05 | Phase 2.1 | Pending |
-| MKT-06 | Phase 2.1 | Pending |
-| MKT-07 | Phase 2.1 | Pending |
+| MKT-04 | Phase 2.1 | Complete |
+| MKT-05 | Phase 2.1 | Complete |
+| MKT-06 | Phase 2.1 | Complete |
+| MKT-07 | Phase 2.1 | Complete |
 | ANAL-01 | Phase 3 | Pending |
 | ANAL-02 | Phase 3 | Pending |
 | ANAL-03 | Phase 3 | Pending |

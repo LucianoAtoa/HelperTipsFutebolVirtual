@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02.1-03-PLAN.md
-last_updated: "2026-04-03T15:14:36.605Z"
+status: verifying
+stopped_at: Completed 02.1-04-PLAN.md
+last_updated: "2026-04-03T16:35:48.350Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 Phase: 02.1 (market-config) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-03
 
 Progress: [░░░░░░░░░░] 0%
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02.1-market-config P01 | 8min | 2 tasks | 2 files |
 | Phase 02.1-market-config P02 | 8 | 2 tasks | 2 files |
 | Phase 02.1-market-config P03 | 2min | 2 tasks | 2 files |
+| Phase 02.1-market-config P04 | 79min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,7 @@ Recent decisions affecting current work:
 - [Phase 02.1-market-config]: D-08 e D-09 implementados: principal RED propaga RED; principal None propaga None para complementares
 - [Phase 02.1-market-config]: calculate_roi_complementares usa mesmo padrao de Gale que calculate_roi mas com stake_base = stake * percentual — consistencia com funcao existente
 - [Phase 02.1-market-config]: Decimal do PostgreSQL convertido para float() antes de calculos em calculate_roi_complementares — evita TypeError silencioso com NUMERIC(5,4)
+- [Phase 02.1-market-config]: Card ROI Complementares inserido apos card ROI Principal no layout; Output adicionado ao final do master callback; ROI Total Combinado calculado inline
 
 ### Pending Todos
 
@@ -124,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T15:14:36.602Z
-Stopped at: Completed 02.1-03-PLAN.md
+Last session: 2026-04-03T16:35:48.348Z
+Stopped at: Completed 02.1-04-PLAN.md
 Resume file: None
