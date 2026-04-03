@@ -2,48 +2,68 @@
 
 ## What This Is
 
-Sistema que conecta ao grupo **{VIP} ExtremeTips** no Telegram, captura sinais de apostas de futebol virtual da Bet365 em tempo real, armazena no PostgreSQL e fornece um dashboard web elaborado com estatísticas completas, filtros interativos, gráficos dinâmicos e simulação de ROI. Feito para o próprio usuário que hoje acompanha e aposta manualmente.
+Sistema que conecta ao grupo **{VIP} ExtremeTips** no Telegram, captura sinais de apostas de futebol virtual da Bet365 em tempo real, armazena no PostgreSQL e fornece um dashboard web elaborado com estatísticas completas, filtros interativos, gráficos dinâmicos, simulação de ROI com Gale, e análises avançadas por dimensão. Feito para o próprio usuário que hoje acompanha e aposta manualmente.
 
 ## Core Value
 
 Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
 
+## Current State
+
+**Shipped:** v1.0 MVP (2026-04-03)
+**Codebase:** 5,050 LOC Python | 132 testes | 97 commits
+**Stack:** Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dash-bootstrap-components 2.0
+
+**O que funciona:**
+- Listener Telethon captura sinais e resultados em tempo real do grupo {VIP} ExtremeTips
+- Parser regex extrai liga, entrada, horário, resultado, placar, tentativa do formato real
+- PostgreSQL com upsert e deduplicação por message_id
+- Dashboard dark theme com KPI cards, filtros (liga/entrada/data), ROI com Gale
+- 14 mercados complementares com validação por placar e Martingale
+- 3 abas de analytics: Temporal (heatmap, equity, DOW), Gale & Streaks, Volume (volume, período, cross-dimensional)
+- Badge de cobertura do parser com modal de falhas
+
 ## Requirements
 
 ### Validated
 
-- [x] Escutar mensagens do grupo Telegram em tempo real (sinais novos e edições com resultado) — Validated in Phase 1: Foundation
-- [x] Parsear mensagens extraindo: liga, entrada, horários, resultado (GREEN/RED), placares — Validated in Phase 1: Foundation
-- [x] Salvar sinais e resultados no PostgreSQL com deduplicação — Validated in Phase 1: Foundation
-- [x] Exibir estatísticas no terminal ao iniciar (total, greens, reds, taxa de acerto) — Validated in Phase 1: Foundation
-- [x] Dashboard web elaborado com filtros interativos e gráficos dinâmicos — Validated in Phase 2: Core Dashboard
-- [x] Simulação de ROI com stake fixa — Validated in Phase 2: Core Dashboard
-- [x] Estatísticas completas cruzando todas as dimensões: liga, entrada, horário, período, dia da semana — Validated in Phase 3: Analytics Depth
-- [x] Percentuais de GREEN/RED por período e por entrada — Validated in Phase 3: Analytics Depth
+- ✓ Escutar mensagens do grupo Telegram em tempo real (sinais novos e edições com resultado) — v1.0
+- ✓ Parsear mensagens extraindo: liga, entrada, horários, resultado (GREEN/RED), placares — v1.0
+- ✓ Salvar sinais e resultados no PostgreSQL com deduplicação — v1.0
+- ✓ Exibir estatísticas no terminal ao iniciar (total, greens, reds, taxa de acerto) — v1.0
+- ✓ Dashboard web elaborado com filtros interativos e gráficos dinâmicos — v1.0
+- ✓ Simulação de ROI com stake fixa e Gale — v1.0
+- ✓ Estatísticas completas cruzando todas as dimensões: liga, entrada, horário, período, dia da semana — v1.0
+- ✓ Percentuais de GREEN/RED por período e por entrada — v1.0
+- ✓ Mercados complementares com validação independente por placar e Martingale — v1.0
+- ✓ Analytics avançados: heatmap, equity curve, gale analysis, streaks, volume — v1.0
 
 ### Active
 
-(All v1.0 requirements validated — see above)
+(Awaiting v1.1 milestone definition — run `/gsd:new-milestone`)
 
 ### Out of Scope
 
 - Automação de apostas na Bet365 via Selenium/Playwright — risco de banimento, complexidade alta, fase futura
-- App mobile — web-first
+- App mobile — web-first, dashboard responsivo cobre o caso
 - Múltiplos grupos do Telegram — foco no {VIP} ExtremeTips
 - Notificações/alertas automáticos — fase futura
+- OAuth / autenticação — ferramenta pessoal, acesso localhost
+- Kelly Criterion — requer probabilidade de acerto estável
+- IA preditiva — futebol virtual é RNG, ML encontra padrões em ruído
+- Push real-time no browser — sinais infrequentes, refresh manual/periódico suficiente
 
 ## Context
 
-- O usuário hoje acompanha os sinais manualmente no Telegram e aposta na Bet365 sem registro histórico
-- O objetivo é ter dados concretos para saber se os sinais realmente funcionam e quais padrões são mais lucrativos
-- O grupo envia sinais como mensagens novas e edita a mesma mensagem para adicionar o resultado (GREEN/RED)
-- Mensagens seguem um formato previsível com emojis, passível de parsing com regex
-- Telethon é usado como client de usuário (não bot) para escutar grupos sem ser admin
-- Na primeira execução do Telethon, é necessário autenticar via telefone + código no terminal
+- Shipped v1.0 com 5,050 LOC Python, 132 testes, 4 fases executadas em 2 dias
+- Stack: Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dbc 2.0
+- Listener e dashboard rodam como processos separados (listener.py + dashboard.py)
+- Parser calibrado contra formato real do grupo {VIP} ExtremeTips
+- Primeiro uso real pendente — necessário rodar listener ao vivo com credenciais Telegram
 
 ## Constraints
 
-- **Stack**: Python 3.12+, Telethon 1.37, PostgreSQL 16, psycopg2-binary, python-dotenv — definido no guia
+- **Stack**: Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, python-dotenv — definido no guia
 - **Telegram API**: Requer API ID e Hash do my.telegram.org — credenciais do próprio usuário
 - **Sessão Telethon**: Gera arquivo .session que deve ficar no .gitignore
 - **Formato mensagens**: Parsing depende do formato atual do grupo — se mudar, parser precisa atualizar
@@ -52,10 +72,15 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Telethon (client de usuário) em vez de Bot API | Precisa escutar grupo sem ser admin | Validated — Phase 1 |
-| PostgreSQL em vez de SQLite | Suporte a concorrência, pronto para AWS RDS futuro | Validated — Phase 1 |
-| Dashboard web no v1 | Usuário quer análise visual elaborada desde o início | Validated — Phase 2 |
-| Plotly Dash + dbc.Tabs para analytics depth | Tabs temáticas (Temporal, Volume, Equity) organizam 10+ componentes | Validated — Phase 3 |
+| Telethon (client de usuário) em vez de Bot API | Precisa escutar grupo sem ser admin | ✓ Good — v1.0 |
+| PostgreSQL em vez de SQLite | Suporte a concorrência, pronto para AWS RDS futuro | ✓ Good — v1.0 |
+| Plotly Dash + dbc para dashboard | Pure-Python, dark theme, responsive, callbacks reativos | ✓ Good — v1.0 |
+| dbc.Tabs para analytics depth | 3 abas temáticas organizam 10+ componentes sem poluir a view | ✓ Good — v1.0 |
+| Processos separados (listener + dashboard) | Telethon e Dash bloqueiam seus event loops respectivos | ✓ Good — v1.0 |
+| Parser regex com gate GATE_PATTERN | Filtra mensagens não-sinal antes de qualquer processamento | ✓ Good — v1.0 |
+| store.py sync-only com asyncio.to_thread | Simplicidade sem sacrificar non-blocking no listener | ✓ Good — v1.0 |
+| Mercados complementares como tabelas PostgreSQL | Configuração editável sem redeploy | ✓ Good — v1.0 |
+| regra_validacao como TEXT mapeado para lambdas | Seguro (sem eval), extensível, testável | ✓ Good — v1.0 |
 
 ## Evolution
 
@@ -75,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-03 after Phase 3: Analytics Depth completion — all v1.0 milestone phases complete*
+*Last updated: 2026-04-03 after v1.0 MVP milestone completion*

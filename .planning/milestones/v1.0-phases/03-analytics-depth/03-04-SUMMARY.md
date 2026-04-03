@@ -97,3 +97,12 @@ Nenhum — nenhuma configuracao de servico externo necessaria.
 ---
 *Phase: 03-analytics-depth*
 *Completed: 2026-04-03*
+
+## Self-Check: PASSED
+
+- FOUND: helpertips/dashboard.py
+- FOUND: tests/test_dashboard.py
+- FOUND: .planning/phases/03-analytics-depth/03-04-SUMMARY.md
+- FOUND commit 281d7b4 (feat task commit)
+- FOUND commit 65fe13f (docs metadata commit)
+- 132 testes passam sem regressao
