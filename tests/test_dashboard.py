@@ -9,11 +9,13 @@ All tests are pure unit tests:
   - test_kpi_formatting_winrate_no_results: em dash when no resolved signals (DASH-02)
   - test_kpi_formatting_roi_strings: ROI profit/pct string formatting with sign
   - test_gale_accumulated_cost_model: Gale uses accumulated stake not simple doubling (Pitfall 5)
+  - test_coverage_badge_thresholds: badge color logic por threshold (OPER-01)
+  - test_format_streak: helper _format_streak output format (ANAL-06)
 
 No database connection or live server required. All imports are safe to run in CI.
 """
 
-from helpertips.dashboard import app
+from helpertips.dashboard import app, _format_streak
 from helpertips.queries import calculate_roi
 
 
@@ -92,6 +94,19 @@ def test_layout_has_required_component_ids():
         "history-table",
         # Auto-refresh
         "interval-refresh",
+        # Phase 3 — Analytics Depth
+        "tabs-analytics",
+        "badge-coverage",
+        "modal-parse-failures",
+        "graph-heatmap",
+        "graph-equity",
+        "graph-dow",
+        "graph-gale",
+        "graph-volume",
+        "kpi-streak-current",
+        "kpi-streak-max-green",
+        "kpi-streak-max-red",
+        "table-cross-dimensional",
     }
 
     found_ids = collect_ids(app.layout)
@@ -202,3 +217,32 @@ def test_gale_accumulated_cost_model():
     assert result3["total_invested"] > simple_effective, (
         "Accumulated Gale cost must be greater than single-attempt effective stake"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Badge and streak helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_coverage_badge_thresholds():
+    """Badge color: success >= 95%, warning >= 90%, danger < 90% (OPER-01)."""
+    test_cases = [
+        (100.0, "success"),
+        (95.0, "success"),
+        (94.9, "warning"),
+        (90.0, "warning"),
+        (89.9, "danger"),
+        (50.0, "danger"),
+        (0.0, "danger"),
+    ]
+    for coverage, expected_color in test_cases:
+        color = "success" if coverage >= 95 else ("warning" if coverage >= 90 else "danger")
+        assert color == expected_color, f"coverage={coverage}: expected {expected_color}, got {color}"
+
+
+def test_format_streak():
+    """_format_streak retorna formato correto para wins, losses e sem dados (ANAL-06)."""
+    assert _format_streak(5, "GREEN") == "5 wins"
+    assert _format_streak(3, "RED") == "3 losses"
+    assert _format_streak(0, None) == "Sem dados"
+    assert _format_streak(0, "GREEN") == "Sem dados"
