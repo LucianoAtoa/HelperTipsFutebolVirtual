@@ -57,6 +57,17 @@ Plans:
 - [ ] 02-03-PLAN.md — Visual and functional verification checkpoint
 **UI hint**: yes
 
+### Phase 02.1: Market Config (INSERTED)
+
+**Goal:** Implementar configuração de mercados (principal + complementares) com cálculo de stakes por tentativa Martingale, percentuais configuráveis via JSON, e validação independente de GREEN/RED por entrada complementar. Atualizar simulação ROI no dashboard para considerar investimento total (principal + complementares).
+**Requirements**: TBD
+**Depends on:** Phase 2
+**Canonical refs:** `/Users/luciano/Downloads/documentacao_entradas_mercado.md`
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 02.1 to break down)
+
 ### Phase 3: Analytics Depth
 **Goal**: Users can identify which leagues, bet types, time slots, and days of the week produce the best results, and track bankroll growth over time
 **Depends on**: Phase 2

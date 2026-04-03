@@ -102,6 +102,10 @@ Recent decisions affecting current work:
 
 None yet.
 
+### Roadmap Evolution
+
+- Phase 02.1 inserted after Phase 2: Configuração de mercados e entradas complementares com validação independente de GREEN/RED (INSERTED)
+
 ### Blockers/Concerns
 
 - [Phase 1 — Research flag]: Parser regex must be written against real captured messages. Capture 10–20 real messages before finalizing the parser. Format assumed from general virtual football group patterns.
