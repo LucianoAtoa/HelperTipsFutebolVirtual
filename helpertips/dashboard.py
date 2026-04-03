@@ -18,6 +18,8 @@ Requires DB_* environment variables in .env. Dashboard runs as a separate
 process from listener.py — do NOT import Telethon here.
 """
 
+import os
+
 import dash
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
@@ -994,4 +996,8 @@ def reset_filters(_):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8050)
+    app.run(
+        debug=os.getenv('DASH_DEBUG', 'false').lower() == 'true',
+        host="0.0.0.0",
+        port=8050,
+    )
