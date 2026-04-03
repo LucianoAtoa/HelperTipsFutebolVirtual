@@ -6,14 +6,20 @@ Provides filtered SQL queries and pure-Python ROI calculation:
   - get_signal_history: paginated signal rows with same filter support
   - get_distinct_values: dropdown option lists for liga and entrada fields
   - calculate_roi: Stake Fixa and Gale ROI simulation — no DB access
+  - _parse_placar: convert 'X-Y' string to (int, int) tuple
+  - _REGRA_VALIDATORS: dispatch dict for complementary market validation rules
+  - validar_complementar: determine GREEN/RED/None for a complementary market
 
 Design notes:
   - All SQL uses %s parameterized queries — no f-strings for values
   - get_distinct_values validates the field name against an allowlist to prevent
     SQL injection (field name cannot be parameterized in PostgreSQL)
   - calculate_roi is pure Python and has zero dependencies on DB or Dash
+  - validar_complementar is pure Python with no DB dependency
   - This module is SYNC ONLY — caller wraps in asyncio.to_thread() if needed
 """
+
+from typing import Callable
 
 from helpertips.db import get_connection  # noqa: F401 (re-export for callers)
 
@@ -257,3 +263,92 @@ def calculate_roi(signals: list, stake: float, odd: float, gale_on: bool) -> dic
         "roi_pct": round(roi_pct, 10),
         "total_invested": round(total_invested, 10),
     }
+
+
+# ---------------------------------------------------------------------------
+# Complementary market validation — pure Python, no DB
+# ---------------------------------------------------------------------------
+
+
+def _parse_placar(placar: str | None) -> tuple[int, int] | None:
+    """
+    Parse a score string 'X-Y' into a (home, away) integer tuple.
+
+    Returns None for any invalid input (None, empty string, non-numeric,
+    wrong segment count, etc.). Never raises.
+    """
+    if not placar:
+        return None
+    try:
+        parts = placar.split("-")
+        if len(parts) != 2:
+            return None
+        return (int(parts[0]), int(parts[1]))
+    except (ValueError, AttributeError):
+        return None
+
+
+# Dispatch dict: maps regra name -> validator(casa, fora) -> bool
+_REGRA_VALIDATORS: dict[str, Callable[[int, int], bool]] = {
+    "over_3_5": lambda casa, fora: (casa + fora) > 3.5,
+    "over_5_plus": lambda casa, fora: (casa + fora) >= 6,
+    # empate_3_3_4_4: must be a draw AND total goals in (6, 8) — excludes 2-4, 4-2, 1-5, etc.
+    "empate_3_3_4_4": lambda casa, fora: casa == fora and (casa + fora) in (6, 8),
+    "gols_casa_4": lambda casa, fora: casa == 4,
+    "gols_fora_4": lambda casa, fora: fora == 4,
+    "gols_casa_5_plus": lambda casa, fora: casa >= 5,
+    "gols_fora_5_plus": lambda casa, fora: fora >= 5,
+}
+
+
+def validar_complementar(
+    regra: str,
+    placar: str | None,
+    resultado_principal: str | None,
+) -> str | None:
+    """
+    Determine GREEN/RED/None for a complementary market entry.
+
+    Rules (applied in order):
+    - If resultado_principal is None  -> return None  (principal still pending, D-09)
+    - If resultado_principal == 'RED' -> return 'RED' (principal lost, D-08)
+    - If placar is None               -> return 'RED' (no score available, conservative)
+    - If placar fails to parse        -> return 'RED' (conservative)
+    - If regra is unknown             -> return 'RED' (conservative)
+    - Otherwise: return 'GREEN' if validator(casa, fora) else 'RED'
+
+    Parameters
+    ----------
+    regra : str
+        Key in _REGRA_VALIDATORS (e.g. 'over_3_5').
+    placar : str | None
+        Score string in 'X-Y' format, or None if not yet available.
+    resultado_principal : str | None
+        'GREEN', 'RED', or None for the principal signal outcome.
+
+    Returns
+    -------
+    'GREEN', 'RED', or None
+    """
+    # D-09: principal still pending
+    if resultado_principal is None:
+        return None
+
+    # D-08: principal lost — complementar always loses
+    if resultado_principal == "RED":
+        return "RED"
+
+    # No score yet — conservative fallback
+    if placar is None:
+        return "RED"
+
+    parsed = _parse_placar(placar)
+    if parsed is None:
+        return "RED"
+
+    validator = _REGRA_VALIDATORS.get(regra)
+    if validator is None:
+        return "RED"
+
+    casa, fora = parsed
+    return "GREEN" if validator(casa, fora) else "RED"
