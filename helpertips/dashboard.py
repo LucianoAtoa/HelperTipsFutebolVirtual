@@ -21,7 +21,7 @@ process from listener.py — do NOT import Telethon here.
 import dash
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
-from dash import dcc, html, Input, Output, callback
+from dash import dcc, html, Input, Output, State, callback, no_update, ctx
 import plotly.graph_objects as go
 
 from helpertips.db import get_connection
@@ -32,7 +32,18 @@ from helpertips.queries import (
     calculate_roi,
     get_complementares_config,
     calculate_roi_complementares,
+    # Novas funcoes — Phase 3
+    get_heatmap_data,
+    get_winrate_by_dow,
+    get_winrate_by_periodo,
+    calculate_equity_curve,
+    calculate_streaks,
+    get_gale_analysis,
+    get_volume_by_day,
+    get_cross_dimensional,
+    get_parse_failures_detail,
 )
+from helpertips.store import get_stats
 
 # ---------------------------------------------------------------------------
 # App initialization
@@ -135,10 +146,14 @@ def make_kpi_card(title: str, value_id: str, color_class: str = "text-light"):
 app.layout = dbc.Container(
     [
         # Header
-        html.H2(
-            "HelperTips — Futebol Virtual",
-            className="text-center my-3",
-        ),
+        html.H2([
+            "HelperTips — Futebol Virtual ",
+            dbc.Badge(
+                id="badge-coverage",
+                className="ms-2 fs-6",
+                style={"cursor": "pointer"},
+            ),
+        ], className="text-center my-3"),
 
         # KPI Cards Row
         dbc.Row(
@@ -335,6 +350,86 @@ app.layout = dbc.Container(
             style={"height": "600px"},
         ),
 
+        # Analytics Tabs (D-01, D-02)
+        dbc.Row(
+            dbc.Col(
+                dbc.Tabs(
+                    id="tabs-analytics",
+                    active_tab="tab-temporal",
+                    className="mt-4",
+                    children=[
+                        dbc.Tab(label="Temporal", tab_id="tab-temporal", children=[
+                            # Heatmap (ANAL-01) — ancora visual, full width, 400px
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Win Rate por Hora e Dia", className="fw-bold mb-0")),
+                                dbc.CardBody(dcc.Graph(id="graph-heatmap", style={"height": "400px"})),
+                            ], className="mt-3"),
+                            # Equity curve (ANAL-05) — 350px
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Curva de Equity", className="fw-bold mb-0")),
+                                dbc.CardBody(dcc.Graph(id="graph-equity", style={"height": "350px"})),
+                            ], className="mt-3"),
+                            # Win rate por dia da semana (ANAL-02) — 300px
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Win Rate por Dia da Semana", className="fw-bold mb-0")),
+                                dbc.CardBody(dcc.Graph(id="graph-dow", style={"height": "300px"})),
+                            ], className="mt-3"),
+                        ]),
+                        dbc.Tab(label="Gale & Streaks", tab_id="tab-gale", children=[
+                            # Gale analysis (ANAL-07) — barras horizontais, 300px
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Recuperacao por Nivel de Gale", className="fw-bold mb-0")),
+                                dbc.CardBody(dcc.Graph(id="graph-gale", style={"height": "300px"})),
+                            ], className="mt-3"),
+                            # Streaks (ANAL-06) — 3 mini-cards
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Streaks", className="fw-bold mb-0")),
+                                dbc.CardBody(
+                                    dbc.Row([
+                                        dbc.Col(dbc.Card(dbc.CardBody([
+                                            html.H6("Streak Atual", className="text-muted"),
+                                            html.H3(id="kpi-streak-current", className="fw-bold"),
+                                        ]), className="text-center"), md=4),
+                                        dbc.Col(dbc.Card(dbc.CardBody([
+                                            html.H6("Maior Sequencia GREEN", className="text-muted"),
+                                            html.H3(id="kpi-streak-max-green", className="fw-bold text-success"),
+                                        ]), className="text-center"), md=4),
+                                        dbc.Col(dbc.Card(dbc.CardBody([
+                                            html.H6("Maior Sequencia RED", className="text-muted"),
+                                            html.H3(id="kpi-streak-max-red", className="fw-bold text-danger"),
+                                        ]), className="text-center"), md=4),
+                                    ]),
+                                ),
+                            ], className="mt-3"),
+                        ]),
+                        dbc.Tab(label="Volume", tab_id="tab-volume", children=[
+                            # Volume chart (ANAL-08) — 280px
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Volume de Sinais", className="fw-bold mb-0")),
+                                dbc.CardBody(dcc.Graph(id="graph-volume", style={"height": "280px"})),
+                            ], className="mt-3"),
+                            # Cross-dimensional breakdown (ANAL-04)
+                            dbc.Card([
+                                dbc.CardHeader(html.H5("Breakdown Cross-Dimensional", className="fw-bold mb-0")),
+                                dbc.CardBody(id="table-cross-dimensional"),
+                            ], className="mt-3"),
+                        ]),
+                    ],
+                ),
+                md=12,
+            ),
+            className="mb-4",
+        ),
+
+        # Modal parse failures (OPER-01, D-21)
+        dbc.Modal([
+            dbc.ModalHeader(dbc.ModalTitle("Falhas de Parse")),
+            dbc.ModalBody(id="modal-failures-body"),
+            dbc.ModalFooter(
+                dbc.Button("Fechar", id="btn-close-modal", className="ms-auto", color="secondary")
+            ),
+        ], id="modal-parse-failures", is_open=False, size="lg", scrollable=True),
+
         # Auto-refresh interval — fires every 60 seconds
         dcc.Interval(
             id="interval-refresh",
@@ -345,6 +440,160 @@ app.layout = dbc.Container(
     fluid=True,
     className="py-3",
 )
+
+
+# ---------------------------------------------------------------------------
+# Figure helper functions (Phase 3 — Analytics Depth)
+# ---------------------------------------------------------------------------
+
+
+def _make_heatmap_figure(data: dict) -> go.Figure:
+    if not any(cell is not None for row in data["z"] for cell in row):
+        fig = go.Figure()
+        fig.add_annotation(text="Dados insuficientes para o periodo selecionado",
+                           xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                           font=dict(size=14, color="#aaa"))
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig
+    fig = go.Figure(go.Heatmap(
+        z=data["z"], x=data["x"], y=data["y"],
+        colorscale="RdYlGn", zmin=0, zmax=100,
+        colorbar=dict(title="Win Rate %"), hoverongaps=False,
+    ))
+    fig.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=30, b=30, l=50, r=20),
+        yaxis=dict(autorange="reversed"),
+    )
+    return fig
+
+
+def _make_equity_figure(data: dict) -> go.Figure:
+    if not data["x"]:
+        fig = go.Figure()
+        fig.add_annotation(text="Nenhum sinal com resultado no periodo selecionado",
+                           xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                           font=dict(size=14, color="#aaa"))
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig
+    fig = go.Figure()
+    # Stake Fixa (D-06: azul #17a2b8)
+    fig.add_trace(go.Scatter(
+        x=data["x"], y=data["y_fixa"], mode="lines+markers", name="Stake Fixa",
+        line=dict(color="#17a2b8", width=2), marker=dict(color=data["colors"], size=8),
+    ))
+    # Gale (D-06: laranja #ffc107, linha tracejada)
+    fig.add_trace(go.Scatter(
+        x=data["x"], y=data["y_gale"], mode="lines+markers", name="Com Gale",
+        line=dict(color="#ffc107", width=2, dash="dot"), marker=dict(color=data["colors"], size=8),
+    ))
+    # Breakeven (y=0)
+    fig.add_trace(go.Scatter(
+        x=[data["x"][0], data["x"][-1]], y=[0, 0], mode="lines", name="Breakeven",
+        line=dict(color="#6c757d", dash="dash"), showlegend=True,
+    ))
+    # Annotations de streaks >= 5 (D-08)
+    for ann in data.get("annotations", []):
+        fig.add_annotation(x=ann["x"], y=ann["y"], text=ann["text"],
+                           showarrow=True, arrowhead=2, font=dict(size=10, color="#ffc107"))
+    fig.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=30, b=30, l=60, r=20),
+        xaxis_title="Sinal #", yaxis_title="Lucro (R$)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+    )
+    return fig
+
+
+def _make_dow_figure(data: list) -> go.Figure:
+    if not data:
+        fig = go.Figure()
+        fig.add_annotation(text="Dados insuficientes para o periodo selecionado",
+                           xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                           font=dict(size=14, color="#aaa"))
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig
+    fig = go.Figure(go.Bar(
+        x=[d["dia_nome"] for d in data], y=[d["win_rate"] for d in data],
+        marker_color="#17a2b8",
+        text=[f"{d['win_rate']:.1f}%" for d in data], textposition="auto",
+    ))
+    fig.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=30, b=30, l=50, r=20),
+        yaxis_title="Win Rate %", yaxis_range=[0, 100],
+    )
+    return fig
+
+
+def _make_gale_figure(data: list) -> go.Figure:
+    if not data:
+        fig = go.Figure()
+        fig.add_annotation(text="Dados de tentativa indisponiveis",
+                           xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                           font=dict(size=14, color="#aaa"))
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig
+    labels = [f"{d['tentativa']}a tentativa" for d in data]
+    win_rates = [d["win_rate"] for d in data]
+    colors = ["#28a745", "#ffc107", "#fd7e14", "#dc3545"]
+    bar_colors = [colors[min(i, len(colors)-1)] for i in range(len(data))]
+    fig = go.Figure(go.Bar(
+        x=win_rates, y=labels, orientation="h", marker_color=bar_colors,
+        text=[f"{wr:.1f}% ({d['total']} sinais)" for wr, d in zip(win_rates, data)],
+        textposition="inside",
+    ))
+    fig.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=30, b=30, l=120, r=20),
+        xaxis_title="Win Rate %", xaxis=dict(range=[0, 100], ticksuffix="%"),
+    )
+    return fig
+
+
+def _make_volume_figure(data: list) -> go.Figure:
+    if not data:
+        fig = go.Figure()
+        fig.add_annotation(text="Nenhum sinal no periodo selecionado",
+                           xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                           font=dict(size=14, color="#aaa"))
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig
+    fig = go.Figure(go.Bar(
+        x=[d["data"] for d in data], y=[d["count"] for d in data],
+        marker_color="#17a2b8",
+    ))
+    fig.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=30, b=30, l=50, r=20),
+        xaxis_title="Data", yaxis_title="Qtd. Sinais",
+    )
+    return fig
+
+
+def _format_streak(count: int, streak_type: str | None) -> str:
+    if count == 0 or streak_type is None:
+        return "Sem dados"
+    return f"{count} {'wins' if streak_type == 'GREEN' else 'losses'}"
+
+
+def _build_cross_table(data: list) -> dbc.Table | html.P:
+    if not data:
+        return html.P("Aplique filtros para ver breakdown cruzado", className="text-muted text-center")
+    header = html.Thead(html.Tr([
+        html.Th("Liga"), html.Th("Entrada"),
+        html.Th("Win Rate", className="text-end"),
+        html.Th("Total Sinais", className="text-end"),
+    ]))
+    rows = []
+    for d in data:
+        row_class = "table-success" if d["win_rate"] > 60 else ""
+        rows.append(html.Tr([
+            html.Td(d["liga"]), html.Td(d["entrada"]),
+            html.Td(f"{d['win_rate']:.1f}%", className="text-end"),
+            html.Td(str(d["total"]), className="text-end"),
+        ], className=row_class))
+    return dbc.Table([header, html.Tbody(rows)], size="sm", bordered=False, hover=True, dark=True)
 
 
 # ---------------------------------------------------------------------------
@@ -367,6 +616,8 @@ app.layout = dbc.Container(
     Output("filter-liga", "options"),
     Output("filter-entrada", "options"),
     Output("roi-comp-container", "children"),
+    Output("badge-coverage", "children"),
+    Output("badge-coverage", "color"),
     Input("filter-liga", "value"),
     Input("filter-entrada", "value"),
     Input("filter-date", "start_date"),
@@ -561,6 +812,12 @@ def update_dashboard(liga, entrada, date_start, date_end, gale_on, stake, odd, _
                 color="info",
             )
 
+        # Badge coverage (OPER-01, D-19, D-20) — sempre global, sem filtros
+        global_stats = get_stats(conn)
+        coverage = global_stats["coverage"]
+        badge_color = "success" if coverage >= 95 else ("warning" if coverage >= 90 else "danger")
+        badge_text = f"Cobertura: {coverage:.1f}%"
+
         return (
             str(total),
             str(greens),
@@ -576,9 +833,113 @@ def update_dashboard(liga, entrada, date_start, date_end, gale_on, stake, odd, _
             liga_options,
             entrada_options,
             comp_content,     # NOVO — roi-comp-container
+            badge_text,
+            badge_color,
         )
     finally:
         conn.close()
+
+
+@callback(
+    Output("graph-heatmap", "figure"),
+    Output("graph-equity", "figure"),
+    Output("graph-dow", "figure"),
+    Output("graph-gale", "figure"),
+    Output("kpi-streak-current", "children"),
+    Output("kpi-streak-max-green", "children"),
+    Output("kpi-streak-max-red", "children"),
+    Output("graph-volume", "figure"),
+    Output("table-cross-dimensional", "children"),
+    Input("tabs-analytics", "active_tab"),
+    Input("filter-liga", "value"),
+    Input("filter-entrada", "value"),
+    Input("filter-date", "start_date"),
+    Input("filter-date", "end_date"),
+    Input("stake-input", "value"),
+    Input("odd-input", "value"),
+    Input("interval-refresh", "n_intervals"),
+)
+def update_tabs(active_tab, liga, entrada, date_start, date_end, stake, odd, _n):
+    """Callback separado para conteudo das abas. Lazy render: so calcula aba ativa."""
+    conn = get_connection()
+    try:
+        stake = stake or 10.0
+        odd = odd or 1.90
+
+        if active_tab == "tab-temporal":
+            # Heatmap (ANAL-01, D-15)
+            heatmap_data = get_heatmap_data(conn, liga, entrada, date_start, date_end)
+            heatmap_fig = _make_heatmap_figure(heatmap_data)
+
+            # Equity curve (ANAL-05, D-05 a D-09)
+            history = get_signal_history(conn, liga, entrada, date_start, date_end)
+            equity_data = calculate_equity_curve(history, stake, odd)
+            equity_fig = _make_equity_figure(equity_data)
+
+            # Win rate por dia da semana (ANAL-02, D-16)
+            dow_data = get_winrate_by_dow(conn, liga, entrada, date_start, date_end)
+            dow_fig = _make_dow_figure(dow_data)
+
+            return heatmap_fig, equity_fig, dow_fig, no_update, no_update, no_update, no_update, no_update, no_update
+
+        elif active_tab == "tab-gale":
+            # Gale analysis (ANAL-07, D-10 a D-12)
+            gale_data = get_gale_analysis(conn, liga, entrada, date_start, date_end)
+            gale_fig = _make_gale_figure(gale_data)
+
+            # Streaks (ANAL-06, D-13)
+            history = get_signal_history(conn, liga, entrada, date_start, date_end)
+            streaks = calculate_streaks(history)
+            current_label = _format_streak(streaks["current"], streaks["current_type"])
+            max_green_label = f"{streaks['max_green']} wins" if streaks["max_green"] > 0 else "Sem dados"
+            max_red_label = f"{streaks['max_red']} losses" if streaks["max_red"] > 0 else "Sem dados"
+
+            return no_update, no_update, no_update, gale_fig, current_label, max_green_label, max_red_label, no_update, no_update
+
+        elif active_tab == "tab-volume":
+            # Volume (ANAL-08, D-18)
+            vol_data = get_volume_by_day(conn, liga, entrada, date_start, date_end)
+            vol_fig = _make_volume_figure(vol_data)
+
+            # Cross-dimensional (ANAL-04, D-17)
+            cross_data = get_cross_dimensional(conn, liga, entrada, date_start, date_end)
+            cross_table = _build_cross_table(cross_data)
+
+            return no_update, no_update, no_update, no_update, no_update, no_update, no_update, vol_fig, cross_table
+
+        return (no_update,) * 9
+    finally:
+        conn.close()
+
+
+@callback(
+    Output("modal-parse-failures", "is_open"),
+    Output("modal-failures-body", "children"),
+    Input("badge-coverage", "n_clicks"),
+    Input("btn-close-modal", "n_clicks"),
+    State("modal-parse-failures", "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_modal(badge_clicks, close_clicks, is_open):
+    """Toggle modal de parse failures ao clicar no badge."""
+    if ctx.triggered_id == "badge-coverage":
+        conn = get_connection()
+        try:
+            failures = get_parse_failures_detail(conn, limit=50)
+        finally:
+            conn.close()
+        if not failures:
+            body = html.P("Nenhuma falha de parse registrada.", className="text-muted")
+        else:
+            header = html.Thead(html.Tr([html.Th("Texto"), html.Th("Motivo"), html.Th("Data")]))
+            rows = [html.Tr([
+                html.Td(f["raw_text"][:100], style={"maxWidth": "400px", "overflow": "hidden", "textOverflow": "ellipsis"}),
+                html.Td(f["failure_reason"]),
+                html.Td(str(f["received_at"])[:19]),
+            ]) for f in failures]
+            body = dbc.Table([header, html.Tbody(rows)], size="sm", bordered=False, hover=True, dark=True, responsive=True)
+        return True, body
+    return False, no_update
 
 
 @callback(
