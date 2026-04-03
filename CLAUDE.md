@@ -82,6 +82,15 @@ Sistema que conecta ao grupo **{VIP} ExtremeTips** no Telegram, captura sinais d
 <!-- GSD:stack-end -->
 
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
+## Idioma
+
+**Toda comunicação deve ser em português brasileiro (pt-BR).** Isso inclui:
+- Respostas, explicações e perguntas ao usuário
+- Outputs de progresso, banners, relatórios
+- Mensagens de commit (prefixos convencionais em inglês como `feat`, `fix`, `docs` são OK)
+- Conteúdo de artefatos GSD (PLAN.md, SUMMARY.md, CONTEXT.md, etc.)
+- Comentários no código quando necessário
+
 ## Conventions
 
 Conventions not yet established. Will populate as patterns emerge during development.

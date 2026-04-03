@@ -14,6 +14,7 @@ from rich.logging import RichHandler
 from helpertips.db import validate_config, get_connection, ensure_schema
 from helpertips.parser import parse_message
 from helpertips.store import upsert_signal, get_stats, log_parse_failure
+from helpertips.list_groups import selecionar_grupo
 
 # ---------------------------------------------------------------------------
 # Logging configuration — RichHandler integrates with stdlib logging (D-04)
@@ -86,11 +87,22 @@ async def main():
 
     api_id = int(os.environ['TELEGRAM_API_ID'])
     api_hash = os.environ['TELEGRAM_API_HASH']
-    group_id = int(os.environ['TELEGRAM_GROUP_ID'])
+    group_id_str = os.environ.get('TELEGRAM_GROUP_ID', '').strip()
 
-    # Section 3: Event handler — registered inside main() after client is created
-    # Uses closure over group_id and conn (module-level)
     client = TelegramClient('helpertips_listener', api_id, api_hash)
+    await client.start()
+    logger.info("Telegram conectado")
+
+    # Se TELEGRAM_GROUP_ID não está configurado, oferece seleção interativa
+    if not group_id_str:
+        console.print("[yellow]TELEGRAM_GROUP_ID não configurado.[/yellow]")
+        group_id = await selecionar_grupo(client)
+        if group_id is None:
+            console.print("[red]Nenhum grupo selecionado. Encerrando.[/red]")
+            await client.disconnect()
+            sys.exit(1)
+    else:
+        group_id = int(group_id_str)
 
     @client.on(events.NewMessage(chats=group_id))
     @client.on(events.MessageEdited(chats=group_id))
@@ -132,11 +144,6 @@ async def main():
     conn = get_connection()
     ensure_schema(conn)
     logger.info("Database connected, schema verified")
-
-    # Telethon connection — client.start() handles the interactive auth flow
-    # on first run (phone number prompt, verification code, optional 2FA)
-    await client.start()
-    logger.info("Telegram client started")
 
     # Verify group access (TERM-02) — confirms group name for startup summary
     try:

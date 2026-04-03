@@ -16,7 +16,7 @@ load_dotenv()
 REQUIRED_VARS = [
     'TELEGRAM_API_ID',
     'TELEGRAM_API_HASH',
-    'TELEGRAM_GROUP_ID',
+    # TELEGRAM_GROUP_ID é opcional — se vazio, listener oferece seleção interativa
     'DB_HOST',
     'DB_PORT',
     'DB_NAME',

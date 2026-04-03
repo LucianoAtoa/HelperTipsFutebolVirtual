@@ -13,7 +13,7 @@ import os
 REQUIRED_VARS = [
     'TELEGRAM_API_ID',
     'TELEGRAM_API_HASH',
-    'TELEGRAM_GROUP_ID',
+    # TELEGRAM_GROUP_ID é opcional — seleção interativa no listener
     'DB_HOST',
     'DB_PORT',
     'DB_NAME',
@@ -24,7 +24,6 @@ REQUIRED_VARS = [
 SAMPLE_VALUES = {
     'TELEGRAM_API_ID': '12345678',
     'TELEGRAM_API_HASH': 'abc123def456',
-    'TELEGRAM_GROUP_ID': '-1001234567890',
     'DB_HOST': 'localhost',
     'DB_PORT': '5432',
     'DB_NAME': 'helpertips',
