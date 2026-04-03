@@ -11,6 +11,10 @@ Provides filtered SQL queries and pure-Python ROI calculation:
   - validar_complementar: determine GREEN/RED/None for a complementary market
   - get_complementares_config: query complementary market config for a given mercado slug
   - calculate_roi_complementares: pure Python ROI for complementary markets with Gale support
+  - get_heatmap_data: win rate by hour x day-of-week matrix (24x7) for go.Heatmap
+  - get_winrate_by_dow: win rate per day-of-week list for bar chart
+  - calculate_equity_curve: bankroll curve for Stake Fixa and Gale (pure Python, no DB)
+  - calculate_streaks: current and historical max streaks (pure Python, no DB)
 
 Design notes:
   - All SQL uses %s parameterized queries — no f-strings for values
@@ -518,4 +522,255 @@ def calculate_roi_complementares(
         "roi_pct": round(roi_pct, 10),
         "total_invested": round(total_invested, 10),
         "por_mercado": list(per_comp.values()),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Fase 3: Analytics Depth — novas funcoes de dados temporais e equity/streaks
+# ---------------------------------------------------------------------------
+
+
+def get_heatmap_data(conn, liga=None, entrada=None, date_start=None, date_end=None) -> dict:
+    """
+    Win rate por hora do dia x dia da semana. Retorna {z, x, y} para go.Heatmap.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    liga : str | None
+        Filtro opcional de liga.
+    entrada : str | None
+        Filtro opcional de entrada.
+    date_start : str | None
+        Data inicial ISO (YYYY-MM-DD), inclusiva.
+    date_end : str | None
+        Data final ISO (YYYY-MM-DD), inclusiva.
+
+    Retorna
+    -------
+    dict com chaves:
+        z — matriz 24x7 (hora x dia) com win_rate (0-100) ou None para celulas sem dados
+        x — lista de 7 nomes de dias: ["Dom","Seg","Ter","Qua","Qui","Sex","Sab"]
+        y — lista de 24 horas: ["00h","01h",...,"23h"]
+    """
+    where, params = _build_where(liga=liga, entrada=entrada,
+                                 date_start=date_start, date_end=date_end)
+    sql = f"""
+        SELECT
+            EXTRACT(HOUR FROM received_at)::INT AS hora,
+            EXTRACT(DOW FROM received_at)::INT  AS dia,
+            COUNT(*) FILTER (WHERE resultado = 'GREEN') AS greens,
+            COUNT(*) FILTER (WHERE resultado IN ('GREEN', 'RED')) AS total
+        FROM signals
+        WHERE resultado IN ('GREEN', 'RED') AND {where}
+        GROUP BY 1, 2
+        ORDER BY 1, 2
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+
+    z = [[None] * 7 for _ in range(24)]
+    for hora, dia, greens, total in rows:
+        z[hora][dia] = round(greens / total * 100, 1) if total > 0 else None
+
+    dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
+    horas = [f"{h:02d}h" for h in range(24)]
+    return {"z": z, "x": dias, "y": horas}
+
+
+def get_winrate_by_dow(conn, liga=None, entrada=None, date_start=None, date_end=None) -> list:
+    """
+    Win rate por dia da semana. Retorna lista de dicts {dia, dia_nome, greens, total, win_rate}.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    liga : str | None
+        Filtro opcional de liga.
+    entrada : str | None
+        Filtro opcional de entrada.
+    date_start : str | None
+        Data inicial ISO (YYYY-MM-DD), inclusiva.
+    date_end : str | None
+        Data final ISO (YYYY-MM-DD), inclusiva.
+
+    Retorna
+    -------
+    list[dict]
+        Lista de dicts com chaves: dia (int 0-6), dia_nome (str), greens (int),
+        total (int), win_rate (float 0-100). Apenas dias com sinais sao incluidos.
+        Ordenada por dia da semana (0=Dom, 6=Sab).
+    """
+    where, params = _build_where(liga=liga, entrada=entrada,
+                                 date_start=date_start, date_end=date_end)
+    sql = f"""
+        SELECT
+            EXTRACT(DOW FROM received_at)::INT AS dia,
+            COUNT(*) FILTER (WHERE resultado = 'GREEN') AS greens,
+            COUNT(*) FILTER (WHERE resultado IN ('GREEN', 'RED')) AS total
+        FROM signals
+        WHERE resultado IN ('GREEN', 'RED') AND {where}
+        GROUP BY 1
+        ORDER BY 1
+    """
+    dias_nomes = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+
+    return [
+        {
+            "dia": int(dia),
+            "dia_nome": dias_nomes[int(dia)],
+            "greens": int(g),
+            "total": int(t),
+            "win_rate": round(g / t * 100, 1) if t > 0 else 0.0,
+        }
+        for dia, g, t in rows
+    ]
+
+
+def calculate_equity_curve(signals_desc: list, stake: float, odd: float) -> dict:
+    """
+    Constroi curva de equity acumulado para Stake Fixa e Gale sobrepostos.
+
+    Funcao pura Python — sem acesso ao banco de dados.
+
+    Parametros
+    ----------
+    signals_desc : list[dict]
+        Lista de sinais em ordem DESC (saida de get_signal_history). Cada dict
+        deve ter 'resultado' (str|None) e 'tentativa' (int|None).
+        Sinais pendentes (resultado=None) sao ignorados.
+    stake : float
+        Stake base (ex: 10.0 para R$10).
+    odd : float
+        Odd decimal (ex: 1.90).
+
+    Retorna
+    -------
+    dict com chaves:
+        x           — lista de indices cronologicos [1, 2, 3, ...] (por sinal)
+        y_fixa      — bankroll acumulado com Stake Fixa
+        y_gale      — bankroll acumulado com Gale
+        colors      — cor por sinal: "#28a745" (GREEN) ou "#dc3545" (RED)
+        annotations — lista de dicts {x, y, text} para streaks >= 5 consecutivos
+    """
+    resolved = [s for s in signals_desc if s.get("resultado") in ("GREEN", "RED")]
+    resolved_asc = list(reversed(resolved))  # ordem cronologica (ASC)
+
+    if not resolved_asc:
+        return {"x": [], "y_fixa": [], "y_gale": [], "colors": [], "annotations": []}
+
+    xs, y_fixa, y_gale, colors = [], [], [], []
+    bk_fixa = bk_gale = 0.0
+
+    for i, sig in enumerate(resolved_asc, 1):
+        resultado = sig["resultado"]
+        tentativa = sig.get("tentativa") or 1
+
+        # Stake Fixa
+        net_fixa = stake * (odd - 1) if resultado == "GREEN" else -stake
+        bk_fixa += net_fixa
+
+        # Gale: acumula custo de tentativas anteriores
+        accumulated = stake * (2 ** tentativa - 1)
+        winning = stake * (2 ** (tentativa - 1))
+        if resultado == "GREEN":
+            net_gale = winning * (odd - 1) - (accumulated - winning)
+        else:
+            net_gale = -accumulated
+        bk_gale += net_gale
+
+        xs.append(i)
+        y_fixa.append(round(bk_fixa, 2))
+        y_gale.append(round(bk_gale, 2))
+        colors.append("#28a745" if resultado == "GREEN" else "#dc3545")
+
+    # Detectar streaks >= 5 e gerar annotations
+    annotations = []
+    streak_len = 1
+    streak_start = 0  # indice em resolved_asc
+
+    for i in range(1, len(resolved_asc)):
+        if resolved_asc[i]["resultado"] == resolved_asc[i - 1]["resultado"]:
+            streak_len += 1
+        else:
+            if streak_len >= 5:
+                x_pos = streak_start + 1  # indice 1-based do inicio da streak
+                annotations.append({
+                    "x": x_pos,
+                    "y": y_fixa[streak_start],
+                    "text": f"Streak {streak_len}x {resolved_asc[streak_start]['resultado']}",
+                })
+            streak_start = i
+            streak_len = 1
+
+    # Verificar ultimo streak
+    if streak_len >= 5:
+        x_pos = streak_start + 1
+        annotations.append({
+            "x": x_pos,
+            "y": y_fixa[streak_start],
+            "text": f"Streak {streak_len}x {resolved_asc[streak_start]['resultado']}",
+        })
+
+    return {"x": xs, "y_fixa": y_fixa, "y_gale": y_gale, "colors": colors, "annotations": annotations}
+
+
+def calculate_streaks(signals_desc: list) -> dict:
+    """
+    Calcula streaks a partir de sinais em ordem DESC (saida de get_signal_history).
+
+    Funcao pura Python — sem acesso ao banco de dados. Algoritmo O(n) single-pass.
+
+    Parametros
+    ----------
+    signals_desc : list[dict]
+        Lista de sinais em ordem DESC. Cada dict deve ter 'resultado' (str|None).
+        Sinais pendentes sao ignorados.
+
+    Retorna
+    -------
+    dict com chaves:
+        current      — comprimento do streak atual (do sinal mais recente)
+        current_type — 'GREEN', 'RED', ou None se lista vazia
+        max_green    — maior streak consecutiva de GREEN no historico
+        max_red      — maior streak consecutiva de RED no historico
+    """
+    resolved = [s for s in signals_desc if s.get("resultado") in ("GREEN", "RED")]
+    resolved_asc = list(reversed(resolved))  # cronologico
+
+    if not resolved_asc:
+        return {"current": 0, "current_type": None, "max_green": 0, "max_red": 0}
+
+    current = 1
+    max_green = max_red = 0
+
+    for i in range(1, len(resolved_asc)):
+        if resolved_asc[i]["resultado"] == resolved_asc[i - 1]["resultado"]:
+            current += 1
+        else:
+            prev = resolved_asc[i - 1]["resultado"]
+            if prev == "GREEN":
+                max_green = max(max_green, current)
+            else:
+                max_red = max(max_red, current)
+            current = 1
+
+    # Finalizar ultimo streak
+    last = resolved_asc[-1]["resultado"]
+    if last == "GREEN":
+        max_green = max(max_green, current)
+    else:
+        max_red = max(max_red, current)
+
+    return {
+        "current": current,
+        "current_type": last,
+        "max_green": max_green,
+        "max_red": max_red,
     }
