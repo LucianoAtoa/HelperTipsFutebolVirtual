@@ -28,9 +28,9 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Database
 
 - [x] **DB-01**: Schema PostgreSQL para sinais com campos: liga, entrada, horários, resultado, placares, timestamps
-- [ ] **DB-02**: Upsert de sinais com deduplicação por telegram_msg_id
-- [ ] **DB-03**: Update de resultado quando mensagem é editada
-- [ ] **DB-04**: Chamadas ao banco não bloqueiam o event loop do asyncio (asyncio.to_thread)
+- [x] **DB-02**: Upsert de sinais com deduplicação por telegram_msg_id
+- [x] **DB-03**: Update de resultado quando mensagem é editada
+- [x] **DB-04**: Chamadas ao banco não bloqueiam o event loop do asyncio (asyncio.to_thread)
 
 ### Terminal
 
@@ -118,9 +118,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PARS-06 | Phase 1 | Complete |
 | PARS-07 | Phase 1 | Complete |
 | DB-01 | Phase 1 | Complete |
-| DB-02 | Phase 1 | Pending |
-| DB-03 | Phase 1 | Pending |
-| DB-04 | Phase 1 | Pending |
+| DB-02 | Phase 1 | Complete |
+| DB-03 | Phase 1 | Complete |
+| DB-04 | Phase 1 | Complete |
 | TERM-01 | Phase 1 | Pending |
 | TERM-02 | Phase 1 | Pending |
 | TERM-03 | Phase 1 | Pending |

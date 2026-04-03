@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation 01-02-PLAN.md (Signal Message Parser)
-last_updated: "2026-04-03T10:07:11.601Z"
+stopped_at: Completed 01-foundation 01-03-PLAN.md (Store Repository Layer)
+last_updated: "2026-04-03T10:10:50.733Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 7
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-foundation P01 | 2min | 2 tasks | 7 files |
 | Phase 01-foundation P02 | 2 | 2 tasks | 4 files |
+| Phase 01-foundation P03 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: validate_config() collects ALL missing vars before raising SystemExit — better UX than fail-on-first
 - [Phase 01-foundation]: LIGA field is the signal gate in parser.py — returns None immediately if no LIGA match, preventing non-signal messages from being stored
 - [Phase 01-foundation]: parser.py imports only re and datetime (stdlib) — zero external deps ensures listener integration requires no additional packages
+- [Phase 01-foundation]: store.py is sync-only with no asyncio/telethon imports — listener.py wraps calls in asyncio.to_thread() per DB-04
+- [Phase 01-foundation]: ON CONFLICT WHERE clause prevents overwriting GREEN/RED resultado with NULL — signals.resultado IS DISTINCT FROM EXCLUDED.resultado OR signals.resultado IS NULL
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T10:07:11.598Z
-Stopped at: Completed 01-foundation 01-02-PLAN.md (Signal Message Parser)
+Last session: 2026-04-03T10:10:50.730Z
+Stopped at: Completed 01-foundation 01-03-PLAN.md (Store Repository Layer)
 Resume file: None
