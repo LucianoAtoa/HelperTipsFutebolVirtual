@@ -58,17 +58,19 @@ def upsert_signal(conn, data: dict) -> None:
     conn.commit()
 
 
-def get_stats(conn) -> tuple:
+def get_stats(conn) -> dict:
     """
-    Return summary counts from the signals table.
+    Return summary counts from the signals table and parse_failures table.
 
     Returns
     -------
-    tuple : (total, greens, reds, pending)
-        total   — total number of signals
-        greens  — signals with resultado = 'GREEN'
-        reds    — signals with resultado = 'RED'
-        pending — signals with resultado IS NULL (not yet resolved)
+    dict with keys:
+        total          — total number of signals
+        greens         — signals with resultado = 'GREEN'
+        reds           — signals with resultado = 'RED'
+        pending        — signals with resultado IS NULL (not yet resolved)
+        parse_failures — total rows in parse_failures table
+        coverage       — parseados / (parseados + falhas) * 100 (D-13)
     """
     with conn.cursor() as cur:
         cur.execute(
@@ -81,4 +83,40 @@ def get_stats(conn) -> tuple:
             FROM signals
             """
         )
-        return cur.fetchone()
+        total, greens, reds, pending = cur.fetchone()
+
+        cur.execute("SELECT COUNT(*) FROM parse_failures")
+        total_failures = cur.fetchone()[0]
+
+    return {
+        'total': total,
+        'greens': greens,
+        'reds': reds,
+        'pending': pending,
+        'parse_failures': total_failures,
+        'coverage': (total / (total + total_failures) * 100) if (total + total_failures) > 0 else 100.0,
+    }
+
+
+def log_parse_failure(conn, raw_text: str, reason: str) -> None:
+    """
+    Save a message that the parser could not interpret (D-10, D-11).
+
+    Parameters
+    ----------
+    conn : psycopg2 connection
+        An open psycopg2 connection. Caller manages its lifecycle.
+    raw_text : str
+        The original message text that failed to parse.
+    reason : str
+        A short identifier for the failure reason (e.g. 'no_liga_match', 'empty_text').
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO parse_failures (raw_text, failure_reason)
+            VALUES (%s, %s)
+            """,
+            (raw_text, reason),
+        )
+    conn.commit()

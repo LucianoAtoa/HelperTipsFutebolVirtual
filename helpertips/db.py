@@ -77,5 +77,14 @@ def ensure_schema(conn):
             CREATE INDEX IF NOT EXISTS idx_signals_entrada     ON signals(entrada);
             CREATE INDEX IF NOT EXISTS idx_signals_resultado   ON signals(resultado);
             CREATE INDEX IF NOT EXISTS idx_signals_received_at ON signals(received_at);
+
+            CREATE TABLE IF NOT EXISTS parse_failures (
+                id             SERIAL PRIMARY KEY,
+                raw_text       TEXT NOT NULL,
+                received_at    TIMESTAMPTZ DEFAULT NOW(),
+                failure_reason TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_parse_failures_received_at ON parse_failures(received_at);
         """)
     conn.commit()

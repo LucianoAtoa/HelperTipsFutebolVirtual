@@ -13,7 +13,7 @@ import pytest
 # Skip all tests if DB imports fail or connection not available
 try:
     from helpertips.db import get_connection, ensure_schema
-    from helpertips.store import upsert_signal, get_stats
+    from helpertips.store import upsert_signal, get_stats, log_parse_failure
     _IMPORTS_OK = True
 except ImportError as e:
     _IMPORTS_OK = False
@@ -56,6 +56,7 @@ def db_conn():
     # Teardown: remove test data
     with conn.cursor() as cur:
         cur.execute("DELETE FROM signals")
+        cur.execute("DELETE FROM parse_failures")
     conn.commit()
     conn.close()
 
@@ -151,21 +152,68 @@ def test_upsert_preserves_original_on_null_result_update(db_conn):
 
 
 def test_get_stats_empty_table(db_conn):
-    """get_stats on an empty signals table returns (0, 0, 0, 0)."""
+    """get_stats on an empty table returns dict with zeros and 100% coverage."""
     result = get_stats(db_conn)
-    assert result == (0, 0, 0, 0), f"Expected (0,0,0,0), got {result}"
+    assert isinstance(result, dict), f"Expected dict, got {type(result)}"
+    assert result == {
+        'total': 0,
+        'greens': 0,
+        'reds': 0,
+        'pending': 0,
+        'parse_failures': 0,
+        'coverage': 100.0,
+    }, f"Expected all-zero dict, got {result}"
 
 
 def test_get_stats_with_data(db_conn):
-    """get_stats returns correct (total, greens, reds, pending) counts."""
+    """get_stats returns correct counts for all fields."""
     upsert_signal(db_conn, _make_signal(message_id=2001, resultado="GREEN"))
     upsert_signal(db_conn, _make_signal(message_id=2002, resultado="RED"))
     upsert_signal(db_conn, _make_signal(message_id=2003, resultado=None))
 
     result = get_stats(db_conn)
-    total, greens, reds, pending = result
 
-    assert total == 3, f"Expected total=3, got {total}"
-    assert greens == 1, f"Expected greens=1, got {greens}"
-    assert reds == 1, f"Expected reds=1, got {reds}"
-    assert pending == 1, f"Expected pending=1, got {pending}"
+    assert isinstance(result, dict), f"Expected dict, got {type(result)}"
+    assert result['total'] == 3, f"Expected total=3, got {result['total']}"
+    assert result['greens'] == 1, f"Expected greens=1, got {result['greens']}"
+    assert result['reds'] == 1, f"Expected reds=1, got {result['reds']}"
+    assert result['pending'] == 1, f"Expected pending=1, got {result['pending']}"
+    assert result['parse_failures'] == 0, f"Expected parse_failures=0, got {result['parse_failures']}"
+    assert result['coverage'] == 100.0, f"Expected coverage=100.0, got {result['coverage']}"
+
+
+# ---------------------------------------------------------------------------
+# log_parse_failure tests
+# ---------------------------------------------------------------------------
+
+
+def test_log_parse_failure(db_conn):
+    """log_parse_failure inserts a row into parse_failures with correct values."""
+    log_parse_failure(db_conn, "texto estranho que nao eh sinal", "no_liga_match")
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT raw_text, failure_reason FROM parse_failures ORDER BY id DESC LIMIT 1"
+        )
+        row = cur.fetchone()
+
+    assert row is not None, "Row should exist after log_parse_failure"
+    assert row[0] == "texto estranho que nao eh sinal"
+    assert row[1] == "no_liga_match"
+
+
+def test_coverage_with_failures(db_conn):
+    """Coverage is calculated as total_signals / (total_signals + parse_failures) * 100."""
+    # Insert 3 signals
+    upsert_signal(db_conn, _make_signal(message_id=3001, resultado="GREEN"))
+    upsert_signal(db_conn, _make_signal(message_id=3002, resultado="RED"))
+    upsert_signal(db_conn, _make_signal(message_id=3003, resultado=None))
+
+    # Insert 1 parse failure
+    log_parse_failure(db_conn, "mensagem invalida", "no_liga_match")
+
+    result = get_stats(db_conn)
+
+    assert result['total'] == 3, f"Expected total=3, got {result['total']}"
+    assert result['parse_failures'] == 1, f"Expected parse_failures=1, got {result['parse_failures']}"
+    assert result['coverage'] == 75.0, f"Expected coverage=75.0, got {result['coverage']}"
