@@ -30,6 +30,8 @@ from helpertips.queries import (
     get_signal_history,
     get_distinct_values,
     calculate_roi,
+    get_complementares_config,
+    calculate_roi_complementares,
 )
 
 # ---------------------------------------------------------------------------
@@ -45,6 +47,69 @@ app = dash.Dash(
     ],
     title="HelperTips — Futebol Virtual",
 )
+
+
+# ---------------------------------------------------------------------------
+# Complementares helpers
+# ---------------------------------------------------------------------------
+
+_ENTRADA_SLUG_MAP = {
+    "Over 2.5": "over_2_5",
+    "Ambas Marcam": "ambas_marcam",
+}
+
+
+def _entrada_para_slug(entrada: str | None) -> str | None:
+    """Mapeia nome de entrada (dropdown) para slug do mercado."""
+    if entrada is None:
+        return None
+    return _ENTRADA_SLUG_MAP.get(entrada)
+
+
+def _build_comp_table(por_mercado: list[dict]) -> dbc.Table:
+    """Constroi dbc.Table com breakdown de complementares."""
+    header = html.Thead(html.Tr([
+        html.Th("Mercado"),
+        html.Th("Greens", className="text-end"),
+        html.Th("Reds", className="text-end"),
+        html.Th("Lucro (R$)", className="text-end"),
+    ]))
+
+    rows = []
+    total_greens = 0
+    total_reds = 0
+    total_lucro = 0.0
+    for m in por_mercado:
+        lucro = m["lucro"]
+        lucro_class = "text-success" if lucro > 0 else ("text-danger" if lucro < 0 else "text-muted")
+        rows.append(html.Tr([
+            html.Td(m["nome_display"]),
+            html.Td(str(m["greens"]), className="text-end"),
+            html.Td(str(m["reds"]), className="text-end"),
+            html.Td(f"R$ {lucro:+.2f}", className=f"text-end {lucro_class}"),
+        ]))
+        total_greens += m["greens"]
+        total_reds += m["reds"]
+        total_lucro += lucro
+
+    # Linha de totais
+    total_class = "text-success" if total_lucro > 0 else ("text-danger" if total_lucro < 0 else "text-muted")
+    rows.append(html.Tr([
+        html.Td("Total", className="fw-bold"),
+        html.Td(str(total_greens), className="text-end fw-bold"),
+        html.Td(str(total_reds), className="text-end fw-bold"),
+        html.Td(f"R$ {total_lucro:+.2f}", className=f"text-end fw-bold {total_class}"),
+    ]))
+
+    body = html.Tbody(rows)
+    return dbc.Table(
+        [header, body],
+        size="sm",
+        bordered=False,
+        hover=True,
+        dark=True,
+        className="mt-3",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +278,15 @@ app.layout = dbc.Container(
             className="mb-3",
         ),
 
+        # Card ROI Complementares
+        dbc.Card(
+            dbc.CardBody([
+                html.H5("ROI Complementares", className="card-title text-muted mb-3"),
+                html.Div(id="roi-comp-container"),
+            ]),
+            className="mb-3",
+        ),
+
         # Charts Row
         dbc.Row(
             [
@@ -292,6 +366,7 @@ app.layout = dbc.Container(
     Output("winrate-chart", "figure"),
     Output("filter-liga", "options"),
     Output("filter-entrada", "options"),
+    Output("roi-comp-container", "children"),
     Input("filter-liga", "value"),
     Input("filter-entrada", "value"),
     Input("filter-date", "start_date"),
@@ -402,6 +477,90 @@ def update_dashboard(liga, entrada, date_start, date_end, gale_on, stake, odd, _
             if "received_at" in row and row["received_at"] is not None:
                 row["received_at"] = str(row["received_at"])
 
+        # --- ROI Complementares (per D-15, D-16, D-17) ---
+        mercado_slug = _entrada_para_slug(entrada)
+        if mercado_slug:
+            comp_config = get_complementares_config(conn, mercado_slug)
+            if comp_config:
+                roi_comp = calculate_roi_complementares(
+                    history, comp_config, stake or 10.0, bool(gale_on)
+                )
+                if roi_comp["total_invested"] > 0:
+                    comp_profit = roi_comp["profit"]
+                    comp_pct = roi_comp["roi_pct"]
+                    comp_invested = roi_comp["total_invested"]
+                    profit_class = "text-success" if comp_profit > 0 else ("text-danger" if comp_profit < 0 else "text-muted")
+                    pct_class = "text-success" if comp_pct > 0 else ("text-danger" if comp_pct < 0 else "text-info")
+
+                    # --- ROI Total Combinado (per D-17) ---
+                    principal_profit = roi["profit"]
+                    principal_invested = roi["total_invested"]
+                    combined_profit = principal_profit + comp_profit
+                    combined_invested = principal_invested + comp_invested
+                    combined_pct = (combined_profit / combined_invested * 100) if combined_invested > 0 else 0.0
+                    combined_profit_class = "text-success" if combined_profit > 0 else ("text-danger" if combined_profit < 0 else "text-muted")
+                    combined_pct_class = "text-success" if combined_pct > 0 else ("text-danger" if combined_pct < 0 else "text-info")
+
+                    comp_content = html.Div([
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Mercado"),
+                                html.H5(entrada, className="fw-bold text-light"),
+                            ], md=2),
+                            dbc.Col([
+                                dbc.Label("Lucro/Prejuizo"),
+                                html.H5(f"R$ {comp_profit:+.2f}", className=f"fw-bold {profit_class}"),
+                            ], md=2),
+                            dbc.Col([
+                                dbc.Label("ROI %"),
+                                html.H5(f"{comp_pct:+.1f}%", className=f"fw-bold {pct_class}"),
+                            ], md=2),
+                            dbc.Col([
+                                dbc.Label("Total Investido"),
+                                html.H5(f"R$ {comp_invested:.2f}", className="fw-bold text-muted"),
+                            ], md=2),
+                        ], className="g-2"),
+                        _build_comp_table(roi_comp["por_mercado"]),
+                        # --- Linha Total Combinado (per D-17) ---
+                        html.Hr(className="border-secondary mt-3 mb-2"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.H6("Total Combinado", className="text-muted mb-0"),
+                                html.Small("Principal + Complementares", className="text-muted"),
+                            ], md=3),
+                            dbc.Col([
+                                dbc.Label("Lucro Total", className="small text-muted"),
+                                html.H5(f"R$ {combined_profit:+.2f}", className=f"fw-bold {combined_profit_class}"),
+                            ], md=3),
+                            dbc.Col([
+                                dbc.Label("ROI Total %", className="small text-muted"),
+                                html.H5(f"{combined_pct:+.1f}%", className=f"fw-bold {combined_pct_class}"),
+                            ], md=3),
+                            dbc.Col([
+                                dbc.Label("Investido Total", className="small text-muted"),
+                                html.H5(f"R$ {combined_invested:.2f}", className="fw-bold text-muted"),
+                            ], md=3),
+                        ], className="g-2 bg-dark bg-opacity-50 rounded p-2"),
+                    ])
+                else:
+                    comp_content = dbc.Alert(
+                        [html.H6("Sem sinais no periodo", className="alert-heading"),
+                         html.P("Nenhum sinal com resultado encontrado para os filtros selecionados.")],
+                        color="warning",
+                    )
+            else:
+                comp_content = dbc.Alert(
+                    [html.H6("Sem complementares configuradas", className="alert-heading"),
+                     html.P(f"Nenhuma complementar configurada para '{entrada}'.")],
+                    color="info",
+                )
+        else:
+            comp_content = dbc.Alert(
+                [html.H6("Selecione uma entrada", className="alert-heading"),
+                 html.P("Escolha Over 2.5 ou Ambas Marcam no filtro acima para ver o breakdown de complementares.")],
+                color="info",
+            )
+
         return (
             str(total),
             str(greens),
@@ -416,6 +575,7 @@ def update_dashboard(liga, entrada, date_start, date_end, gale_on, stake, odd, _
             winrate_fig,
             liga_options,
             entrada_options,
+            comp_content,     # NOVO — roi-comp-container
         )
     finally:
         conn.close()
