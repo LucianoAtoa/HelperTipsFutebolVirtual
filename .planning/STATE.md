@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation 01-04-PLAN.md (Listener Entry Point)
-last_updated: "2026-04-03T10:15:01.156Z"
+stopped_at: Completed 01-foundation 01-05-PLAN.md (Package Structure)
+last_updated: "2026-04-03T10:18:47.031Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P02 | 2 | 2 tasks | 4 files |
 | Phase 01-foundation P03 | 2min | 1 tasks | 2 files |
 | Phase 01-foundation P04 | 4min | 2 tasks | 1 files |
+| Phase 01-foundation P05 | 2min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: ON CONFLICT WHERE clause prevents overwriting GREEN/RED resultado with NULL — signals.resultado IS DISTINCT FROM EXCLUDED.resultado OR signals.resultado IS NULL
 - [Phase 01-foundation]: validate_config() moved inside main() to allow safe module imports without .env — fail-fast preserved as first action in main()
 - [Phase 01-foundation]: TelegramClient created inside main() with event handlers as nested decorator closures — requires env vars only at runtime
+- [Phase 01-foundation]: Used setuptools.build_meta as build-backend (plan had invalid setuptools.backends._legacy:_Backend for setuptools 82)
+- [Phase 01-foundation]: Removed pytest.ini — configuration migrated to pyproject.toml [tool.pytest.ini_options] (single config file)
+- [Phase 01-foundation]: All inter-module imports use from helpertips.X import Y — no relative imports, no sys.path manipulation
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T10:15:01.153Z
-Stopped at: Completed 01-foundation 01-04-PLAN.md (Listener Entry Point)
+Last session: 2026-04-03T10:18:47.029Z
+Stopped at: Completed 01-foundation 01-05-PLAN.md (Package Structure)
 Resume file: None
