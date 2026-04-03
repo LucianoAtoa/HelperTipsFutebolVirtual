@@ -262,8 +262,9 @@ def test_periodo_always_none(signal_new):
     assert result["periodo"] is None
 
 
-def test_dia_semana_is_string(signal_new):
-    """dia_semana is a 3-char lowercase string from the weekday labels."""
+def test_dia_semana_is_int(signal_new):
+    """dia_semana is an int 0-6 (Mon-Sun) matching SMALLINT column."""
     result = parse_message(signal_new, 1)
     assert result is not None
-    assert result["dia_semana"] in {"seg", "ter", "qua", "qui", "sex", "sab", "dom"}
+    assert isinstance(result["dia_semana"], int)
+    assert 0 <= result["dia_semana"] <= 6

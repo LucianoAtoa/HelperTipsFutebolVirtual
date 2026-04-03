@@ -89,12 +89,6 @@ TENTATIVA_HIT_PATTERN = re.compile(
     r'([1-4])️⃣[^\n]*?✅',
 )
 
-# ---------------------------------------------------------------------------
-# Day-of-week mapping (0=Mon .. 6=Sun) -> short label
-# ---------------------------------------------------------------------------
-
-_WEEKDAY_LABELS = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"]
-
 
 def parse_message(text: str, message_id: int) -> dict | None:
     """
@@ -170,8 +164,8 @@ def parse_message(text: str, message_id: int) -> dict | None:
     tentativa_hit_match = TENTATIVA_HIT_PATTERN.search(text)
     tentativa = int(tentativa_hit_match.group(1)) if tentativa_hit_match else None
 
-    # Derive dia_semana from current date at parse time
-    dia_semana = _WEEKDAY_LABELS[datetime.now().weekday()]
+    # Derive dia_semana from current date at parse time (int 0=Mon..6=Sun, matches SMALLINT column)
+    dia_semana = datetime.now().weekday()
 
     return {
         "message_id": message_id,
