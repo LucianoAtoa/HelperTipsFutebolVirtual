@@ -1,0 +1,13 @@
+# Telegram session — contains full account auth state, NEVER commit
+*.session
+*.session-journal
+
+# Credentials
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
