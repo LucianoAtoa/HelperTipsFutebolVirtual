@@ -74,28 +74,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | - | Pending |
-| SEC-02 | - | Pending |
-| SEC-03 | - | Pending |
-| SEC-04 | - | Pending |
-| GH-01 | - | Pending |
-| GH-02 | - | Pending |
-| AWS-01 | - | Pending |
-| AWS-02 | - | Pending |
-| AWS-03 | - | Pending |
-| AWS-04 | - | Pending |
-| AWS-05 | - | Pending |
-| DEP-01 | - | Pending |
-| DEP-02 | - | Pending |
-| DEP-03 | - | Pending |
-| DEP-04 | - | Pending |
-| DEP-05 | - | Pending |
+| SEC-01 | Phase 4 | Pending |
+| SEC-02 | Phase 4 | Pending |
+| SEC-03 | Phase 4 | Pending |
+| SEC-04 | Phase 4 | Pending |
+| GH-01 | Phase 5 | Pending |
+| GH-02 | Phase 5 | Pending |
+| AWS-01 | Phase 6 | Pending |
+| AWS-02 | Phase 6 | Pending |
+| AWS-03 | Phase 6 | Pending |
+| AWS-04 | Phase 6 | Pending |
+| AWS-05 | Phase 6 | Pending |
+| DEP-05 | Phase 7 | Pending |
+| DEP-01 | Phase 7 | Pending |
+| DEP-02 | Phase 8 | Pending |
+| DEP-03 | Phase 8 | Pending |
+| DEP-04 | Phase 8 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16 ⚠️
+- Mapped to phases: 16
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-03 after initial definition*
+*Last updated: 2026-04-03 after roadmap creation*
