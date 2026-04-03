@@ -94,7 +94,7 @@ Plans:
 - [x] 03-01-PLAN.md — Camada de dados temporal: heatmap, win rate por dia, equity curve, streaks (TDD)
 - [x] 03-02-PLAN.md — Camada de dados Gale + volume + cross-dimensional + parse failures (TDD)
 - [x] 03-03-PLAN.md — Dashboard integration: tabs, badge, modal, callbacks
-- [ ] 03-04-PLAN.md — Gap closure: wiring ANAL-03 (win rate por periodo) no dashboard
+- [x] 03-04-PLAN.md — Gap closure: wiring ANAL-03 (win rate por periodo) no dashboard
 
 ## Progress
 
