@@ -50,7 +50,15 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-(Awaiting v1.1 requirements definition)
+- Publicação no GitHub com repositório limpo e README
+- Deploy na AWS com custo mínimo (listener + dashboard 24/7)
+
+### Validated (v1.1)
+
+- ✓ Histórico git limpo de secrets — nenhum `.env` ou `.session` no histórico — Phase 4
+- ✓ Dashboard debug mode controlado por variável de ambiente (`DASH_DEBUG`) — Phase 4
+- ✓ `.env.example` completo com todas as variáveis necessárias (Telegram, DB, AWS) — Phase 4
+- ✓ README.md com setup local, deploy e aviso de segurança sobre `.session` — Phase 4
 
 ### Out of Scope
 
@@ -110,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-03 after v1.1 Cloud Deploy milestone started*
+*Last updated: 2026-04-03 after Phase 4 (Security Audit) complete*
