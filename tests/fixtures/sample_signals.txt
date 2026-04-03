@@ -1,0 +1,48 @@
+# Sample signal messages from {VIP} ExtremeTips Telegram group
+# Each message block is separated by "---"
+# Format: best-effort based on common virtual football betting group patterns
+
+# --- NEW SIGNAL (no result yet) ---
+⚽ LIGA: Euro League
+🎯 Entrada: Over 1.5 Gols
+⏰ Horario: 14:30
+
+---
+
+# --- GREEN WITH PLACAR ---
+⚽ LIGA: Euro League
+🎯 Entrada: Over 1.5 Gols
+⏰ Horario: 14:30
+✅ GREEN
+Placar: 2-1
+
+---
+
+# --- RED WITH PLACAR ---
+⚽ LIGA: Premier League
+🎯 Entrada: Under 2.5 Gols
+⏰ Horario: 16:00
+❌ RED
+Placar: 0-1
+
+---
+
+# --- GREEN WITHOUT PLACAR ---
+⚽ LIGA: Champions League
+🎯 Entrada: Ambas Marcam
+⏰ Horario: 20:15
+✅ GREEN
+
+---
+
+# --- VARIATION: spacing differences ---
+⚽ LIGA:  La Liga
+🎯 Entrada:  Gol no 1T
+⏰ Horário: 12:00
+
+---
+
+# --- NON-SIGNAL (garbage message) ---
+Bom dia a todos! Vamos às apostas de hoje!
+
+---
