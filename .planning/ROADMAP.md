@@ -34,7 +34,7 @@ Plans:
 - [x] 01-01-PLAN.md — Project bootstrap: .gitignore, .env config validation, DB schema, dependencies
 - [x] 01-02-PLAN.md — Signal message parser (TDD): pure-function regex extraction of liga, entrada, horario, resultado, placar
 - [x] 01-03-PLAN.md — Store repository layer: upsert_signal with ON CONFLICT, get_stats for terminal summary
-- [ ] 01-04-PLAN.md — Listener integration: Telethon event handlers, startup summary, graceful shutdown, auto-reconnect
+- [x] 01-04-PLAN.md — Listener integration: Telethon event handlers, startup summary, graceful shutdown, auto-reconnect
 - [ ] 01-05-PLAN.md — Reestruturacao em pacote Python: helpertips/ + pyproject.toml + pip install -e .
 - [ ] 01-06-PLAN.md — Tabela parse_failures + rich terminal output (Panel, Table, RichHandler)
 - [ ] 01-07-PLAN.md — Fixtures reais do Telegram + ajuste de regex do parser

@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Listener
 
-- [ ] **LIST-01**: Sistema captura sinais novos do grupo Telegram em tempo real (events.NewMessage)
-- [ ] **LIST-02**: Sistema detecta edições de mensagens com resultado (events.MessageEdited)
-- [ ] **LIST-03**: Sistema deduplica sinais por telegram_msg_id (ON CONFLICT upsert)
-- [ ] **LIST-04**: Sistema ignora mensagens sem texto (imagens, stickers)
-- [ ] **LIST-05**: Sistema reconecta automaticamente após perda de conexão
+- [x] **LIST-01**: Sistema captura sinais novos do grupo Telegram em tempo real (events.NewMessage)
+- [x] **LIST-02**: Sistema detecta edições de mensagens com resultado (events.MessageEdited)
+- [x] **LIST-03**: Sistema deduplica sinais por telegram_msg_id (ON CONFLICT upsert)
+- [x] **LIST-04**: Sistema ignora mensagens sem texto (imagens, stickers)
+- [x] **LIST-05**: Sistema reconecta automaticamente após perda de conexão
 
 ### Parser
 
@@ -34,9 +34,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Terminal
 
-- [ ] **TERM-01**: Ao iniciar, exibe resumo: total de sinais, greens, reds, taxa de acerto
-- [ ] **TERM-02**: Ao iniciar, confirma conexão com grupo Telegram
-- [ ] **TERM-03**: Encerramento limpo com Ctrl+C
+- [x] **TERM-01**: Ao iniciar, exibe resumo: total de sinais, greens, reds, taxa de acerto
+- [x] **TERM-02**: Ao iniciar, confirma conexão com grupo Telegram
+- [x] **TERM-03**: Encerramento limpo com Ctrl+C
 
 ### Dashboard — Stats Core
 
@@ -105,11 +105,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIST-01 | Phase 1 | Pending |
-| LIST-02 | Phase 1 | Pending |
-| LIST-03 | Phase 1 | Pending |
-| LIST-04 | Phase 1 | Pending |
-| LIST-05 | Phase 1 | Pending |
+| LIST-01 | Phase 1 | Complete |
+| LIST-02 | Phase 1 | Complete |
+| LIST-03 | Phase 1 | Complete |
+| LIST-04 | Phase 1 | Complete |
+| LIST-05 | Phase 1 | Complete |
 | PARS-01 | Phase 1 | Complete |
 | PARS-02 | Phase 1 | Complete |
 | PARS-03 | Phase 1 | Complete |
@@ -121,9 +121,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DB-02 | Phase 1 | Complete |
 | DB-03 | Phase 1 | Complete |
 | DB-04 | Phase 1 | Complete |
-| TERM-01 | Phase 1 | Pending |
-| TERM-02 | Phase 1 | Pending |
-| TERM-03 | Phase 1 | Pending |
+| TERM-01 | Phase 1 | Complete |
+| TERM-02 | Phase 1 | Complete |
+| TERM-03 | Phase 1 | Complete |
 | OPER-02 | Phase 1 | Complete |
 | OPER-03 | Phase 1 | Complete |
 | DASH-01 | Phase 2 | Pending |
