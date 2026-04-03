@@ -20,7 +20,7 @@ except ImportError as e:
     _IMPORT_ERROR = str(e)
 
 
-def _make_signal(message_id: int, resultado=None, placar=None) -> dict:
+def _make_signal(message_id: int, resultado=None, placar=None, tentativa=None) -> dict:
     """Helper to build a minimal valid signal dict."""
     return {
         "message_id": message_id,
@@ -31,6 +31,7 @@ def _make_signal(message_id: int, resultado=None, placar=None) -> dict:
         "dia_semana": 0,
         "resultado": resultado,
         "placar": placar,
+        "tentativa": tentativa,
         "raw_text": f"LIGA: Euro League\nEntrada: Over 1.5 Gols\nHorario: 14:30",
     }
 

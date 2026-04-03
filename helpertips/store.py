@@ -44,14 +44,15 @@ def upsert_signal(conn, data: dict) -> None:
                 NOW(), NOW()
             )
             ON CONFLICT (message_id) DO UPDATE SET
-                resultado  = EXCLUDED.resultado,
-                placar     = EXCLUDED.placar,
-                tentativa  = EXCLUDED.tentativa,
+                resultado  = COALESCE(EXCLUDED.resultado, signals.resultado),
+                placar     = COALESCE(EXCLUDED.placar, signals.placar),
+                tentativa  = COALESCE(EXCLUDED.tentativa, signals.tentativa),
                 liga       = EXCLUDED.liga,
                 entrada    = EXCLUDED.entrada,
                 updated_at = NOW()
             WHERE
-                signals.resultado IS DISTINCT FROM EXCLUDED.resultado
+                EXCLUDED.resultado IS NOT NULL
+                OR signals.resultado IS NULL
                 OR signals.resultado IS NULL
             """,
             data,
