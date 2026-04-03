@@ -1,12 +1,12 @@
 # Domain Pitfalls
 
 **Domain:** Telegram user client (Telethon) + betting signal capture + analytics dashboard
-**Researched:** 2026-04-02
-**Confidence:** HIGH (session/async pitfalls from official docs + GitHub issues), MEDIUM (analytics/statistics pitfalls from community sources)
+**Researched:** 2026-04-02 (v1.0) | 2026-04-03 (v1.1 — Cloud Deploy + GitHub)
+**Confidence:** HIGH (session/async pitfalls from official docs + GitHub issues), MEDIUM (analytics/statistics pitfalls from community sources), HIGH (cloud deploy pitfalls from AWS official pricing + GitHub security docs)
 
 ---
 
-## Critical Pitfalls
+## Part 1 — Pitfalls do Domínio da Aplicação (v1.0)
 
 Mistakes that cause data loss, account termination, or rewrites.
 
@@ -119,7 +119,7 @@ def _blocking_insert(conn, data):
 
 ---
 
-## Moderate Pitfalls
+## Moderate Pitfalls (v1.0 domain)
 
 ---
 
@@ -173,7 +173,7 @@ def _blocking_insert(conn, data):
 
 ---
 
-## Minor Pitfalls
+## Minor Pitfalls (v1.0 domain)
 
 ---
 
@@ -204,24 +204,256 @@ def _blocking_insert(conn, data):
 
 ---
 
-## Phase-Specific Warnings
+---
+
+## Part 2 — Pitfalls de Cloud Deploy + GitHub (v1.1)
+
+Erros comuns ao subir o projeto para a AWS e publicar no GitHub.
+
+---
+
+## Critical Pitfalls (Cloud Deploy)
+
+---
+
+### Pitfall 11: Vazar secrets no histórico do Git antes de publicar no GitHub
+
+**What goes wrong:**
+O arquivo `.env` (contendo `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `DB_PASSWORD`) é commitado acidentalmente — ou foi commitado em algum ponto anterior do projeto. Mesmo que seja removido num commit seguinte, o conteúdo permanece no histórico do Git e fica acessível publicamente após `git push`. Bots automatizados varrem repositórios públicos recém-criados em minutos procurando exatamente esses padrões.
+
+Em 2025, 28.65 milhões de novos secrets hardcoded foram adicionados a repositórios públicos do GitHub — aumento de 34% em relação ao ano anterior. O arquivo `.session` do Telethon vazar é igualmente grave: concede acesso à conta Telegram sem precisar de senha.
+
+**Why it happens:**
+O `.gitignore` é criado depois do primeiro `git add .`, ou o desenvolvedor faz `git add -A` sem revisar. A sensação de "já sei que não está no .gitignore" não substitui verificação explícita.
+
+**How to avoid:**
+1. Antes de qualquer `git push`, rodar `git log --all --full-diff -p -- .env` para confirmar que `.env` nunca apareceu em nenhum commit.
+2. Rodar `git ls-files | grep -E '\.(env|session)$'` para verificar que esses arquivos não estão rastreados.
+3. Se já vazou: revogar as credenciais imediatamente (Telegram API no my.telegram.org, senha do banco), depois usar BFG Repo-Cleaner para reescrever o histórico. Simplesmente deletar o arquivo e commitar NÃO resolve — o secret continua em commits anteriores.
+4. Criar `.env.example` com as chaves mas sem valores — esse vai para o repo.
+
+**Warning signs:**
+- `.gitignore` foi editado depois do `git init` e houve commits antes disso
+- `git log --oneline -- .env` retorna qualquer resultado
+- `git ls-files | grep session` retorna qualquer resultado
+
+**Phase to address:**
+Fase 1 de Cloud Deploy — Auditoria de Segurança e Preparação para GitHub. Deve ser executada antes de qualquer `git remote add` ou `git push`.
+
+---
+
+### Pitfall 12: Arquivo .session do Telethon usado simultaneamente no local e no EC2
+
+**What goes wrong:**
+O arquivo `.session` (SQLite gerado pelo Telethon) representa uma chave de autenticação MTProto única. Se o mesmo arquivo for usado em duas instâncias ao mesmo tempo — por exemplo, copiado do Mac local para o EC2 sem encerrar o processo local — o Telegram detecta o conflito e desconecta uma das sessões com `AuthKeyDuplicatedError`. O listener cai e requer re-autenticação interativa (código SMS no celular).
+
+O mesmo problema ocorre se o serviço for reiniciado via `systemctl restart` sem aguardar o processo anterior morrer completamente.
+
+**Why it happens:**
+Desenvolvedor copia o `.session` gerado localmente para o servidor via `scp` sem parar o listener local primeiro. Ou o processo zumbi não terminou antes do restart.
+
+**How to avoid:**
+1. Parar completamente o listener local antes de copiar o `.session` para o EC2.
+2. Nunca rodar o listener simultaneamente em dois lugares com a mesma sessão.
+3. No systemd unit file, usar `KillMode=process` e `TimeoutStopSec=30` para garantir shutdown limpo.
+4. O `.session` no EC2 deve estar no volume EBS root — se a instância for terminada e recriada, a sessão se perde e requer re-autenticação interativa.
+5. Fazer backup periódico do `.session` em S3 para recuperação sem acesso interativo.
+
+**Warning signs:**
+- Log do Telethon mostra `AuthKeyDuplicatedError` logo após deploy
+- Listener para de receber mensagens silenciosamente sem log de erro
+- Dois processos Python com o mesmo nome visíveis no `ps aux`
+
+**Phase to address:**
+Fase 2 de Cloud Deploy — checklist de deploy deve incluir verificação explícita de "sessão local parada antes de copiar".
+
+---
+
+### Pitfall 13: Dashboard Dash exposto sem autenticação na internet aberta
+
+**What goes wrong:**
+O Dash roda na porta 8050 sem autenticação por padrão. Se o Security Group da EC2 abrir essa porta para `0.0.0.0/0`, qualquer pessoa na internet pode acessar o dashboard e ver todos os dados de apostas. Dash roda sobre Flask — em modo `debug=True`, o debugger interativo fica exposto, permitindo execução remota de código arbitrário no servidor.
+
+Bots de scan de portas (como Shodan) indexam IPs públicos em horas. Uma porta aberta aparece indexada rapidamente.
+
+**Why it happens:**
+O projeto é pessoal — "só eu vou usar" — e o desenvolvedor abre a porta no Security Group pensando ser temporário. A porta fica aberta. O `debug=True` que funcionava localmente é mantido no deploy sem perceber.
+
+**How to avoid:**
+1. Nunca abrir a porta 8050 para `0.0.0.0/0`. Restringir o inbound rule do Security Group apenas para o IP pessoal, ou usar SSH tunnel: `ssh -L 8050:localhost:8050 ec2-user@<ip>` e acessar via `localhost:8050`.
+2. Garantir `debug=False` no código de produção. Controlar via variável de ambiente: `debug = os.getenv("DASH_DEBUG", "false").lower() == "true"`.
+3. Para acesso de qualquer lugar (celular, etc.), adicionar `dash-auth` com HTTP Basic Auth — simples e gratuito.
+
+**Warning signs:**
+- Security Group tem regra de inbound com source `0.0.0.0/0` na porta 8050
+- `app.run(debug=True)` no código que vai para produção
+- Dashboard acessível via IP público sem nenhum prompt de senha
+
+**Phase to address:**
+Fase 1 de Cloud Deploy (revisão de segurança) + Fase 2 (verificação no Security Group após deploy).
+
+---
+
+### Pitfall 14: Surpresas de custo — IPv4, EBS órfão e T3 Unlimited
+
+**What goes wrong:**
+Três fontes de custo oculto na AWS que pegam desenvolvedores de surpresa:
+
+**IPv4 público (desde fevereiro 2024):** AWS cobra $0.005/hora por endereço IPv4 público = $3.65/mês = $43.80/ano por IP. Aplica-se ao EC2 e RDS — mesmo que a instância esteja parada.
+
+**EBS volumes órfãos:** Ao terminar uma instância EC2, o volume root é deletado por padrão, mas volumes adicionais não são. Se a instância for recriada durante experimentos de deploy, volumes antigos ficam acumulando custo.
+
+**T3 Unlimited CPU credits:** Instâncias T3 rodam em modo Unlimited por padrão — podem burstar além dos créditos acumulados, com cobrança por vCPU-hora extra. O listener Telethon e o Dash idle consomem pouca CPU, mas picos durante inicialização podem drenar créditos.
+
+**RDS desnecessário:** Reflexo de usar RDS separado quando PostgreSQL na mesma EC2 seria suficiente — diferença de $15-25/mês para uso pessoal.
+
+**Why it happens:**
+Desenvolvedor não lê o pricing completo antes de criar recursos. A interface da AWS não destaca esses custos recorrentes no momento de criação.
+
+**How to avoid:**
+1. Criar budget alert no AWS Billing para alertar em $10/mês — pega qualquer surpresa antes de virar problema real.
+2. Para custo mínimo: uma única instância t3.micro com PostgreSQL local (sem RDS separado) custa ~$8-12/mês total com IPv4.
+3. Verificar `aws ec2 describe-volumes --filters Name=status,Values=available` periodicamente para identificar volumes desanexados.
+4. Confirmar que `DeleteOnTermination=true` está configurado em todos os volumes ao criar a instância.
+5. Usar IP dinâmico da instância, não Elastic IP — Elastic IP ocioso cobra igual a IP em uso.
+
+**Warning signs:**
+- Conta AWS sem budget alert configurado
+- Múltiplas instâncias EC2 em estado "stopped" com volumes anexados
+- RDS criado separadamente enquanto PostgreSQL local seria suficiente
+- Elastic IP não associado a nenhuma instância
+
+**Phase to address:**
+Fase 2 de Cloud Deploy — billing alert deve ser o primeiro passo antes de criar qualquer recurso pago.
+
+---
+
+## Moderate Pitfalls (Cloud Deploy)
+
+---
+
+### Pitfall 15: Credenciais do banco visíveis em logs ou em variáveis de ambiente do processo
+
+**What goes wrong:**
+`DB_PASSWORD` definido como variável de ambiente do sistema fica visível em `/proc/<pid>/environ` para qualquer usuário com acesso SSH. Se o `.env` for carregado via `source .env` no shell em vez de pelo próprio Python, as variáveis ficam no histórico bash (`~/.bash_history`).
+
+Connection strings do PostgreSQL no formato `postgresql://user:SENHA@host/db` aparecem em logs de erro do Dash ou no output do Telethon quando há exceções.
+
+**How to avoid:**
+1. Usar exclusivamente `python-dotenv` dentro do código Python — nunca `source .env` no shell.
+2. Verificar que logs não imprimem a connection string completa. Logar apenas `host:port/dbname` sem credenciais.
+3. Restringir permissões do `.env`: `chmod 600 .env` e rodar com usuário não-root dedicado.
+4. PostgreSQL deve escutar apenas em `localhost` — verificar `postgresql.conf` e que Security Group não expõe porta 5432 externamente.
+
+**Warning signs:**
+- Connection string aparece em traceback do Dash no browser
+- `.env` com permissão `644` (legível por todos os usuários do sistema)
+- PostgreSQL porta 5432 aberta no Security Group para qualquer source
+
+**Phase to address:**
+Fase 1 de Cloud Deploy (auditoria de credenciais) + Fase 2 (configuração do PostgreSQL no servidor).
+
+---
+
+### Pitfall 16: Listener sem systemd — morre quando SSH desconecta
+
+**What goes wrong:**
+Iniciar o listener diretamente via `python listener.py` numa sessão SSH causa a morte do processo quando a conexão SSH cai. Sem gerenciamento de processo, não há restart automático em caso de crash ou reboot da instância.
+
+**How to avoid:**
+1. Usar dois unit files systemd — `helpertips-listener.service` e `helpertips-dashboard.service` — com `Restart=on-failure`, `RestartSec=10`, e `StartLimitBurst=3`.
+2. `systemctl enable` garante restart automático no reboot da instância.
+3. `journalctl -u helpertips-listener -f` para monitorar logs sem manter SSH aberta.
+4. Nunca usar `nohup ... &` como solução permanente — funciona, mas não reinicia em crash ou reboot.
+
+**Warning signs:**
+- Listener rodando diretamente na sessão SSH sem `screen`, `tmux`, ou systemd
+- Nenhum unit file em `/etc/systemd/system/`
+
+**Phase to address:**
+Fase 2 de Cloud Deploy — parte essencial do setup de infraestrutura.
+
+---
+
+## Technical Debt Patterns (Cloud Deploy)
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| PostgreSQL local na EC2 (sem RDS) | Custo zero de banco, $15-25/mês economizados | Backups manuais, sem failover automático | Aceitável para uso pessoal — RDS é overkill |
+| HTTP sem TLS (sem HTTPS) | Zero configuração de certificado | Credenciais em texto claro se Basic Auth for adicionado | Apenas se acesso for via SSH tunnel — nunca exposto na internet |
+| `debug=True` no servidor | Ver erros no browser | Expõe debugger Flask (RCE se porta estiver aberta) | Nunca em produção |
+| Acesso via IP whitelist no Security Group | Sem senha, conveniente | IP dinâmico do dev muda, lockout acidental | Aceitável para ferramenta pessoal com IP fixo |
+| `.session` na raiz do projeto no EC2 | Simples | Perde sessão se instância for recriada | Só se instância nunca for terminada — arriscado |
+| Processo Python direto (sem systemd) | Deploy em segundos | Morre se SSH desconectar, sem restart automático | Apenas para testes iniciais de verificação |
+
+---
+
+## Integration Gotchas (Cloud Deploy)
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Telethon + EC2 | Copiar `.session` local para EC2 sem parar listener local | Parar listener local, aguardar `disconnect()`, depois copiar via `scp` |
+| Telethon + systemd | `Restart=always` sem `RestartSec` causa loop de crash que pode acionar FloodWaitError | Usar `Restart=on-failure` + `RestartSec=10` + `StartLimitBurst=3` |
+| Dash + porta pública | Abrir porta 8050 no Security Group como "temporário" | SSH tunnel ou IP whitelist estrito no Security Group |
+| PostgreSQL + EC2 | Criar RDS separado por reflexo de boas práticas | PostgreSQL na mesma EC2 — suficiente para uso pessoal, economiza $15-25/mês |
+| python-dotenv + EC2 | Fazer `source .env` no `.bashrc` | Carregar `.env` apenas dentro do código Python via `load_dotenv()` |
+| Git + secrets | `git add .` antes de verificar `.gitignore` | Auditar histórico com `git log -p -- .env` antes de qualquer push |
+| AWS + IPv4 | Criar Elastic IP "para ter IP fixo" e esquecer quando instância recriada | Usar IP dinâmico da instância ou configurar DNS — Elastic IP ocioso cobra igual |
+
+---
+
+## "Looks Done But Isn't" Checklist (Cloud Deploy)
+
+- [ ] **GitHub publicado:** `git log --all --full-diff -p -- .env .env.* *.session` retorna vazio antes do push.
+- [ ] **Listener no EC2:** `systemctl status helpertips-listener` ativo; `journalctl -u helpertips-listener -n 50` sem erros de sessão.
+- [ ] **Dashboard seguro:** Porta 8050 NÃO está aberta para `0.0.0.0/0` no Security Group — acesso apenas via SSH tunnel ou IP whitelist.
+- [ ] **Sessão Telethon persistida:** Arquivo `.session` existe no EC2 no volume EBS root, não em storage efêmero.
+- [ ] **PostgreSQL seguro:** `netstat -tlnp | grep 5432` no EC2 mostra apenas `127.0.0.1:5432`, não `0.0.0.0:5432`.
+- [ ] **Billing alert:** AWS Budget configurado com alerta em $10/mês antes de criar qualquer recurso pago.
+- [ ] **Debug mode off:** `grep -r "debug=True" *.py` retorna vazio nos scripts de produção.
+- [ ] **Processos via systemd:** Dois unit files ativos com `Restart=on-failure` e `systemctl enable` configurado.
+- [ ] **EBS sem órfãos:** `aws ec2 describe-volumes --filters Name=status,Values=available` retorna vazio.
+
+---
+
+## Recovery Strategies (Cloud Deploy)
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Secret vazado no GitHub | HIGH | 1. Revogar credencial imediatamente (Telegram: my.telegram.org; banco: `ALTER USER ... PASSWORD`). 2. BFG Repo-Cleaner para reescrever histórico. 3. Force push da branch reescrita. 4. Notificar colaboradores para rebases. |
+| `.session` corrompido ou perdido | MEDIUM | Re-autenticar interativamente via SSH no EC2 rodando `python listener.py` pela primeira vez. Requer acesso ao celular com o número Telegram para código SMS. |
+| Instância EC2 terminada sem backup do `.session` | MEDIUM | Mesma recuperação acima — re-autenticação interativa. Prevenir com backup periódico do `.session` em S3. |
+| Conta Telegram banida | HIGH | Contatar suporte via @SpamBot. Para o projeto atual (apenas leitura passiva de mensagens), risco é baixo. |
+| Fatura AWS inesperada | MEDIUM | Identificar recurso no Cost Explorer. Deletar volumes EBS órfãos. Liberar Elastic IPs não associados. Verificar todas as regiões AWS (não apenas a região principal). |
+| Dashboard exposto publicamente | LOW | Fechar inbound rule no Security Group imediatamente via console AWS (segundos). Verificar logs de acesso se disponíveis. |
+
+---
+
+## Phase-Specific Warnings (v1.0 + v1.1)
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|---------------|------------|
-| Phase 1: Listener + DB setup | psycopg2 blocks asyncio event loop (Pitfall 1) | Use `asyncio.to_thread()` from day one |
-| Phase 1: Session initialization | `.session` file committed to git (Pitfall 4) | `.gitignore` entry before first commit |
-| Phase 1: Event handlers | Duplicate records from edit events (Pitfall 7) | Upsert-only write path with composite key |
-| Phase 1: Message parser | Silent parse failures corrupt dataset (Pitfall 5) | Store `raw_text`; log unmatched messages |
-| Phase 1: Process management | Session invalidated by concurrent process (Pitfall 2) | Process lock file + single session name |
-| Phase 1: Listener reliability | Signals missed while offline, no recovery (Pitfall 3) | Manual backfill on startup from last known ID |
-| Phase 2: Dashboard stats | Small-sample statistics look actionable (Pitfall 6) | Sample count + confidence warning on every stat |
-| Phase 2: Dashboard filters | Hardcoded strings break on format changes (Pitfall 8) | Dynamic filters from DB distinct values |
-| Phase 2+: Concurrent DB access | Connection exhaustion (Pitfall 10) | Connection pool capped below PG limit |
+| Phase 1 v1.0: Listener + DB setup | psycopg2 blocks asyncio event loop (Pitfall 1) | Use `asyncio.to_thread()` from day one |
+| Phase 1 v1.0: Session initialization | `.session` file committed to git (Pitfall 4) | `.gitignore` entry before first commit |
+| Phase 1 v1.0: Event handlers | Duplicate records from edit events (Pitfall 7) | Upsert-only write path with composite key |
+| Phase 1 v1.0: Message parser | Silent parse failures corrupt dataset (Pitfall 5) | Store `raw_text`; log unmatched messages |
+| Phase 1 v1.0: Process management | Session invalidated by concurrent process (Pitfall 2) | Process lock file + single session name |
+| Phase 1 v1.0: Listener reliability | Signals missed while offline (Pitfall 3) | Manual backfill on startup from last known ID |
+| Phase 2 v1.0: Dashboard stats | Small-sample statistics look actionable (Pitfall 6) | Sample count + confidence warning on every stat |
+| Phase 2 v1.0: Dashboard filters | Hardcoded strings break on format changes (Pitfall 8) | Dynamic filters from DB distinct values |
+| Phase 2+ v1.0: Concurrent DB access | Connection exhaustion (Pitfall 10) | Connection pool capped below PG limit |
+| Phase 1 v1.1: GitHub preparation | Secret in git history (Pitfall 11) | Audit history before any push |
+| Phase 1 v1.1: Security review | Dashboard exposed, debug=True (Pitfall 13) | Security Group + debug=False |
+| Phase 2 v1.1: AWS deploy | Session duplicate on local + EC2 (Pitfall 12) | Stop local before copying .session |
+| Phase 2 v1.1: AWS deploy | Cost surprises — IPv4, EBS, T3 (Pitfall 14) | Billing alert first, RDS avoided |
+| Phase 2 v1.1: AWS infrastructure | Listener dies when SSH disconnects (Pitfall 16) | systemd unit files with Restart=on-failure |
+| Phase 2 v1.1: AWS deploy | DB credentials in logs/env (Pitfall 15) | chmod 600 .env + no source in shell |
 
 ---
 
 ## Sources
 
+**v1.0 — Application Domain:**
 - Telethon FAQ (official): https://docs.telethon.dev/en/stable/quick-references/faq.html
 - Telethon Session Files (official): https://docs.telethon.dev/en/stable/concepts/sessions.html
 - Telethon RPC Errors (official): https://docs.telethon.dev/en/stable/concepts/errors.html
@@ -235,4 +467,17 @@ def _blocking_insert(conn, data):
 - Betting small sample size and overfitting: https://www.predictology.co/blog/how-to-build-and-test-your-own-profitable-football-betting-systems/
 - Football analytics statistical mistakes: https://statpair.com/blog/common-mistakes-football-analysts
 - Telegram API Terms of Service: https://core.telegram.org/api/terms
-- Telethon session protection guide: https://membertel.com/blog/how-to-protect-your-tdata-and-telethon-sessions/
+
+**v1.1 — Cloud Deploy + GitHub:**
+- Snyk State of Secrets 2025 (28.65M secrets leaked): https://snyk.io/articles/state-of-secrets/ — HIGH confidence
+- GitHub Docs — Removing sensitive data from repository: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository — HIGH confidence (oficial)
+- BFG Repo-Cleaner: https://rtyley.github.io/bfg-repo-cleaner/ — HIGH confidence
+- AWS Blog — New Public IPv4 Address Charge (fevereiro 2024): https://aws.amazon.com/blogs/aws/new-aws-public-ipv4-address-charge-public-ip-insights/ — HIGH confidence (oficial AWS)
+- AWS EC2 pricing on-demand: https://aws.amazon.com/ec2/pricing/on-demand/ — HIGH confidence (oficial AWS)
+- DEV Community — Orphaned EBS Volumes: https://dev.to/suhas_mallesh/your-deleted-ec2-instances-left-orphaned-ebs-volumes-behind-theyre-still-billing-you-2o69 — MEDIUM confidence
+- Dash DevTools docs — debug=True in production: https://dash.plotly.com/devtools — HIGH confidence (oficial Plotly)
+- Datadog Security Labs — Security Group open to internet: https://securitylabs.datadoghq.com/cloud-security-atlas/vulnerabilities/security-group-open-to-internet/ — MEDIUM confidence
+- GitGuardian — How to handle secrets in Python: https://blog.gitguardian.com/how-to-handle-secrets-in-python/ — HIGH confidence
+- Telethon GitHub issue #980 — ban risks: https://github.com/LonamiWebs/Telethon/issues/980 — MEDIUM confidence (community)
+- python-systemd-tutorial: https://github.com/torfsen/python-systemd-tutorial — MEDIUM confidence
+- Tech Champion — Solving Telethon Timeouts and FloodWaitError: https://tech-champion.com/database/solving-telethon-telegram-timeouts-and-floodwaiterror-on-servers/ — MEDIUM confidence

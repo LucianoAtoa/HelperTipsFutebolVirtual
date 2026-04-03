@@ -1,279 +1,437 @@
-# Architecture Patterns
+# Architecture Research
 
-**Project:** HelperTips — Futebol Virtual
-**Domain:** Telegram signal capture + PostgreSQL + analytics dashboard
-**Researched:** 2026-04-02
-**Confidence:** HIGH (core patterns verified against official Telethon docs and FastAPI docs)
-
----
-
-## Recommended Architecture
-
-The system is three cooperating components inside a single Python process (or two processes for clean separation):
-
-```
-┌──────────────────────────────────────────────────────┐
-│  Telegram (MTProto via Telethon)                     │
-│    Group: {VIP} ExtremeTips                          │
-└──────────────┬───────────────┬──────────────────────┘
-               │ NewMessage    │ MessageEdited
-               ▼               ▼
-┌──────────────────────────────────────────────────────┐
-│  LISTENER (async, long-running)                      │
-│  telethon.TelegramClient + asyncio event loop        │
-│  - @client.on(events.NewMessage)                     │
-│  - @client.on(events.MessageEdited)                  │
-│  - Routes raw text → Parser                          │
-└──────────────────────┬───────────────────────────────┘
-                       │ parsed dict
-                       ▼
-┌──────────────────────────────────────────────────────┐
-│  PARSER (pure function, stateless)                   │
-│  - Regex extraction: liga, entrada, horario, placar  │
-│  - Detects signal type: new signal vs result update  │
-│  - Returns structured dict or None (unrecognized)    │
-└──────────────────────┬───────────────────────────────┘
-                       │ structured signal
-                       ▼
-┌──────────────────────────────────────────────────────┐
-│  STORE (repository layer)                            │
-│  psycopg2-binary + PostgreSQL 16                     │
-│  - INSERT ... ON CONFLICT (message_id) DO UPDATE     │
-│  - Handles both: new signal insert + result upsert   │
-│  - Connection pool (thread-safe: psycopg2 pool)      │
-└──────────────────────┬───────────────────────────────┘
-                       │
-                       ▼
-┌──────────────────────────────────────────────────────┐
-│  PostgreSQL 16                                       │
-│  Table: signals                                      │
-│  Table: (future) sessions, config                    │
-└──────────────────────┬───────────────────────────────┘
-                       │ SQL queries
-                       ▼
-┌──────────────────────────────────────────────────────┐
-│  DASHBOARD API (FastAPI)                             │
-│  - GET /api/stats — aggregate stats JSON             │
-│  - GET /api/signals — paginated signal list          │
-│  - GET /api/signals/filters — filter options         │
-│  - Jinja2 templates serve HTML shell                 │
-│  - Chart.js or Plotly renders in browser             │
-└──────────────────────────────────────────────────────┘
-```
+**Domain:** Cloud deployment — two Python processes + PostgreSQL on AWS
+**Researched:** 2026-04-03
+**Confidence:** HIGH (AWS pricing verified via official docs, patterns verified via Plotly community + EC2 docs)
 
 ---
 
-## Component Boundaries
+## Context: What We Are Deploying
 
-| Component | Responsibility | Inputs | Outputs | Communicates With |
-|-----------|---------------|--------|---------|-------------------|
-| **Listener** | Maintain persistent Telegram connection; receive events | MTProto events (NewMessage, MessageEdited) | Raw message text + message_id | Parser |
-| **Parser** | Transform raw text into structured data | Raw message string | `dict` with fields or `None` | Store |
-| **Store** | Persist and deduplicate signals | Structured dict | Confirmation / row | PostgreSQL |
-| **PostgreSQL** | Durable storage + query engine | SQL | Result sets | Store, Dashboard API |
-| **Dashboard API** | Serve analytics over HTTP | HTTP GET requests with filter params | JSON + HTML | Browser |
-| **Browser** | Render charts, handle filter interactions | HTML + JSON | User events (filter changes) | Dashboard API |
+v1.0 already runs locally as two separate Python processes:
 
-### Boundary rules
+- `listener.py` — Telethon asyncio daemon, long-running, writes to PostgreSQL
+- `dashboard.py` — Plotly Dash web server (Flask/Werkzeug under the hood), serves analytics UI
 
-- Parser has **zero** database imports. It is a pure function: `parse_message(text: str) -> dict | None`.
-- Store has **zero** Telethon imports. It receives dicts and speaks only SQL.
-- Listener has **zero** SQL. It calls Parser, then Store.
-- Dashboard API is **read-only** against the database. It never writes.
+Both share a single PostgreSQL 16 database. The `.session` SQLite file generated by Telethon must survive restarts. Deployment must be minimal cost and 24/7 uptime for the listener.
 
 ---
 
-## Data Flow
+## Deployment Architecture Recommendation: Single EC2 t3.micro + Nginx
 
-### New signal arrives (forward flow)
-
-```
-Telegram group message
-  → Telethon fires events.NewMessage
-  → Listener receives event.message.text + event.message.id
-  → Parser.parse(text) → { liga, entrada, horario, tipo, raw_text, message_id }
-  → Store.upsert_signal(parsed) → INSERT ON CONFLICT (message_id) DO NOTHING
-  → PostgreSQL row created
-```
-
-### Result update arrives (edit flow)
+**Verdict:** One EC2 t3.micro instance running both processes + PostgreSQL on-instance, fronted by Nginx. Total cost ~$8–12/month.
 
 ```
-Telegram group edits message (GREEN/RED + placar added)
-  → Telethon fires events.MessageEdited
-  → Same Listener handler (reuse parse logic)
-  → Parser.parse(text) → same dict + { resultado: "GREEN", placar: "2-1" }
-  → Store.upsert_signal(parsed) → INSERT ON CONFLICT (message_id) DO UPDATE
-    SET resultado = EXCLUDED.resultado, placar = EXCLUDED.placar
-  → PostgreSQL row updated in-place
+                         Internet
+                            │
+                     ┌──────▼──────┐
+                     │  EC2 t3.micro│  (~$7.59/mo on-demand)
+                     │  Amazon Linux│
+                     │  2023        │
+                     │             │
+                     │  ┌─────────┐ │
+                     │  │  nginx  │ │  ← port 80/443, reverse proxy
+                     │  └────┬────┘ │
+                     │       │      │
+                     │  ┌────▼────┐ │
+                     │  │dashboard│ │  ← systemd: helpertips-dashboard.service
+                     │  │.py      │ │    gunicorn + Dash, port 8050 (localhost only)
+                     │  │(Gunicorn│ │
+                     │  │ :8050)  │ │
+                     │  └─────────┘ │
+                     │             │
+                     │  ┌─────────┐ │
+                     │  │listener │ │  ← systemd: helpertips-listener.service
+                     │  │.py      │ │    Telethon asyncio loop, no HTTP
+                     │  │(asyncio)│ │
+                     │  └────┬────┘ │
+                     │       │      │
+                     │  ┌────▼────┐ │
+                     │  │Postgres │ │  ← systemd: postgresql.service
+                     │  │16       │ │    localhost:5432, no public exposure
+                     │  │:5432    │ │
+                     │  └─────────┘ │
+                     │             │
+                     │  EBS 20GB   │  ← root volume, stores .session file
+                     └─────────────┘
+                            │
+                     ┌──────▼──────┐
+                     │  Telegram   │
+                     │  MTProto    │  ← listener.py connects outbound only
+                     └─────────────┘
 ```
 
-### Dashboard query flow (read path)
+### Why this option and not the alternatives
 
-```
-Browser loads dashboard URL
-  → FastAPI serves HTML shell (Jinja2)
-  → Browser JS calls GET /api/stats?liga=&entrada=&periodo=
-  → FastAPI queries PostgreSQL (aggregate SQL)
-  → Returns JSON { total, greens, reds, taxa, roi_simulado, ... }
-  → Chart.js renders graphs from JSON
-```
+| Option | Monthly cost | Verdict | Reason |
+|--------|-------------|---------|--------|
+| **EC2 t3.micro (recommended)** | ~$7.59 compute + $0.80 EBS | **USE THIS** | Free tier eligible, Reserved 1yr = ~$5.11/mo, full Linux control, systemd native |
+| Lightsail $7/mo | $7.00 flat | Acceptable alternative | Simpler console but same underlying instance; less control for systemd + nginx tuning |
+| EC2 t3.small | ~$15.18/mo | Overkill | 2GB RAM vs 1GB — unnecessary for this workload |
+| ECS Fargate | ~$20-35/mo | Reject | Two containers + NAT overhead; Telethon session persistence requires EFS volume (extra cost); no benefit for single-user tool |
+| AWS RDS PostgreSQL t3.micro | +$13/mo | Reject | 40-60% more expensive than self-hosted; no operational benefit for personal project |
+| Lightsail $5/mo | $5.00 flat | Too tight | 0.5GB RAM is insufficient: Telethon (~80MB) + Dash/gunicorn (~150MB) + PostgreSQL (~120MB) = ~350MB baseline; no headroom |
 
-### Startup flow
-
-```
-python main.py
-  → DB.ensure_schema() → CREATE TABLE IF NOT EXISTS
-  → Store.print_summary() → console stats (total, greens, reds, taxa)
-  → FastAPI starts on background thread (or subprocess)
-  → Telethon client.start() → prompts phone/code if no .session file
-  → client.run_until_disconnected() → blocks, processing events
-```
+**t3.micro (1GB RAM, 2 vCPU) is the minimum viable size.** With burstable CPU credits (T-series), short CPU spikes from Dash queries are handled without paying for sustained compute.
 
 ---
 
-## Process Model
-
-Two valid options. Option B is recommended for this project:
-
-### Option A: Single Python process (asyncio + thread)
+## System Overview (AWS Components)
 
 ```
-main.py
-  asyncio event loop (Telethon)
-  + threading: FastAPI via uvicorn.run() in daemon thread
-  + psycopg2 SimpleConnectionPool (thread-safe)
+┌─────────────────────────────────────────────────────────────┐
+│  AWS Account (us-east-1 or sa-east-1)                       │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  VPC (default or dedicated)                          │    │
+│  │                                                      │    │
+│  │  ┌─────────────────────────────────────────────┐    │    │
+│  │  │  EC2 t3.micro  (Amazon Linux 2023)           │    │    │
+│  │  │                                              │    │    │
+│  │  │  Security Group:                             │    │    │
+│  │  │   Inbound:  22/tcp (SSH, your IP only)       │    │    │
+│  │  │             80/tcp (HTTP, 0.0.0.0/0)         │    │    │
+│  │  │             443/tcp (HTTPS, 0.0.0.0/0)       │    │    │
+│  │  │   Outbound: all (Telegram MTProto port 443)  │    │    │
+│  │  │                                              │    │    │
+│  │  │  EBS 20GB gp3 (root, persist on stop)        │    │    │
+│  │  │   /home/ubuntu/helpertips/                   │    │    │
+│  │  │     listener.py                              │    │    │
+│  │  │     dashboard.py                             │    │    │
+│  │  │     helpertips.session  ← CRITICAL           │    │    │
+│  │  │     .env                ← secrets            │    │    │
+│  │  └─────────────────────────────────────────────┘    │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                              │
+│  Elastic IP (optional, $0/mo when attached)                  │
+│   ← prevents IP change on stop/start                        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-Pros: one command to run, simpler deployment.
-Cons: uvicorn and asyncio share process — must use `loop.run_in_executor` carefully for blocking DB calls. psycopg2 is synchronous, so DB writes from asyncio handlers need `asyncio.to_thread()` (Python 3.9+).
-
-### Option B: Two separate processes (recommended)
-
-```
-python listener.py   ← Telethon + Parser + Store (writes)
-python dashboard.py  ← FastAPI + uvicorn (reads only)
-```
-
-Started with a simple shell script or `Procfile`. Both connect to same PostgreSQL.
-
-Pros: total isolation — Telethon crash does not kill dashboard and vice versa. No async/sync bridging complexity. Easier to debug each separately. Matches how the project will likely be deployed (listener as systemd service, dashboard as web server).
-Cons: two processes to manage locally.
-
-**Verdict: Use Option B.** The listener must stay running 24/7 uninterrupted. Mixing it with a web server in one process increases crash risk. psycopg2 sync I/O fits naturally in a synchronous listener loop with Telethon's `client.run_until_disconnected()`.
+**Elastic IP:** Strongly recommended. Free when attached to a running instance. Without it, EC2 public IP changes every time the instance stops — breaking any DNS record you set.
 
 ---
 
-## Suggested Build Order
+## Component Responsibilities on AWS
 
-Dependencies between components dictate this order:
-
-```
-1. Database schema (signals table, indexes)
-   └─ Prerequisite for everything else
-
-2. Parser (pure function, no dependencies)
-   └─ Can be built and unit-tested with no DB, no Telegram
-
-3. Store (repository layer)
-   └─ Depends on: schema (1)
-   └─ Testable with a local PostgreSQL and known dicts
-
-4. Listener (Telethon integration)
-   └─ Depends on: Parser (2), Store (3)
-   └─ Once this runs, signals flow into the DB
-
-5. Terminal stats (startup summary)
-   └─ Depends on: Store (3)
-   └─ Validates the pipeline is capturing correctly
-
-6. Dashboard API + UI
-   └─ Depends on: populated DB (4+5 running first)
-   └─ Read-only, can be built incrementally
-```
-
-This order ensures you can validate each layer independently before adding the next. By step 4, the core value (signal capture) is working. Steps 5-6 are display layers on top of proven data.
+| Component | What It Does | Where It Lives | How It Starts |
+|-----------|-------------|----------------|---------------|
+| **nginx** | Reverse proxy port 80/443 → localhost:8050; SSL termination | EC2, system package | `systemd: nginx.service` |
+| **dashboard.py** | Plotly Dash app served by gunicorn on localhost:8050 | EC2, virtualenv | `systemd: helpertips-dashboard.service` |
+| **listener.py** | Telethon asyncio daemon, writes to PostgreSQL | EC2, virtualenv | `systemd: helpertips-listener.service` |
+| **PostgreSQL 16** | Database on localhost, not exposed to network | EC2, system package | `systemd: postgresql.service` |
+| **helpertips.session** | Telethon auth state (SQLite file) | EBS root volume path | File, persisted by EBS |
+| **.env** | Secrets: DB_URL, TELEGRAM_API_ID, TELEGRAM_API_HASH | EBS root volume path | Loaded by python-dotenv |
 
 ---
 
-## Database Schema (Core Table)
+## Data Flow: Local vs Cloud
 
-```sql
-CREATE TABLE signals (
-    id              SERIAL PRIMARY KEY,
-    message_id      BIGINT UNIQUE NOT NULL,      -- Telegram message ID, dedup key
-    liga            TEXT,                         -- Liga name e.g. "World League"
-    entrada         TEXT,                         -- Bet type e.g. "Ambas Marcam"
-    horario         TEXT,                         -- Match time e.g. "14:30"
-    periodo         TEXT,                         -- "1T" / "2T" / "FT"
-    dia_semana      SMALLINT,                     -- 0=Mon..6=Sun (derived at insert)
-    resultado       TEXT,                         -- "GREEN" / "RED" / NULL (pending)
-    placar          TEXT,                         -- e.g. "2-1" or NULL
-    raw_text        TEXT NOT NULL,                -- Original message for re-parsing
-    received_at     TIMESTAMPTZ DEFAULT NOW(),    -- When listener captured it
-    updated_at      TIMESTAMPTZ DEFAULT NOW()     -- Last upsert timestamp
-);
-
-CREATE INDEX idx_signals_liga        ON signals(liga);
-CREATE INDEX idx_signals_entrada     ON signals(entrada);
-CREATE INDEX idx_signals_resultado   ON signals(resultado);
-CREATE INDEX idx_signals_received_at ON signals(received_at);
+### Local (current)
+```
+listener.py → localhost:5432 → PostgreSQL
+dashboard.py → localhost:5432 → PostgreSQL
+Browser → localhost:8050
 ```
 
-The `message_id` UNIQUE constraint is the deduplication key. The upsert pattern `INSERT ... ON CONFLICT (message_id) DO UPDATE` handles both new signals and result edits with a single code path.
+### Cloud (target)
+```
+listener.py → localhost:5432 → PostgreSQL (no change in code)
+gunicorn -w 2 dashboard:server → localhost:8050 (app.server exposed)
+nginx → localhost:8050 (proxy_pass)
+Browser → http(s)://[elastic-ip-or-domain] → nginx → gunicorn → Dash
+```
+
+**Code changes required:**
+1. `dashboard.py` must expose `server = app.server` for gunicorn to find the WSGI entry point
+2. `app.run(debug=False)` call removed (gunicorn takes over startup)
+3. `listener.py` — no changes needed to core logic
 
 ---
 
-## Anti-Patterns to Avoid
+## .session File Persistence Strategy
 
-### Anti-Pattern 1: Parsing inside the Listener handler
+The Telethon `.session` file is a SQLite database that stores the authenticated session token. Losing it requires re-authenticating via phone number + SMS code.
 
-**What goes wrong:** Business logic (regex) bleeds into the event handler function. When the message format changes, you modify Telethon event handler code.
-**Instead:** Listener calls `Parser.parse(text)` — a separate module. If parse returns None, log and skip. Parser is independently testable.
+**Strategy: Store on EBS root volume. Never use instance store.**
 
-### Anti-Pattern 2: Writing from Dashboard API
+```
+/home/ubuntu/helpertips/helpertips.session
+```
 
-**What goes wrong:** Dashboard endpoints that write state (e.g., "mark as manually verified") create a two-writer problem (listener + dashboard both write). Race conditions.
-**Instead:** Dashboard is read-only in v1. Any write path (future feature) belongs to a dedicated admin endpoint with explicit lock semantics.
+EBS root volumes persist across stop/start and reboot cycles. The `.session` file survives unless the EC2 instance is **terminated** (deleted).
 
-### Anti-Pattern 3: Using Telethon's file-based session with concurrent workers
+**Protection layers:**
 
-**What goes wrong:** Two Telethon instances sharing the same `.session` file → corruption.
-**Instead:** Single listener process, single `.session` file. If scaling is needed later, use PostgreSQL session storage (`telethon_postgres_sessionstorage`).
+1. **EBS "Delete on Termination" = false** — Set at launch time. Decouples the volume from instance lifecycle. If you accidentally terminate the instance, the EBS volume survives.
+2. **Git-excluded** — `.session` is already in `.gitignore`. Never commit.
+3. **Manual S3 backup** — Periodically `aws s3 cp helpertips.session s3://your-bucket/backups/`. Add to a weekly cron job on EC2. If the session expires (Telegram deauths ~every few months), you need to re-auth via SSH anyway.
+4. **Elastic IP** — Prevents needing to update firewall rules after instance stop.
 
-### Anti-Pattern 4: Re-querying PostgreSQL on every message edit for dedup check
-
-**What goes wrong:** Checking `SELECT EXISTS` before every insert when message edits are frequent → unnecessary round trips.
-**Instead:** Let PostgreSQL's `ON CONFLICT` clause handle dedup atomically. No pre-check needed.
-
-### Anti-Pattern 5: Building the dashboard before the listener is validated
-
-**What goes wrong:** Spending time on UI when the core parser may have edge cases that corrupt the data model.
-**Instead:** Follow the build order above. Run the listener for at least one real session before building charts.
+**FloodWait guard for listener restarts:** Telethon can receive FloodWaitError (Telegram rate limits). A crash-loop that hits FloodWait repeatedly escalates the wait from seconds to hours. The systemd service unit must set `RestartSec=60` and `StartLimitIntervalSec=300` + `StartLimitBurst=3` to prevent restart storms.
 
 ---
 
-## Scalability Considerations
+## Reverse Proxy: Nginx Configuration Pattern
 
-This is a single-user personal tool. The scalability table below is for awareness, not action:
+Dash runs Werkzeug dev server by default — not safe for production. Replace with gunicorn + nginx.
 
-| Concern | At current scale (1 user) | If productized |
-|---------|--------------------------|----------------|
-| Telegram API rate limits | Not a concern (single account) | Use multiple accounts or Bot API |
-| DB write throughput | psycopg2 sync is fine (<100 signals/day) | Move to asyncpg + connection pool |
-| Dashboard query performance | Full table scans fine (<100k rows) | Add materialized views for aggregates |
-| Session management | File-based `.session` is fine | Move to PostgreSQL session storage |
-| Listener restarts | Manual restart is acceptable | Add systemd service + retry logic |
+**Why gunicorn in front of Dash:**
+- Werkzeug dev server is single-threaded, not designed for production
+- gunicorn handles concurrent browser connections (dashboard can have multiple tabs)
+- nginx handles SSL termination, static files, compression
+
+**Gunicorn workers:** 2 workers for a t3.micro (rule of thumb: 2 × vCPUs). Dash callbacks are I/O-bound (SQL queries), not CPU-bound, so 2 workers is enough.
+
+```nginx
+# /etc/nginx/conf.d/helpertips.conf
+server {
+    listen 80;
+    server_name _;           # or your domain
+
+    location / {
+        proxy_pass         http://127.0.0.1:8050;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection "upgrade";
+    }
+}
+```
+
+For HTTPS: use Let's Encrypt Certbot (`certbot --nginx`). Free SSL. Requires a domain name (not just IP). If no domain, HTTP-only with IP access is acceptable for a personal tool.
+
+---
+
+## Systemd Service Units
+
+Two separate systemd services give independent restart behavior. Listener crash does not restart the dashboard, and vice versa.
+
+```ini
+# /etc/systemd/system/helpertips-listener.service
+[Unit]
+Description=HelperTips Telegram Listener
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/helpertips
+EnvironmentFile=/home/ubuntu/helpertips/.env
+ExecStart=/home/ubuntu/helpertips/venv/bin/python listener.py
+Restart=on-failure
+RestartSec=60
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```ini
+# /etc/systemd/system/helpertips-dashboard.service
+[Unit]
+Description=HelperTips Dashboard
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/helpertips
+EnvironmentFile=/home/ubuntu/helpertips/.env
+ExecStart=/home/ubuntu/helpertips/venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:8050 \
+    --timeout 120 \
+    dashboard:server
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**`RestartSec=60` on the listener is intentional.** If Telethon gets a FloodWait, a 60-second gap between restarts prevents escalation. For the dashboard, 10 seconds is fine — no rate-limit risk.
+
+---
+
+## Build Order for Deployment Phases
+
+Dependencies dictate this order. Each step can be verified before the next:
+
+```
+Phase 1: Security hardening + GitHub publish
+  └─ Prerequisite: clean .gitignore, no secrets in history
+  └─ Verify: git log --all --grep=".env" shows nothing
+
+Phase 2: EC2 instance setup
+  ├─ Launch t3.micro (Amazon Linux 2023)
+  ├─ Attach Elastic IP
+  ├─ Configure Security Group (22, 80, 443 inbound)
+  └─ Verify: SSH works from your IP
+
+Phase 3: PostgreSQL on EC2
+  ├─ Install PostgreSQL 16 from Amazon Linux repos
+  ├─ Create DB + user matching .env credentials
+  ├─ Run schema migrations (CREATE TABLE IF NOT EXISTS)
+  └─ Verify: psql -U helpertips -d helpertips -c "\dt"
+
+Phase 4: Listener deployment
+  ├─ Clone repo to EC2
+  ├─ pip install -r requirements.txt (in venv)
+  ├─ Copy .env to EC2 via scp (never git)
+  ├─ Run listener.py interactively FIRST → auth via phone/SMS → .session created
+  ├─ Verify .session file exists and listener captures messages
+  ├─ Install helpertips-listener.service
+  └─ Verify: systemctl status helpertips-listener shows active
+
+Phase 5: Dashboard deployment
+  ├─ Add server = app.server to dashboard.py
+  ├─ Install gunicorn in venv
+  ├─ Install nginx, configure reverse proxy
+  ├─ Install helpertips-dashboard.service
+  └─ Verify: curl http://localhost:8050 returns 200
+
+Phase 6: SSL (optional, requires domain)
+  ├─ Point DNS A record to Elastic IP
+  ├─ certbot --nginx -d yourdomain.com
+  └─ Verify: https://yourdomain.com loads dashboard
+```
+
+**Critical ordering constraint:** Phase 4 (listener auth) must happen interactively before converting to systemd. Telethon prompts for phone number and SMS code on first run. You cannot automate this step — it requires a TTY. Only after the `.session` file exists can the service run unattended.
+
+---
+
+## Architectural Patterns
+
+### Pattern 1: EBS Root Volume as Single Source of Truth
+
+**What:** All persistent state (`.session`, `.env`, PostgreSQL data at `/var/lib/postgresql/`) lives on the EBS root volume.
+**When to use:** Single-instance deployments where simplicity beats redundancy.
+**Trade-offs:** Simple, cheap, zero extra services. Risk: if EBS corrupts (rare), need backup. Mitigation: set "Delete on Termination" = false; periodic S3 backup of `.session`.
+
+### Pattern 2: systemd as Process Supervisor
+
+**What:** Each process is a systemd unit with `Restart=on-failure`. Linux init system handles crash recovery.
+**When to use:** Always for long-running processes on Linux.
+**Trade-offs:** Native to OS, no extra tools. `journalctl -u helpertips-listener -f` is the log view. No dashboard UI — acceptable for single developer.
+
+### Pattern 3: localhost-only Database
+
+**What:** PostgreSQL binds to `127.0.0.1` only. No RDS, no network exposure. Both Python processes connect via `localhost:5432`.
+**When to use:** Single-instance deployment where both app processes and DB share the same host.
+**Trade-offs:** Zero network latency for queries. Zero extra cost. Not horizontally scalable — not needed for personal tool. If you ever want to move DB to RDS, only the `DATABASE_URL` in `.env` changes; no code changes.
+
+### Pattern 4: Nginx as SSL Terminator + Port Abstraction
+
+**What:** Nginx receives public traffic on 80/443, forwards to gunicorn on localhost:8050. The application never sees raw TLS.
+**When to use:** Any time a Python web server is exposed to the internet.
+**Trade-offs:** One extra moving part, but standard and well-documented. Enables future features: rate limiting, basic auth (to restrict dashboard access), static file caching.
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Running Dash dev server directly on port 80
+
+**What people do:** `app.run(host="0.0.0.0", port=80, debug=True)` and open port 80 in Security Group.
+**Why it's wrong:** Werkzeug dev server is single-threaded, not production-safe. `debug=True` in production exposes the interactive debugger (security hole). Requires root to bind port 80 (dangerous).
+**Do this instead:** gunicorn + nginx. gunicorn binds to `localhost:8050` (unprivileged port), nginx runs as root on 80/443 and proxies.
+
+### Anti-Pattern 2: Storing .session in a shared filesystem or S3-mounted path
+
+**What people do:** Mount an S3 bucket via s3fs or use EFS for the `.session` file to enable "redundancy."
+**Why it's wrong:** Telethon keeps the `.session` SQLite file open with file locks. Network-backed filesystems (S3, EFS) have inconsistent locking semantics. Corruption is likely.
+**Do this instead:** Keep `.session` on the EBS root volume (local block storage). Back up to S3 periodically as a cold copy, never as the live path.
+
+### Anti-Pattern 3: Running listener and dashboard in the same systemd service
+
+**What people do:** One service that launches both `listener.py` and `dashboard.py` via `ExecStart`.
+**Why it's wrong:** If listener crashes (FloodWait, Telegram disconnect), systemd restarts both — including the dashboard, which may have been healthy. Two separate services let each component restart independently.
+**Do this instead:** Two service files, both `WantedBy=multi-user.target`, no dependency between them (only both depend on PostgreSQL).
+
+### Anti-Pattern 4: Using RDS for this workload
+
+**What people do:** Create an RDS db.t3.micro thinking "managed = better."
+**Why it's wrong:** RDS db.t3.micro is ~$13/month on top of EC2 costs. The database workload is < 100 writes/day and < 10k rows. Self-hosted PostgreSQL on the same EC2 instance is equivalent operationally, 40-60% cheaper, and adds zero maintenance burden for this scale.
+**Do this instead:** `sudo dnf install postgresql16-server` on EC2. Done.
+
+### Anti-Pattern 5: SSH port 22 open to 0.0.0.0/0
+
+**What people do:** Open SSH to the world in the Security Group for convenience.
+**Why it's wrong:** Immediately attracts brute-force bots. Lightsail/EC2 instances with open SSH are scanned within minutes of launch.
+**Do this instead:** Security Group rule: port 22, source = your home IP only. Use AWS SSM Session Manager as a fallback if your IP changes.
+
+---
+
+## Integration Points
+
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Telegram (MTProto) | listener.py outbound TCP 443 | No inbound ports needed; Telegram servers initiate nothing |
+| Let's Encrypt | Certbot ACME challenge via port 80 | Requires domain name; optional for personal use |
+| GitHub | `git pull` for deploys via SSH key | Deploy key in EC2, repo public (no secrets) |
+
+### Internal Boundaries (on EC2)
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| nginx ↔ gunicorn | HTTP `proxy_pass localhost:8050` | gunicorn must bind `127.0.0.1`, not `0.0.0.0` |
+| listener.py ↔ PostgreSQL | psycopg2 `host=localhost port=5432` | No change from local dev |
+| dashboard.py ↔ PostgreSQL | psycopg2 `host=localhost port=5432` | No change from local dev |
+| systemd ↔ .env | `EnvironmentFile=` directive | Secrets loaded from file, not hardcoded in unit |
+
+---
+
+## Cost Summary
+
+| Item | Cost/month | Notes |
+|------|-----------|-------|
+| EC2 t3.micro (on-demand) | $7.59 | us-east-1; 1yr Reserved = ~$5.11 |
+| EBS gp3 20GB (root) | $1.60 | $0.08/GB/mo |
+| Elastic IP (attached) | $0.00 | Free while attached to running instance |
+| Data transfer out | ~$0.10 | Dashboard page loads, minimal traffic |
+| **Total** | **~$9.29/mo** | ~$61/yr with Reserved pricing |
+
+No RDS, no ECS, no NAT gateway, no ALB = minimal cost.
+
+**Free tier note:** New AWS accounts get 750 hours/month of EC2 t3.micro free for 12 months. If this is a new account, Year 1 compute cost = $0.
+
+---
+
+## Scaling Considerations
+
+This is a single-user personal tool. No horizontal scaling needed. The table below documents what would need to change only if requirements changed drastically.
+
+| Concern | At current scale | If productized |
+|---------|-----------------|----------------|
+| CPU | t3.micro, burstable — fine | Upgrade to t3.small or t3.medium |
+| RAM | ~350MB baseline, 650MB headroom — fine | Add swap partition as safety net |
+| DB | localhost PostgreSQL — fine | Migrate to RDS (change DATABASE_URL only) |
+| Listener uptime | systemd restart on failure — fine | Add CloudWatch alarm on process death |
+| Dashboard concurrency | gunicorn 2 workers — fine for 1 user | Add workers if multiple users |
+| Session backup | Manual S3 copy — acceptable | Automate with cron + aws cli |
 
 ---
 
 ## Sources
 
-- Telethon Events Reference: https://docs.telethon.dev/en/stable/quick-references/events-reference.html
-- Telethon Update Events (NewMessage, MessageEdited): https://docs.telethon.dev/en/stable/modules/events.html
-- Telethon PostgreSQL session storage: https://github.com/alozovskoy/telethon_postgres_sessionstorage
-- FastAPI + PostgreSQL + WebSockets (real-time dashboard pattern): https://testdriven.io/blog/fastapi-postgres-websockets/
-- FastAPI + Jinja2 + HTMX server-rendered dashboards: https://www.johal.in/fastapi-templating-jinja2-server-rendered-ml-dashboards-with-htmx-2025-3/
-- asyncpg (async PostgreSQL alternative): https://github.com/MagicStack/asyncpg
-- PostgreSQL LISTEN/NOTIFY with asyncio: https://gist.github.com/kissgyorgy/beccba1291de962702ea9c237a900c79
-- PostgreSQL upsert (INSERT ON CONFLICT): https://www.geeksforgeeks.org/postgresql/postgresql-upsert/
+- AWS Lightsail pricing (official): https://aws.amazon.com/lightsail/pricing/
+- EC2 t3.micro on-demand pricing (us-east-1): https://www.economize.cloud/resources/aws/pricing/ec2/t3.micro/ — HIGH confidence (current April 2026)
+- EC2 EBS persistence across stop/start: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-store-lifetime.html — HIGH confidence (official AWS docs)
+- Self-hosted PostgreSQL vs RDS cost (40-60% savings): https://medium.com/amazon-web-services/by-using-postgresql-on-ec2-save-40-to-60-cost-over-aws-rds-postgresql-e96afdd2210b — MEDIUM confidence (AWS community blog)
+- Dash + gunicorn production deploy: https://community.plotly.com/t/dash-plotly-in-production-with-nginx-gunicorn/82863 — MEDIUM confidence (Plotly community forum, multiple confirmations)
+- Telethon FloodWait crash-loop escalation: https://github.com/tomcounsell/ai/issues/509 — MEDIUM confidence (real-world incident report)
+- Telethon daemon reconnection config: https://docs.telethon.dev/en/stable/modules/client.html — HIGH confidence (official docs)
+- Lightsail vs EC2 cost comparison: https://www.clustox.com/blog/aws-lightsail-vs-ec2/ — MEDIUM confidence (verified against official pricing)
+
+---
+
+*Architecture research for: HelperTips v1.1 Cloud Deploy — AWS deployment*
+*Researched: 2026-04-03*

@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** HelperTips — Futebol Virtual (Telegram Signal Capture + Betting Analytics Dashboard)
-**Domain:** Telegram user-client listener + PostgreSQL signal store + Python analytics dashboard
-**Researched:** 2026-04-02
+**Project:** HelperTips — Futebol Virtual
+**Domain:** Telegram signal capture + betting analytics dashboard + cloud deployment (AWS)
+**Researched:** 2026-04-02 (aplicação v1.0) / 2026-04-03 (cloud deploy v1.1)
 **Confidence:** HIGH
 
 ## Executive Summary
 
-HelperTips is a personal analytics tool for capturing and analyzing virtual football betting signals from a private Telegram group. The architecture follows a three-layer pipeline: an async Telethon listener captures raw messages and result edits, a stateless regex parser structures them into typed records, and a PostgreSQL database persists them via upsert. A read-only Plotly Dash dashboard then surfaces win rates, ROI simulations, and multi-dimensional filters over that data. Research confirms this is a well-trodden domain — comparable platforms (betr.pro, greenvirtual.com.br, Smartbet.io) validate the feature set. The technology choices are mature and low-risk individually, but their combination introduces one concrete async/sync integration hazard that must be resolved in Phase 1.
+HelperTips é uma ferramenta pessoal de captura e análise de sinais de apostas em futebol virtual. O padrão estabelecido para esse tipo de sistema é: (1) um processo daemon long-running que conecta ao Telegram via MTProto e persiste dados em PostgreSQL, e (2) um dashboard web Python-only que transforma esses dados em estatísticas acionáveis. A pesquisa confirma que a stack original (Telethon + psycopg2 + Plotly Dash) é sólida, com um ajuste de versão — Telethon 1.42 (não 1.37) e Dash 4.1 como releases atuais estáveis. Para deploy em produção, a arquitetura recomendada é dois processos systemd separados em uma única EC2 t3.micro, com PostgreSQL self-hosted na mesma instância, fronteados por nginx como reverse proxy. Custo total: ~$9-12/mês vs ~$28/mês se usasse RDS separado.
 
-The recommended approach is to build and validate the listener pipeline before touching the dashboard. The listener is the irreplaceable core: if it drops messages, all downstream analytics are silently wrong. Once signals are flowing reliably into PostgreSQL, the dashboard is additive and can be extended incrementally without touching the data model. Plotly Dash is the correct framework choice for this problem — it handles multi-filter interactive analytics in pure Python, without the complexity of a JavaScript frontend or the weak callback model of Streamlit. Two separate processes (listener.py and dashboard.py) sharing a single PostgreSQL database is the recommended process model for fault isolation.
+Os dois riscos mais graves são: (1) a sincronização incorreta entre o loop asyncio do Telethon e as chamadas bloqueantes do psycopg2, que silenciosamente descarta sinais sob carga — resolvida com `asyncio.to_thread()`; e (2) vazar o arquivo `.session` do Telethon ou credenciais no histórico Git antes de tornar o repositório público — credenciais Telegram comprometem a conta inteira e não expiram automaticamente. Ambos são evitáveis com padrões simples definidos desde o início.
 
-The primary risk is data integrity at the listener layer. Three pitfalls directly threaten it: psycopg2 blocking the asyncio event loop (silent message drops), missing messages during downtime (no automatic gap recovery in Telethon), and regex parser failures that store corrupt or null records silently. All three must be mitigated in Phase 1 before the data is trusted enough to build a dashboard on. Secondary risks — small-sample statistical overconfidence in the dashboard, Telegram session security — are real but lower urgency and map naturally to Phase 2 hardening.
+A ordem de construção é ditada por dependências concretas: a fundação de dados (listener + storage) deve ser validada antes de construir analytics; a auditoria de segurança e publicação no GitHub deve preceder qualquer deploy na AWS; e a autenticação interativa do Telethon deve ocorrer antes de configurar o serviço systemd, pois requer TTY e código SMS. Não há ambiguidade nas dependências de fase.
 
 ---
 
@@ -19,152 +19,182 @@ The primary risk is data integrity at the listener layer. Three pitfalls directl
 
 ### Recommended Stack
 
-The stack is deliberately minimal for a personal single-user tool. Telethon 1.42.0 (user-client MTProto) is the only viable path into a private Telegram group — bots cannot join without admin rights. psycopg2-binary handles PostgreSQL writes with zero build-tooling overhead; sync I/O is acceptable at the write frequency of this use case (tens of signals per day) provided writes are wrapped in `asyncio.to_thread()` to avoid blocking the event loop. Plotly Dash 4.1.0 with dash-bootstrap-components 2.0 delivers the full analytics dashboard in pure Python. Python 3.12+ is required to support all dependencies cleanly. See [STACK.md](.planning/research/STACK.md) for full rationale and version pinning strategy.
+A stack é Python-only sem JavaScript, mantendo escopo mínimo para uma ferramenta pessoal. Telethon 1.42.0 é a única biblioteca que conecta como user-client (não bot) em grupos privados. psycopg2-binary (sync) é suficiente para a frequência de escrita — poucos registros por hora — desde que as chamadas sejam wrapped em `asyncio.to_thread()`. Plotly Dash 4.1.0 entrega dashboards interativos com callbacks reativas sem exigir JavaScript. Para produção, dois processos Python separados são mandatórios: Telethon bloqueia o asyncio loop; Dash bloqueia o processo via Flask. Não é possível rodar ambos no mesmo processo. Ver [STACK.md](.planning/research/STACK.md) para rationale completo e estratégia de pinning de versões.
 
 **Core technologies:**
-- **Telethon 1.42.0**: Telegram user-client listener — only library that can join private groups without admin rights; native `events.MessageEdited` support covers the result-update pattern
-- **psycopg2-binary 2.9.x**: PostgreSQL sync driver — zero build dependencies, appropriate for low-write personal tool, must be wrapped in `asyncio.to_thread()` in event handlers
-- **PostgreSQL 16**: Relational store — JSONB for raw metadata, UNIQUE constraint on `message_id` enables atomic upsert deduplication, window functions support ROI/streak analytics
-- **Plotly Dash 4.1.0 + dash-bootstrap-components 2.0**: Analytics dashboard — pure-Python multi-filter interactive charts, no JavaScript required, Bootstrap 5 responsive layout
-- **python-dotenv 1.x**: Configuration — keeps `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, and DB credentials out of source code
-- **Python 3.12+**: Runtime — supported by all dependencies, best performance and error messages in current stable
+- **Telethon 1.42.0**: user-client MTProto — única opção para grupos privados sem ser admin; `events.MessageEdited` nativo cobre o padrão de resultado-por-edição
+- **psycopg2-binary 2.9.x**: driver sync PostgreSQL — zero build-tooling; sync é aceitável na frequência de escrita atual; `asyncio.to_thread()` é obrigatório
+- **PostgreSQL 16**: storage relacional — JSONB para metadados, upsert `ON CONFLICT`, window functions para ROI e streak analytics
+- **Plotly Dash 4.1.0 + dash-bootstrap-components 2.0**: dashboard Python-only — callbacks reativas para filtros cruzados; Bootstrap 5 responsive
+- **python-dotenv 1.x**: gestão de secrets — padrão de indústria para ferramentas pessoais
+- **Python 3.12+**: runtime — suportado por todas as dependências; melhor performance e mensagens de erro da versão atual
 
-**Critical version/integration note:** Dash and Telethon must run in separate processes. Telethon's `client.run_until_disconnected()` blocks the asyncio loop; Dash's `app.run()` blocks the process. Do not attempt to run both in the same process.
+**Stack de deploy (produção):**
+- **Docker Compose 2.x OU systemd**: orquestração de processos — ambas as abordagens são equivalentes; escolher uma antes de planejar deploy
+- **Caddy 2 (Docker) ou nginx (systemd)**: reverse proxy com TLS automático
+- **EC2 t3.micro**: compute ($7.59/mês); t3.small ($15.18) como fallback se RAM for limitante
+- **EBS gp3 20GB**: storage persistente ($1.60/mês); `.session` e dados PostgreSQL vivem aqui
 
 ### Expected Features
 
-Research across five comparable betting analytics platforms confirms a clear division between table stakes and differentiators for this domain. See [FEATURES.md](.planning/research/FEATURES.md) for full feature tree and dependency graph.
+A pesquisa de features cobre duas camadas: features da aplicação (v1.0) e features de deploy/segurança (v1.1). Ver [FEATURES.md](.planning/research/FEATURES.md) para árvore completa e grafo de dependências.
 
-**Must have (table stakes) — MVP:**
-- Signal capture in real time (Telethon NewMessage + MessageEdited)
-- Deduplication — ON CONFLICT upsert; without this, stats are meaningless
-- Result tracking (GREEN / RED) from edit events
-- Total signal count + win rate — first thing any bettor checks
-- ROI simulation with fixed stake — baseline profitability question
-- Filter by liga (league) and filter by entrada (bet type)
-- Signal history list (paginated, filterable)
-- Pending signals view (NULL resultado, excluded from win-rate denominator)
-- Terminal startup summary — validates pipeline is running before dashboard is built
+**Must have (table stakes) — aplicação:**
+- Captura em tempo real (Telethon NewMessage + MessageEdited)
+- Deduplicação via upsert — sem isso, stats são inválidas
+- Rastreamento de resultado (GREEN/RED) via edit events
+- Win rate + total sinais — primeira coisa que qualquer apostador verifica
+- Simulação de ROI com stake fixo — pergunta base de lucratividade
+- Filtro por liga e por entrada
+- Histórico de sinais paginado e filtrável
+- Sinais pendentes (resultado NULL, excluídos do denominador de win rate)
+- Sumário de terminal no startup — valida pipeline antes do dashboard
 
-**Should have (differentiators) — v1.1 after MVP validation:**
-- Win rate by time of day (horario heatmap) — tests RNG cycle hypothesis
-- Win rate by day of week (dia_semana)
-- Win rate by period (1T / 2T / FT)
-- Equity curve chart (cumulative bankroll over time)
-- Cross-dimensional analysis (liga + entrada + periodo combined filter)
-- Signal volume chart by day/week
-- Raw message viewer (for parser debugging)
+**Must have (table stakes) — deploy/segurança:**
+- `debug=False` em produção — `debug=True` com porta aberta = execução remota de código
+- gunicorn como WSGI server — Werkzeug não é production-safe
+- systemd units para listener e dashboard — processos morrem sem gerenciamento
+- Security Group EC2 restrito — porta 8050 e SSH limitados ao IP pessoal
+- Auditoria de histórico Git — secrets em commits antigos ficam públicos para sempre
+- EnvironmentFile com `chmod 600` — secrets nunca no repositório
 
-**Defer to v2+:**
-- Streak tracking — requires 100+ signals to be meaningful; add after data accumulates
-- Gale analysis — requires schema changes for sequence grouping; validate demand first
-- Parser coverage rate in dashboard — useful but low priority vs. actual signal data
+**Should have (diferenciadores):**
+- Win rate por horário (heatmap), dia da semana, e período (1T/2T/FT)
+- Equity curve (bankroll acumulado ao longo do tempo)
+- Filtro cruzado multi-dimensional (liga + entrada + período)
+- nginx + HTTP Basic Auth — camada adicional de proteção
+- GitHub Actions CI — pytest no push
+- Dependabot alerts
 
-**Anti-features (explicitly out of scope):** bet automation, multi-group support, odds tracking (not in Telegram messages), Kelly Criterion, social features, predictive/AI scoring, real-time WebSocket push.
+**Defer (v2+):**
+- Streak tracking — requer 300+ sinais para ser significativo
+- Análise de Gale — requer mudanças de schema; validar demanda primeiro
+- HTTPS/Certbot — só necessário se dashboard migrar para domínio público
+- AWS RDS — PostgreSQL self-hosted é $15-25/mês mais barato sem perda funcional
 
 ### Architecture Approach
 
-The system is three pipeline stages (Listener → Parser → Store) feeding one read-only consumer (Dashboard), deployed as two separate processes sharing a PostgreSQL database. The Listener maintains the Telegram connection and routes raw text to the Parser. The Parser is a pure function (`parse_message(text: str) -> dict | None`) with zero database or Telethon imports — independently testable. The Store executes a single upsert path (`INSERT ... ON CONFLICT (message_id) DO UPDATE`) that handles both new signals and result edits without branching logic. The Dashboard API is strictly read-only. See [ARCHITECTURE.md](.planning/research/ARCHITECTURE.md) for component boundary rules, full SQL schema, and process model comparison.
+A arquitetura é single-instance deliberada: dois processos Python (listener asyncio + dashboard gunicorn) e PostgreSQL na mesma EC2, acessando banco via `localhost:5432`. Não há rede interna entre serviços além do PostgreSQL. O reverse proxy (nginx ou Caddy) é o único ponto de entrada público. Cada processo tem seu próprio systemd unit com restart independente — crash do listener não reinicia o dashboard. Todo estado persistente (`.session`, dados PostgreSQL, `.env`) vive no volume EBS root. Ver [ARCHITECTURE.md](.planning/research/ARCHITECTURE.md) para diagrams, SQL schema, e build order detalhado.
 
 **Major components:**
-1. **Listener** — maintains persistent Telethon connection; receives NewMessage and MessageEdited events; calls Parser then Store; never touches SQL directly
-2. **Parser** — stateless pure function; regex extraction of liga, entrada, horario, periodo, resultado, placar from raw text; returns structured dict or None on no-match
-3. **Store** — repository layer; psycopg2 upsert to PostgreSQL; owns connection pool; wraps all calls in `asyncio.to_thread()` for event-loop safety
-4. **PostgreSQL 16** — single source of truth; signals table with UNIQUE(message_id); indexes on liga, entrada, resultado, received_at
-5. **Dashboard (Plotly Dash)** — read-only; callbacks drive filter interactions; connects directly to PostgreSQL for aggregate queries
-
-**Recommended build order:** Schema → Parser → Store → Listener → Terminal stats → Dashboard. This order lets each layer be validated independently before the next is added.
+1. **Telegram Listener** (`listener.py`) — daemon asyncio, Telethon 1.42, escreve via `asyncio.to_thread()`, `RestartSec=60` para evitar FloodWait loop
+2. **Parser** — função pura stateless, regex extraction, zero imports de DB ou Telethon, testável isoladamente
+3. **Store** — repository layer, upsert único, connection pool, wrapping asyncio
+4. **Analytics Dashboard** (`dashboard.py`) — Plotly Dash servido por gunicorn (2 workers), leitura apenas, porta 8050 localhost-only
+5. **PostgreSQL 16** — single source of truth, binds em `127.0.0.1`, acessado pelos dois processos
+6. **Reverse Proxy** (nginx ou Caddy) — termina TLS, proxy para gunicorn, Basic Auth opcional
+7. **EBS root volume** — single source of truth para `.session`, dados PostgreSQL, `.env`
 
 ### Critical Pitfalls
 
-Research identified 5 critical pitfalls (data loss or rewrite risk) and 5 moderate/minor pitfalls. See [PITFALLS.md](.planning/research/PITFALLS.md) for full prevention patterns and detection methods.
+Research identificou 16 pitfalls total (6 críticos, 5 moderados, 5 menores). Ver [PITFALLS.md](.planning/research/PITFALLS.md) para padrões de prevenção e detecção completos.
 
-1. **psycopg2 blocks the asyncio event loop** — wrap every DB call in `asyncio.to_thread()` from day one; failure causes silent message drops under burst traffic; must address in Phase 1
-2. **`.session` file committed to git** — add `*.session` and `.env` to `.gitignore` before the first commit; session file is equivalent to handing over the Telegram account
-3. **Duplicate records from edit events** — use upsert-only write path (ON CONFLICT); treating NewMessage and MessageEdited as independent INSERTs corrupts ROI stats; design into Phase 1 schema
-4. **Regex parser fails silently** — store `raw_text` in every row; log every unmatched message with a warning; parse failures are invisible without explicit logging; Phase 1 requirement
-5. **Messages missed while listener is offline** — add crash-recovery `try/except` in all event handlers; build a startup backfill utility that replays from last known `message_id`; Telethon's `catch_up=True` has documented bugs and should not be relied upon
-6. **Session invalidated by concurrent process** (`AuthKeyDuplicatedError`) — use a process lock file and a distinctive session name; never run two scripts against the same session simultaneously
+**Top 5 — devem ser endereçados antes de qualquer outra coisa:**
+
+1. **psycopg2 bloqueia o event loop do Telethon** — descarte silencioso de mensagens sob burst; `asyncio.to_thread()` obrigatório desde o primeiro handler; Fase 1
+
+2. **Arquivo `.session` ou `.env` no histórico Git** — credenciais Telegram sem expiração; `git log --all --full-diff -p -- .env *.session` antes de qualquer push público; usar BFG se já ocorreu; Pré-Fase de deploy
+
+3. **Registros duplicados de edit events** — INSERT em vez de upsert corrompe ROI; `ON CONFLICT (message_id) DO UPDATE` é o único caminho de escrita; design da Fase 1
+
+4. **Parser falha silenciosamente** — dados corrompidos acumulam sem alerta; armazenar `raw_text` em cada linha; logar mensagens que não matcham; Fase 1
+
+5. **Dashboard exposto sem autenticação + debug=True** — `debug=True` com porta aberta = debugger Flask acessível na internet (RCE); Security Group restrito + `debug=False` via env var; antes de qualquer deploy
 
 ---
 
 ## Implications for Roadmap
 
-Based on the dependency graph from ARCHITECTURE.md, the feature tree from FEATURES.md, and the phase-specific warnings from PITFALLS.md, the following phase structure is recommended.
+Baseado no grafo de dependências do ARCHITECTURE.md, na árvore de features do FEATURES.md, e nos avisos por fase do PITFALLS.md, a estrutura de fases recomendada é:
 
-### Phase 1: Foundation — Listener Pipeline + Data Model
+### Phase 1: Fundação — Listener Pipeline + Data Model
 
-**Rationale:** Everything downstream depends on signals landing correctly in PostgreSQL. Dashboard analytics are meaningless if the capture layer has data integrity problems. All 5 critical pitfalls from research are Phase 1 concerns. No dashboard work should begin until this phase is validated with real Telegram data.
+**Rationale:** Tudo downstream depende de sinais chegando corretamente ao PostgreSQL. Dashboard analytics são inúteis se a camada de captura tem problemas de integridade. Todos os pitfalls críticos da aplicação são concerns da Fase 1. Nenhum trabalho de dashboard deve começar antes desta fase ser validada com dados Telegram reais.
 
-**Delivers:** A running listener that captures signals and result edits from the VIP group, stores them in PostgreSQL via upsert, prints a startup stats summary, and can survive process restarts without data loss.
+**Delivers:** Listener rodando localmente capturando sinais e result edits do grupo VIP, armazenados via upsert, sumário de terminal no startup, survivable a restarts sem perda de dados.
 
-**Addresses:** Signal capture, deduplication, result tracking, startup terminal summary, data persistence across restarts (all table stakes from FEATURES.md).
+**Addresses:** Captura de sinais, deduplicação, result tracking, persistência (todos os table stakes de aplicação do FEATURES.md).
 
-**Avoids:** Pitfall 1 (asyncio blocking), Pitfall 2 (session collision), Pitfall 3 (offline message gap), Pitfall 4 (session in git), Pitfall 5 (silent parse failures), Pitfall 7 (duplicate records from edit events).
+**Avoids:** Pitfall 1 (asyncio blocking), Pitfall 2 (session collision), Pitfall 3 (messages offline), Pitfall 4 (session no git), Pitfall 5 (parse failures), Pitfall 7 (duplicatas por edit events).
 
-**Key implementation decisions from research:**
-- `.gitignore` must include `*.session` and `.env` before first commit
-- Parser is a separate module with unit tests and no external dependencies
-- `asyncio.to_thread()` wraps every psycopg2 call in the listener
-- Upsert is the only write path — no SELECT-then-INSERT patterns
-- `raw_text` column stored on every row for re-parsing
+**Decisões críticas de implementação:**
+- `.gitignore` com `*.session` e `.env` antes do primeiro commit
+- Parser como módulo separado com unit tests, zero dependências externas
+- `asyncio.to_thread()` em toda chamada psycopg2 dentro de handlers
+- Upsert como único caminho de escrita
+- Coluna `raw_text` em cada linha
 
-### Phase 2: Core Dashboard — Aggregate Stats + Filtering
+### Phase 2: Core Dashboard — Stats Agregadas + Filtros
 
-**Rationale:** Once the listener is producing clean data, the dashboard delivers the primary user value: answering "are these signals profitable?" The MVP dashboard is read-only SQL queries with filter UI — no complex analytics yet.
+**Rationale:** Com dados confiáveis na base, o dashboard entrega o valor primário ao usuário. O MVP dashboard é SQL read-only com filtros UI — sem analytics complexos ainda.
 
-**Delivers:** A Plotly Dash dashboard showing win rate, total signals, pending count, ROI simulation with fixed stake, and filter controls for liga and entrada. Signal history list with pagination.
+**Delivers:** Dashboard Plotly Dash com win rate, total de sinais, contagem de pendentes, simulação ROI, filtros de liga e entrada. Lista de histórico com paginação.
 
-**Addresses:** Dashboard aggregate stats, filter by liga, filter by entrada, ROI simulation, signal history list (all MVP table stakes from FEATURES.md MVP recommendation).
+**Addresses:** Stats agregadas, filtros, ROI, histórico (todos os table stakes de dashboard do FEATURES.md).
 
-**Uses:** Plotly Dash 4.1.0 + dash-bootstrap-components; read-only PostgreSQL queries; separate process from listener.
+**Uses:** Plotly Dash 4.1.0 + dash-bootstrap-components 2.0; queries PostgreSQL read-only; processo separado do listener.
 
-**Avoids:** Pitfall 6 (small-sample overconfidence) — add signal count annotation to every stat card from day one; Pitfall 8 (hardcoded filter strings) — all filter options loaded dynamically from `SELECT DISTINCT`.
+**Avoids:** Pitfall 6 (sample size sem aviso) — anotação de contagem em cada stat card desde o início; Pitfall 8 (filtros hardcoded) — todas as opções carregadas dinamicamente de `SELECT DISTINCT`.
 
-### Phase 3: Analytics Depth — Dimensional Breakdown + Equity Curve
+### Phase 3: Analytics Depth — Breakdowns Dimensionais + Equity Curve
 
-**Rationale:** After the MVP dashboard validates the pipeline with real data, add the differentiating analytics that go beyond generic bet trackers. These features require enough accumulated data (100+ signals) to be meaningful.
+**Rationale:** Após o MVP validar o pipeline com dados reais, adicionar os analytics diferenciadores que vão além de trackers genéricos. Essas features requerem dados acumulados suficientes (100+ sinais) para ser significativas.
 
-**Delivers:** Win rate broken down by horario (time-of-day heatmap), dia_semana, and periodo. Equity curve chart (running bankroll). Cross-dimensional filter (liga + entrada + periodo combined). Signal volume chart.
+**Delivers:** Win rate por horário (heatmap), dia da semana, período. Equity curve (bankroll acumulado). Filtro cruzado multi-dimensional. Gráfico de volume de sinais.
 
-**Addresses:** All v1.1 differentiators from FEATURES.md.
+**Addresses:** Todos os diferenciadores v1.1 do FEATURES.md.
 
-**Avoids:** Pitfall 6 — sample-size warnings on every breakdown view.
+**Avoids:** Pitfall 6 — avisos de sample size em cada view de breakdown.
 
-### Phase 4: Reliability Hardening + Backfill Utility
+### Phase 4: Segurança + Publicação GitHub
 
-**Rationale:** After the tool has been running in production and data is accumulating, invest in operational reliability. These are not blockers for value delivery but become important for long-term trust in the dataset.
+**Rationale:** Auditoria de segurança é pré-requisito estrito para publicação. Deve ocorrer antes de criar qualquer recurso AWS para evitar vazamento em repositório público.
 
-**Delivers:** Startup backfill utility that replays missed messages from last known `message_id`. `FloodWaitError` handling with exact-second sleep. Connection pool cap for concurrent listener + dashboard DB access. Raw message viewer in dashboard for parser debugging.
+**Delivers:** Repositório limpo de secrets (histórico auditado), `.gitignore` verificado, `.env.example` documentado, README.md, repositório público no GitHub, gunicorn adicionado ao requirements.txt.
 
-**Addresses:** Pitfall 3 (offline message gap recovery), Pitfall 9 (account ban from aggressive API calls), Pitfall 10 (connection pool exhaustion).
+**Addresses:** Todos os table stakes de segurança do FEATURES.md v1.1.
 
-### Phase 5: Advanced Analytics (v2, Demand-Validated)
+**Avoids:** Pitfall 11 (secrets no histórico Git), Pitfall 13 (dashboard exposto + debug=True).
 
-**Rationale:** Streak tracking and gale analysis require sufficient historical data and confirmed user demand before investing in schema changes.
+### Phase 5: Deploy AWS — Infraestrutura + Listener
 
-**Delivers:** Streak tracking (current and historical win/loss streaks by league/entry). Gale analysis (win rate at gale-1, gale-2, gale-3 levels). Parser coverage rate in dashboard.
+**Rationale:** Infraestrutura deve estar provisionada antes do deploy dos processos. A autenticação interativa do Telethon é um constraint crítico — deve ocorrer interativamente via SSH antes de converter o listener em serviço systemd.
 
-**Addresses:** v2+ features from FEATURES.md — deferred until 300+ signals exist and demand is confirmed.
+**Delivers:** EC2 t3.micro provisionada (ou t3.small), Elastic IP, Security Group configurado, billing alert ativo, PostgreSQL no EC2, EnvironmentFile `chmod 600`, listener rodando via systemd com sessão autenticada.
+
+**Uses:** Docker Compose OU systemd (escolher antes de planejar); PostgreSQL 16 self-hosted; Caddy ou nginx.
+
+**Avoids:** Pitfall 12 (sessão duplicada local+EC2), Pitfall 14 (surpresas de custo), Pitfall 15 (credenciais em logs), Pitfall 16 (listener sem systemd).
+
+### Phase 6: Deploy AWS — Dashboard + Reverse Proxy
+
+**Rationale:** Dashboard só pode ser deployado após infraestrutura base estar estável (PostgreSQL acessível, listener funcional na EC2).
+
+**Delivers:** gunicorn servindo o dashboard, nginx ou Caddy como reverse proxy, `debug=False` via env var, porta 8050 acessível apenas via proxy, opcionalmente HTTP Basic Auth.
+
+**Implements:** Componente Reverse Proxy da arquitetura.
+
+**Avoids:** Pitfall 13 (debug=True em produção), anti-pattern de rodar Dash dev server na porta 80.
 
 ### Phase Ordering Rationale
 
-- Schema and Parser come before Store and Listener because unit tests validate them without a running database or Telegram connection
-- Listener is validated before dashboard because corrupt input data cannot be fixed by UI polish
-- Core dashboard (Phase 2) precedes analytics depth (Phase 3) because descriptive stats need sample validation before cross-dimensional breakdown is meaningful
-- Reliability hardening (Phase 4) comes after the tool proves its value in production rather than front-loading infrastructure
-- Two-process deployment model (listener.py + dashboard.py) is the correct default from Phase 2 onwards — do not attempt single-process async/sync mixing
+- Schema e Parser antes de Store e Listener: unit tests validam sem banco ou Telegram rodando
+- Listener validado antes do dashboard: dados corrompidos não se corrigem com polimento de UI
+- Fase 4 (segurança + GitHub) antes das Fases 5 e 6 (deploy AWS): repositório público com secrets é dano imediato às credenciais Telegram
+- Autenticação interativa do Telethon é hard constraint de ordering dentro da Fase 5: requer TTY, não pode ser automatizado
+- Fase 6 (dashboard) depende de gunicorn adicionado na Fase 4 e PostgreSQL acessível da Fase 5
 
 ### Research Flags
 
-Phases needing deeper research during planning:
-- **Phase 1 — Parser:** Actual Telegram message format from the VIP group must be sampled before writing regex. Research was based on general virtual football group patterns. If message format differs significantly, regex patterns need adjustment. Capture 10–20 real messages before finalizing the parser.
-- **Phase 4 — Backfill utility:** Telethon's `client.get_messages()` gap-filling behavior on private megagroups needs validation against the actual group type. GitHub issues document inconsistencies. Test with the real group before relying on it.
+Fases que provavelmente precisam de pesquisa adicional durante o planejamento:
+- **Fase 1 — Parser:** O formato exato das mensagens do grupo `{VIP} ExtremeTips` não foi verificado. A pesquisa baseou-se em padrões gerais de grupos de futebol virtual. Capturar 10–20 mensagens reais antes de finalizar o parser. Risco de mudança de formato em produção é alto.
+- **Fase 5 — Docker vs systemd:** STACK.md favorece Docker+Caddy; ARCHITECTURE.md favorece systemd+nginx. Ambos chegam ao mesmo resultado. O roadmapper deve escolher uma única abordagem antes de detalhar as tasks da Fase 5.
 
-Phases with standard patterns (no additional research needed):
-- **Phase 2 — Dashboard:** Plotly Dash callback patterns for multi-filter dashboards are well-documented with official examples
-- **Phase 3 — Analytics queries:** GROUP BY and window function SQL patterns are standard; no domain-specific unknowns
-- **Phase 5 — Gale analysis:** Requires product decision before implementation, not research
+Fases com padrões estabelecidos (dispensam pesquisa adicional):
+- **Fase 2 — Dashboard:** Padrões de callback Dash, filtros dinâmicos e connection pooling são amplamente documentados
+- **Fase 3 — Analytics queries:** GROUP BY e window functions SQL são padrão; sem unknowns de domínio
+- **Fase 4 — Auditoria Git:** Processo determinístico com comandos específicos já documentados em PITFALLS.md
+- **Fase 6 — nginx/Caddy + gunicorn:** Configuração padrão amplamente documentada
 
 ---
 
@@ -172,18 +202,20 @@ Phases with standard patterns (no additional research needed):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All primary choices verified against official PyPI pages and documentation. Telethon 1.42.0 and Dash 4.1.0 confirmed current stable releases. |
-| Features | HIGH (table stakes) / MEDIUM (differentiators) | Table stakes validated against 5 comparable platforms. Differentiators (horario heatmap, gale analysis) are domain-specific to virtual football groups — community-sourced, one primary Brazilian source (greenvirtual.com.br). |
-| Architecture | HIGH | Core patterns (upsert, two-process model, pure-function parser) verified against official Telethon docs and PostgreSQL documentation. Build order validated by component dependency analysis. |
-| Pitfalls | HIGH (async/session), MEDIUM (statistics) | Async/session pitfalls sourced from official Telethon docs and GitHub issues with confirmed issue numbers. Small-sample statistics pitfall sourced from betting analytics community blogs. |
+| Stack | HIGH | Todas as escolhas verificadas contra docs oficiais e PyPI. Telethon 1.42.0 e Dash 4.1.0 confirmados como releases estáveis atuais. Stack de deploy (EC2, Docker, Caddy) com custos verificados em múltiplas fontes. |
+| Features | HIGH (table stakes) / MEDIUM (diferenciadores) | Table stakes validados contra 5 plataformas comparáveis. Diferenciadores de analytics (horário, gale) são específicos do domínio futebol virtual — fonte primária brasileira (greenvirtual.com.br). |
+| Architecture | HIGH | Padrões de EC2 + systemd + PostgreSQL self-hosted amplamente documentados. Build order validado por análise de dependências de componentes. Custos verificados em fontes múltiplas (oficial AWS + comparativos). |
+| Pitfalls | HIGH (app + deploy) | Pitfalls da aplicação têm fontes oficiais (Telethon docs, GitHub issues com números confirmados). Pitfalls de cloud têm múltiplas fontes secundárias concordando. Pitfall de secrets no Git tem estatísticas de 2025 do Snyk. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Actual message format:** The parser regex must be written against real captured messages from the VIP group. No external source could verify the exact format. Reserve a parser iteration after first real data is captured.
-- **Group type (megagroup vs channel):** Backfill behavior differs. Confirm whether the VIP group is a Telegram megagroup or broadcast channel before implementing the gap-recovery utility.
-- **Odds availability:** Research confirmed that virtual football signal messages typically do not include odds. If odds appear in the actual group's messages, the ROI model can be upgraded to yield-based ROI without schema changes (add an `odds` column).
+- **Formato exato das mensagens do grupo:** O parser regex deve ser escrito contra mensagens reais capturadas. Nenhuma fonte externa verificou o formato exato. Reservar uma iteração de parser após os primeiros dados reais serem capturados.
+- **Tipo do grupo (megagroup vs channel):** Comportamento do backfill difere. Confirmar se o grupo VIP é megagroup ou broadcast channel antes de implementar o utilitário de gap-recovery.
+- **Escolha Docker Compose vs systemd:** Ambas as abordagens estão documentadas com recomendações levemente divergentes entre STACK.md e ARCHITECTURE.md. Usuário ou roadmapper deve escolher antes de planejar as tasks da Fase 5.
+- **Dimensionamento EC2:** ARCHITECTURE.md recomenda t3.micro (1 GB RAM); FEATURES.md alerta que t3.small pode ser necessário. Com baseline de ~350 MB (Telethon + Dash + PostgreSQL), t3.micro tem ~650 MB de headroom — deve ser suficiente, mas monitorar no primeiro dia.
+- **Odds disponíveis nas mensagens:** A pesquisa confirmou que mensagens de futebol virtual tipicamente não incluem odds. Se aparecerem no grupo real, a coluna `odds` pode ser adicionada sem mudança de schema.
 
 ---
 
@@ -191,26 +223,30 @@ Phases with standard patterns (no additional research needed):
 
 ### Primary (HIGH confidence)
 - Telethon official docs 1.42.0 — events, sessions, errors, FAQ: https://docs.telethon.dev/
-- Telethon PyPI (version confirmation): https://pypi.org/project/Telethon/
-- Plotly Dash 4.1.0 installation docs: https://dash.plotly.com/installation
+- Telethon PyPI (confirmação de versão): https://pypi.org/project/Telethon/
+- Plotly Dash 4.1.0 official docs: https://dash.plotly.com/installation
+- Dash DevTools (riscos de debug=True em produção): https://dash.plotly.com/devtools
 - dash-bootstrap-components official: https://www.dash-bootstrap-components.com/
-- psycopg2 official installation guidance (binary vs compiled): https://www.psycopg.org/docs/install.html
-- PostgreSQL upsert (INSERT ON CONFLICT): https://www.geeksforgeeks.org/postgresql/postgresql-upsert/
-- Telethon GitHub issues (AuthKeyDuplicatedError #1488, catch_up bugs #3041 #4535 #746 #1125)
+- psycopg2 official (binary vs compiled): https://www.psycopg.org/docs/install.html
+- AWS EC2 docs (EBS, Security Groups): https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/
+- AWS Blog — IPv4 charge (fevereiro 2024): https://aws.amazon.com/blogs/aws/new-aws-public-ipv4-address-charge-public-ip-insights/
+- GitHub Docs — removing sensitive data: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository
+- Telethon GitHub issues #1488 (AuthKeyDuplicated), #3041 #4535 (catch_up bugs), #3753 (session security)
 
 ### Secondary (MEDIUM confidence)
-- greenvirtual.com.br — virtual football time filters, gale analysis, league breakdown features
-- betr.pro — equity curves, P&L tracking, Telegram signal integration features
-- Pikkit — cross-league performance, bet type filtering
-- HeatCheck HQ betting analytics overview 2026: https://heatcheckhq.io/blog/best-sports-betting-analytics-tools-2026
+- greenvirtual.com.br — features de filtro por horário, análise de gale, breakdown por liga
+- betr.pro — equity curves, P&L tracking, integração Telegram
+- Pikkit — filtros cross-liga e tipo de aposta
+- EC2 t3.micro pricing: https://www.economize.cloud/resources/aws/pricing/ec2/t3.micro/
+- RDS db.t4g.micro pricing: https://www.economize.cloud/resources/aws/pricing/rds/db.t4g.micro/
 - Streamlit vs Dash 2025: https://squadbase.dev/en/blog/streamlit-vs-dash-in-2025-comparing-data-app-frameworks
 - psycopg2 vs asyncpg benchmark: https://www.tigerdata.com/blog/psycopg2-vs-psycopg3-performance-benchmark
-- Betting small-sample statistics: https://www.predictology.co/blog/how-to-build-and-test-your-own-profitable-football-betting-systems/
+- Snyk State of Secrets 2025 (28.65M secrets vazados): https://snyk.io/articles/state-of-secrets/
+- Plotly community — Dash + gunicorn + nginx production patterns
 
 ### Tertiary (LOW confidence)
-- Kelly Criterion as advanced feature: https://en.wikipedia.org/wiki/Kelly_criterion — used only to justify deferring it to v2+
+- Nenhuma fonte de baixa confiança foi usada como base para recomendações críticas.
 
 ---
-
-*Research completed: 2026-04-02*
+*Research completed: 2026-04-03*
 *Ready for roadmap: yes*
