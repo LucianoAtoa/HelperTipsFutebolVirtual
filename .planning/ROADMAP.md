@@ -54,7 +54,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md — Dash dependencies + queries.py data layer (filtered stats, ROI calculation, signal history)
 - [x] 02-02-PLAN.md — Dashboard layout and reactive callbacks (dark theme, KPI cards, filters, charts, AG Grid)
-- [ ] 02-03-PLAN.md — Visual and functional verification checkpoint
+- [x] 02-03-PLAN.md — Visual and functional verification checkpoint
 **UI hint**: yes
 
 ### Phase 02.1: Market Config (INSERTED)
@@ -69,7 +69,7 @@ Plans:
   3. Sinal RED (sem placar) faz todas complementares retornarem RED automaticamente
   4. Card ROI Complementares no dashboard mostra tabela de breakdown por mercado quando entrada filtrada
   5. Card mostra alerta "Selecione uma entrada" quando sem filtro de entrada
-**Plans:** 4/4 plans complete
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 02.1-01-PLAN.md — Schema extension: tabelas mercados + complementares + seed data em ensure_schema()
