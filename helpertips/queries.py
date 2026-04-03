@@ -9,12 +9,14 @@ Provides filtered SQL queries and pure-Python ROI calculation:
   - _parse_placar: convert 'X-Y' string to (int, int) tuple
   - _REGRA_VALIDATORS: dispatch dict for complementary market validation rules
   - validar_complementar: determine GREEN/RED/None for a complementary market
+  - get_complementares_config: query complementary market config for a given mercado slug
+  - calculate_roi_complementares: pure Python ROI for complementary markets with Gale support
 
 Design notes:
   - All SQL uses %s parameterized queries — no f-strings for values
   - get_distinct_values validates the field name against an allowlist to prevent
     SQL injection (field name cannot be parameterized in PostgreSQL)
-  - calculate_roi is pure Python and has zero dependencies on DB or Dash
+  - calculate_roi and calculate_roi_complementares are pure Python with zero DB or Dash deps
   - validar_complementar is pure Python with no DB dependency
   - This module is SYNC ONLY — caller wraps in asyncio.to_thread() if needed
 """
@@ -352,3 +354,168 @@ def validar_complementar(
 
     casa, fora = parsed
     return "GREEN" if validator(casa, fora) else "RED"
+
+
+# ---------------------------------------------------------------------------
+# Complementary market config query
+# ---------------------------------------------------------------------------
+
+
+def get_complementares_config(conn, mercado_slug: str) -> list[dict]:
+    """
+    Retorna a lista de mercados complementares para um slug de mercado principal.
+
+    Executa um JOIN entre complementares e mercados, filtrando pelo slug do mercado
+    principal e garantindo que o mercado esteja ativo.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    mercado_slug : str
+        Slug do mercado principal (ex: 'over_2_5', 'ambas_marcam').
+
+    Retorna
+    -------
+    list[dict]
+        Lista de dicts com chaves: id, slug, nome_display, percentual, odd_ref, regra_validacao.
+        Ordenada por percentual DESC, slug ASC.
+        Lista vazia se o mercado nao existir ou nao estiver ativo.
+    """
+    sql = """
+        SELECT c.id, c.slug, c.nome_display, c.percentual, c.odd_ref, c.regra_validacao
+        FROM complementares c
+        JOIN mercados m ON c.mercado_id = m.id
+        WHERE m.slug = %s AND m.ativo = TRUE
+        ORDER BY c.percentual DESC, c.slug
+    """
+
+    with conn.cursor() as cur:
+        cur.execute(sql, (mercado_slug,))
+        columns = [desc[0] for desc in cur.description]
+        rows = cur.fetchall()
+
+    return [dict(zip(columns, row)) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# ROI de mercados complementares — puro Python, sem DB
+# ---------------------------------------------------------------------------
+
+
+def calculate_roi_complementares(
+    signals: list,
+    complementares_config: list[dict],
+    stake: float,
+    gale_on: bool,
+) -> dict:
+    """
+    Calcula o ROI para mercados complementares.
+
+    Puro Python — sem acesso ao banco. Sinais pendentes (resultado=None) sao ignorados.
+
+    A logica de Gale para complementares segue o mesmo padrao de calculate_roi(),
+    mas o stake base de cada complementar e `stake * percentual` em vez de `stake`.
+
+    Parametros
+    ----------
+    signals : list[dict]
+        Lista de dicts de sinais. Cada um deve ter 'resultado' (str|None),
+        'placar' (str|None) e 'tentativa' (int|None).
+    complementares_config : list[dict]
+        Config dos complementares — formato retornado por get_complementares_config().
+        Cada dict: id, slug, nome_display, percentual, odd_ref, regra_validacao.
+        percentual e odd_ref podem ser Decimal (do PostgreSQL) — convertidos para float
+        internamente.
+    stake : float
+        Stake base do sinal principal (ex: 100.0 para R$100).
+    gale_on : bool
+        False: Stake Fixa — stake_comp = stake * percentual em todos os sinais.
+        True: Gale — stake dobra em cada tentativa.
+              stake_comp_winning = stake * 2^(N-1) * percentual
+              stake_comp_acumulado = stake * (2^N - 1) * percentual
+
+    Retorna
+    -------
+    dict com chaves:
+        profit         — lucro total liquido
+        roi_pct        — profit / total_invested * 100 (0.0 se sem investimento)
+        total_invested — total apostado em todos os complementares resolvidos
+        por_mercado    — lista de dicts com: slug, nome_display, greens, reds, lucro, investido
+    """
+    # Filtra apenas sinais resolvidos (ignora pendentes)
+    resolved = [s for s in signals if s.get("resultado") is not None]
+
+    if not resolved or not complementares_config:
+        return {"profit": 0.0, "roi_pct": 0.0, "total_invested": 0.0, "por_mercado": []}
+
+    # Acumuladores por slug de complementar
+    per_comp: dict[str, dict] = {}
+    for comp in complementares_config:
+        per_comp[comp["slug"]] = {
+            "slug": comp["slug"],
+            "nome_display": comp["nome_display"],
+            "greens": 0,
+            "reds": 0,
+            "lucro": 0.0,
+            "investido": 0.0,
+        }
+
+    total_invested = 0.0
+    profit = 0.0
+
+    for signal in resolved:
+        tentativa = signal.get("tentativa") or 1
+
+        for comp in complementares_config:
+            # Converte Decimal do PostgreSQL para float antes de calcular
+            percentual = float(comp["percentual"])
+            odd_ref = float(comp["odd_ref"])
+            slug = comp["slug"]
+
+            resultado_comp = validar_complementar(
+                comp["regra_validacao"],
+                signal.get("placar"),
+                signal.get("resultado"),
+            )
+
+            if not gale_on:
+                # Stake Fixa: stake_comp fixo independente da tentativa
+                stake_comp = stake * percentual
+                invested = stake_comp
+
+                if resultado_comp == "GREEN":
+                    net = stake_comp * (odd_ref - 1)
+                    per_comp[slug]["greens"] += 1
+                else:
+                    net = -stake_comp
+                    per_comp[slug]["reds"] += 1
+            else:
+                # Gale: stake dobra a cada tentativa
+                # Acumulado = stake * (2^N - 1) * percentual
+                # Winning = stake * 2^(N-1) * percentual
+                accumulated_stake = stake * (2 ** tentativa - 1) * percentual
+                winning_stake = stake * (2 ** (tentativa - 1)) * percentual
+                invested = accumulated_stake
+
+                if resultado_comp == "GREEN":
+                    prior_losses = accumulated_stake - winning_stake
+                    net = winning_stake * (odd_ref - 1) - prior_losses
+                    per_comp[slug]["greens"] += 1
+                else:
+                    net = -accumulated_stake
+                    per_comp[slug]["reds"] += 1
+
+            per_comp[slug]["lucro"] += net
+            per_comp[slug]["investido"] += invested
+            total_invested += invested
+            profit += net
+
+    roi_pct = (profit / total_invested * 100) if total_invested > 0 else 0.0
+
+    return {
+        "profit": round(profit, 10),
+        "roi_pct": round(roi_pct, 10),
+        "total_invested": round(total_invested, 10),
+        "por_mercado": list(per_comp.values()),
+    }
