@@ -52,7 +52,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Dash dependencies + queries.py data layer (filtered stats, ROI calculation, signal history)
+- [x] 02-01-PLAN.md — Dash dependencies + queries.py data layer (filtered stats, ROI calculation, signal history)
 - [ ] 02-02-PLAN.md — Dashboard layout and reactive callbacks (dark theme, KPI cards, filters, charts, AG Grid)
 - [ ] 02-03-PLAN.md — Visual and functional verification checkpoint
 **UI hint**: yes

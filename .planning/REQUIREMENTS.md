@@ -41,12 +41,12 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Dashboard — Stats Core
 
 - [ ] **DASH-01**: Dashboard web com interface elaborada e responsiva
-- [ ] **DASH-02**: Card de estatísticas: total de sinais, greens, reds, taxa de acerto, percentuais
-- [ ] **DASH-03**: Simulação de ROI com stake fixa configurável
-- [ ] **DASH-04**: Filtro interativo por liga
-- [ ] **DASH-05**: Filtro interativo por entrada (tipo de aposta)
-- [ ] **DASH-06**: Lista de histórico de sinais paginada
-- [ ] **DASH-07**: Visualização de sinais pendentes (sem resultado)
+- [x] **DASH-02**: Card de estatísticas: total de sinais, greens, reds, taxa de acerto, percentuais
+- [x] **DASH-03**: Simulação de ROI com stake fixa configurável
+- [x] **DASH-04**: Filtro interativo por liga
+- [x] **DASH-05**: Filtro interativo por entrada (tipo de aposta)
+- [x] **DASH-06**: Lista de histórico de sinais paginada
+- [x] **DASH-07**: Visualização de sinais pendentes (sem resultado)
 
 ### Dashboard — Análises Avançadas
 
@@ -127,12 +127,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPER-02 | Phase 1 | Complete |
 | OPER-03 | Phase 1 | Complete |
 | DASH-01 | Phase 2 | Pending |
-| DASH-02 | Phase 2 | Pending |
-| DASH-03 | Phase 2 | Pending |
-| DASH-04 | Phase 2 | Pending |
-| DASH-05 | Phase 2 | Pending |
-| DASH-06 | Phase 2 | Pending |
-| DASH-07 | Phase 2 | Pending |
+| DASH-02 | Phase 2 | Complete |
+| DASH-03 | Phase 2 | Complete |
+| DASH-04 | Phase 2 | Complete |
+| DASH-05 | Phase 2 | Complete |
+| DASH-06 | Phase 2 | Complete |
+| DASH-07 | Phase 2 | Complete |
 | ANAL-01 | Phase 3 | Pending |
 | ANAL-02 | Phase 3 | Pending |
 | ANAL-03 | Phase 3 | Pending |
