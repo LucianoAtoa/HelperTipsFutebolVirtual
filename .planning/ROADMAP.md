@@ -36,8 +36,8 @@ Plans:
 - [x] 01-03-PLAN.md — Store repository layer: upsert_signal with ON CONFLICT, get_stats for terminal summary
 - [x] 01-04-PLAN.md — Listener integration: Telethon event handlers, startup summary, graceful shutdown, auto-reconnect
 - [x] 01-05-PLAN.md — Reestruturacao em pacote Python: helpertips/ + pyproject.toml + pip install -e .
-- [ ] 01-06-PLAN.md — Tabela parse_failures + rich terminal output (Panel, Table, RichHandler)
-- [ ] 01-07-PLAN.md — Fixtures reais do Telegram + ajuste de regex do parser
+- [x] 01-06-PLAN.md — Tabela parse_failures + rich terminal output (Panel, Table, RichHandler)
+- [x] 01-07-PLAN.md — Fixtures reais do Telegram + ajuste de regex do parser
 
 ### Phase 2: Core Dashboard
 **Goal**: Users can open a web dashboard and immediately answer "are these signals profitable?" with live data from PostgreSQL

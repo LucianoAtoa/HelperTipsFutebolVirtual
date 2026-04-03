@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-foundation 01-06-PLAN.md (parse_failures + rich)
-last_updated: "2026-04-03T10:22:58.401Z"
+status: verifying
+stopped_at: Completed 01-foundation 01-07-PLAN.md (real-format parser + tentativa field)
+last_updated: "2026-04-03T10:30:57.226Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 7
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 Phase: 01 (foundation) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-03
 
 Progress: [░░░░░░░░░░] 0%
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P04 | 4min | 2 tasks | 1 files |
 | Phase 01-foundation P05 | 2min | 2 tasks | 9 files |
 | Phase 01-foundation P06 | 5min | 2 tasks | 4 files |
+| Phase 01-foundation P07 | 8min | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,10 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: get_stats() changed return type from tuple to dict — enables named access to coverage and parse_failures count
 - [Phase 01-foundation]: RichHandler replaces logging.basicConfig format string — all Telethon + helpertips logs rendered via rich
 - [Phase 01-foundation]: log_parse_failure uses 'no_liga_match' reason — parser returns None only when LIGA regex fails
+- [Phase 01-foundation]: Parser gate changed from LIGA_PATTERN to GATE_PATTERN (ExtremeTips|🏆 Liga:) — real messages always have group header
+- [Phase 01-foundation]: tentativa field (SMALLINT, nullable) added to schema — captures which of 4 attempts triggered GREEN for future gale analysis
+- [Phase 01-foundation]: horario is FIRST tentativa time (1️⃣ line), not a dedicated Horário: field — real format has no such label
+- [Phase 01-foundation]: placar extracted from inline ✅ (X-Y) on tentativa line — real format does not use separate Placar: label
 
 ### Pending Todos
 
@@ -96,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T10:22:58.399Z
-Stopped at: Completed 01-foundation 01-06-PLAN.md (parse_failures + rich)
+Last session: 2026-04-03T10:30:57.217Z
+Stopped at: Completed 01-foundation 01-07-PLAN.md (real-format parser + tentativa field)
 Resume file: None
