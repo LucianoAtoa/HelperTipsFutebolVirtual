@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-core-dashboard 02-02-PLAN.md (dashboard layout, callbacks, tests)
-last_updated: "2026-04-03T13:02:59.578Z"
+stopped_at: Completed 02.1-01-PLAN.md
+last_updated: "2026-04-03T15:09:22.818Z"
 last_activity: 2026-04-03
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 1
-  total_plans: 10
-  completed_plans: 9
+  total_plans: 14
+  completed_plans: 10
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 02 — core-dashboard
+**Current focus:** Phase 02.1 — market-config
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
+Phase: 02.1 (market-config) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P07 | 8min | 1 tasks | 6 files |
 | Phase 02-core-dashboard P01 | 8min | 2 tasks | 3 files |
 | Phase 02-core-dashboard P02 | 3min | 3 tasks | 2 files |
+| Phase 02.1-market-config P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,9 @@ Recent decisions affecting current work:
 - [Phase 02-core-dashboard]: db_conn fixture truncates before AND after yield — test isolation against real listener data
 - [Phase 02-core-dashboard]: received_at datetime objects converted to str() inside callback before returning rowData — psycopg2 returns Python datetime, AG Grid expects JSON-serializable values
 - [Phase 02-core-dashboard]: Dash 4.x @callback decorator used at module level (not app.callback) — correct pattern for dashboard.py standalone module
+- [Phase 02.1-market-config]: ensure_schema() usa INSERT ... SELECT com subquery VALUES para seed de complementares com FK — evita hardcode de IDs sequenciais
+- [Phase 02.1-market-config]: Percentuais de complementares armazenados como NUMERIC(5,4) fração decimal (0.20 não 20) — fórmula multiplica diretamente sem divisão
+- [Phase 02.1-market-config]: regra_validacao como TEXT enum-string (over_3_5, empate_3_3_4_4) — mapeado para lambdas em queries.py, nunca eval()
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T12:50:09.501Z
-Stopped at: Completed 02-core-dashboard 02-02-PLAN.md (dashboard layout, callbacks, tests)
+Last session: 2026-04-03T15:09:22.812Z
+Stopped at: Completed 02.1-01-PLAN.md
 Resume file: None

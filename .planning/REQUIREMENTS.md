@@ -50,7 +50,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Market Config — Mercados e Complementares
 
-- [ ] **MKT-01**: Tabelas PostgreSQL `mercados` e `complementares` com seed data de 2 mercados principais e 14 complementares
+- [x] **MKT-01**: Tabelas PostgreSQL `mercados` e `complementares` com seed data de 2 mercados principais e 14 complementares
 - [ ] **MKT-02**: Validação independente de GREEN/RED por entrada complementar baseada no placar do sinal principal
 - [ ] **MKT-03**: Cálculo de stakes Martingale para complementares (stake_comp = stake_principal * percentual * 2^(N-1))
 - [ ] **MKT-04**: Cálculo de ROI complementares puro Python com breakdown por mercado
@@ -143,7 +143,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-05 | Phase 2 | Complete |
 | DASH-06 | Phase 2 | Complete |
 | DASH-07 | Phase 2 | Complete |
-| MKT-01 | Phase 2.1 | Pending |
+| MKT-01 | Phase 2.1 | Complete |
 | MKT-02 | Phase 2.1 | Pending |
 | MKT-03 | Phase 2.1 | Pending |
 | MKT-04 | Phase 2.1 | Pending |
