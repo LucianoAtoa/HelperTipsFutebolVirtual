@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
-status: ready_to_plan
-stopped_at: Roadmap v1.1 criado — 5 fases (4-8), 16 requisitos mapeados
-last_updated: "2026-04-03T22:30:00.000Z"
-last_activity: 2026-04-03
+status: planning
+stopped_at: Phase 4 context gathered
+last_updated: "2026-04-03T22:48:17.815Z"
+last_activity: 2026-04-03 — Roadmap v1.1 criado com 5 fases e 16 requisitos mapeados
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 10
+  total_plans: 0
   completed_plans: 0
   percent: 0
 ---
@@ -35,6 +35,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity (v1.0 baseline):**
+
 - Total plans completed: 18
 - Average duration: ~8 min/plan
 - Total execution time: ~2.5 hours
@@ -49,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 | 03-analytics-depth | 4 | ~33min | ~8min |
 
 **Recent Trend:**
+
 - v1.0 last phases: 3min, 2min, 8min, 15min, 5min
 - Trend: Stable
 
@@ -59,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 
 **v1.1 decisions:**
+
 - Abordagem: systemd + nginx (não Docker+Caddy) — simplifica para ferramenta pessoal sem overhead de container
 - Banco: PostgreSQL self-hosted na mesma EC2 (não RDS) — economia de ~$15-25/mês sem perda funcional
 - Auth dashboard: HTTP Basic Auth via nginx — suficiente para 1 usuário
@@ -75,6 +78,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-03
-Stopped at: Roadmap v1.1 criado e aprovado — pronto para /gsd:plan-phase 4
-Resume file: None
+Last session: 2026-04-03T22:48:17.804Z
+Stopped at: Phase 4 context gathered
+Resume file: .planning/phases/04-security-audit/04-CONTEXT.md
