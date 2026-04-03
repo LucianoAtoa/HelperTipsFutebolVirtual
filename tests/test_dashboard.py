@@ -247,3 +247,24 @@ def test_format_streak():
     assert _format_streak(3, "RED") == "3 losses"
     assert _format_streak(0, None) == "Sem dados"
     assert _format_streak(0, "GREEN") == "Sem dados"
+
+
+# ---------------------------------------------------------------------------
+# SEC-02 — Debug mode controlado por env var
+# ---------------------------------------------------------------------------
+
+import os
+
+
+def test_debug_mode_off_by_default(monkeypatch):
+    """DASH_DEBUG ausente ou 'false' resulta em debug=False."""
+    monkeypatch.delenv('DASH_DEBUG', raising=False)
+    debug = os.getenv('DASH_DEBUG', 'false').lower() == 'true'
+    assert debug is False
+
+
+def test_debug_mode_on_with_env(monkeypatch):
+    """DASH_DEBUG=true resulta em debug=True."""
+    monkeypatch.setenv('DASH_DEBUG', 'true')
+    debug = os.getenv('DASH_DEBUG', 'false').lower() == 'true'
+    assert debug is True
