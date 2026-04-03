@@ -90,5 +90,69 @@ def ensure_schema(conn):
             );
 
             CREATE INDEX IF NOT EXISTS idx_parse_failures_received_at ON parse_failures(received_at);
+
+            -- Tabela de mercados principais (Over 2.5, Ambas Marcam)
+            CREATE TABLE IF NOT EXISTS mercados (
+                id           SERIAL PRIMARY KEY,
+                slug         TEXT UNIQUE NOT NULL,
+                nome_display TEXT NOT NULL,
+                odd_ref      NUMERIC(6,2) NOT NULL,
+                ativo        BOOLEAN NOT NULL DEFAULT TRUE
+            );
+
+            -- Tabela de entradas complementares por mercado
+            CREATE TABLE IF NOT EXISTS complementares (
+                id               SERIAL PRIMARY KEY,
+                mercado_id       INTEGER NOT NULL REFERENCES mercados(id),
+                slug             TEXT NOT NULL,
+                nome_display     TEXT NOT NULL,
+                percentual       NUMERIC(5,4) NOT NULL,
+                odd_ref          NUMERIC(8,2) NOT NULL,
+                regra_validacao  TEXT NOT NULL,
+                UNIQUE (mercado_id, slug)
+            );
+
+            -- Seed: mercados principais (idempotente)
+            INSERT INTO mercados (slug, nome_display, odd_ref) VALUES
+                ('over_2_5',     'Over 2.5',     2.30),
+                ('ambas_marcam', 'Ambas Marcam', 2.10)
+            ON CONFLICT (slug) DO NOTHING;
         """)
+
+        # Seed: complementares Over 2.5 (percentuais como fracao decimal)
+        cur.execute("""
+            INSERT INTO complementares (mercado_id, slug, nome_display, percentual, odd_ref, regra_validacao)
+            SELECT m.id, c.slug, c.nome_display, c.percentual, c.odd_ref, c.regra_validacao
+            FROM mercados m,
+            (VALUES
+                ('over_3_5',         'Over 3.5',            0.20, 4.00,  'over_3_5'),
+                ('empate_3_3_4_4',   'Empate 3-3 / 4-4',   0.01, 30.00, 'empate_3_3_4_4'),
+                ('over_5_plus',      'Over 5+',             0.10, 15.00, 'over_5_plus'),
+                ('gols_casa_4',      'Total Gols Casa = 4', 0.01, 25.00, 'gols_casa_4'),
+                ('gols_fora_4',      'Total Gols Fora = 4', 0.01, 25.00, 'gols_fora_4'),
+                ('gols_casa_5_plus', 'Total Gols Casa 5+',  0.01, 40.00, 'gols_casa_5_plus'),
+                ('gols_fora_5_plus', 'Total Gols Fora 5+',  0.01, 40.00, 'gols_fora_5_plus')
+            ) AS c(slug, nome_display, percentual, odd_ref, regra_validacao)
+            WHERE m.slug = 'over_2_5'
+            ON CONFLICT (mercado_id, slug) DO NOTHING;
+        """)
+
+        # Seed: complementares Ambas Marcam (percentuais diferentes de Over 2.5)
+        cur.execute("""
+            INSERT INTO complementares (mercado_id, slug, nome_display, percentual, odd_ref, regra_validacao)
+            SELECT m.id, c.slug, c.nome_display, c.percentual, c.odd_ref, c.regra_validacao
+            FROM mercados m,
+            (VALUES
+                ('over_3_5',         'Over 3.5',            0.10, 4.00,  'over_3_5'),
+                ('empate_3_3_4_4',   'Empate 3-3 / 4-4',   0.01, 30.00, 'empate_3_3_4_4'),
+                ('over_5_plus',      'Over 5+',             0.05, 15.00, 'over_5_plus'),
+                ('gols_casa_4',      'Total Gols Casa = 4', 0.01, 25.00, 'gols_casa_4'),
+                ('gols_fora_4',      'Total Gols Fora = 4', 0.01, 25.00, 'gols_fora_4'),
+                ('gols_casa_5_plus', 'Total Gols Casa 5+',  0.01, 40.00, 'gols_casa_5_plus'),
+                ('gols_fora_5_plus', 'Total Gols Fora 5+',  0.01, 40.00, 'gols_fora_5_plus')
+            ) AS c(slug, nome_display, percentual, odd_ref, regra_validacao)
+            WHERE m.slug = 'ambas_marcam'
+            ON CONFLICT (mercado_id, slug) DO NOTHING;
+        """)
+
     conn.commit()
