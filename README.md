@@ -2,7 +2,7 @@
 
 Sistema que conecta ao grupo **{VIP} ExtremeTips** no Telegram, captura sinais de apostas de futebol virtual da Bet365 em tempo real, armazena no PostgreSQL e fornece um dashboard web com estatísticas completas, filtros interativos, gráficos dinâmicos e simulação de ROI. Feito para o próprio usuário que hoje acompanha e aposta manualmente.
 
-<!-- CI badge será adicionado na Phase 5 -->
+[![CI](https://github.com/LucianoAtoa/HelperTipsFutebolVirtual/actions/workflows/ci.yml/badge.svg)](https://github.com/LucianoAtoa/HelperTipsFutebolVirtual/actions/workflows/ci.yml)
 
 ---
 
