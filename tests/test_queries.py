@@ -14,7 +14,6 @@ If the database is not available, those tests are skipped automatically.
 
 Pure-Python tests (calculate_roi, calculate_roi_complementares) always run — no DB required.
 """
-import os
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -22,25 +21,25 @@ import pytest
 # ---------------------------------------------------------------------------
 
 try:
-    from helpertips.db import get_connection, ensure_schema
+    from helpertips.db import ensure_schema, get_connection
     from helpertips.queries import (
-        get_filtered_stats,
-        get_signal_history,
-        get_distinct_values,
-        calculate_roi,
         _parse_placar,
-        validar_complementar,
-        get_complementares_config,
-        calculate_roi_complementares,
-        get_heatmap_data,
-        get_winrate_by_dow,
         calculate_equity_curve,
+        calculate_roi,
+        calculate_roi_complementares,
         calculate_streaks,
-        get_gale_analysis,
-        get_volume_by_day,
+        get_complementares_config,
         get_cross_dimensional,
+        get_distinct_values,
+        get_filtered_stats,
+        get_gale_analysis,
+        get_heatmap_data,
         get_parse_failures_detail,
+        get_signal_history,
+        get_volume_by_day,
+        get_winrate_by_dow,
         get_winrate_by_periodo,
+        validar_complementar,
     )
     _IMPORTS_OK = True
 except ImportError as e:
@@ -596,8 +595,10 @@ _OVER_2_5_CONFIG = [
     {"id": 3, "slug": "over_5_plus",     "nome_display": "Over 5+",         "percentual": 0.10, "odd_ref": 8.00, "regra_validacao": "over_5_plus"},
     {"id": 4, "slug": "gols_casa_4",     "nome_display": "Gols Casa = 4",   "percentual": 0.01, "odd_ref": 25.00,"regra_validacao": "gols_casa_4"},
     {"id": 5, "slug": "gols_fora_4",     "nome_display": "Gols Fora = 4",   "percentual": 0.01, "odd_ref": 25.00,"regra_validacao": "gols_fora_4"},
-    {"id": 6, "slug": "gols_casa_5_plus","nome_display": "Gols Casa 5+",    "percentual": 0.01, "odd_ref": 50.00,"regra_validacao": "gols_casa_5_plus"},
-    {"id": 7, "slug": "gols_fora_5_plus","nome_display": "Gols Fora 5+",    "percentual": 0.01, "odd_ref": 50.00,"regra_validacao": "gols_fora_5_plus"},
+    {"id": 6, "slug": "gols_casa_5_plus", "nome_display": "Gols Casa 5+", "percentual": 0.01,
+     "odd_ref": 50.00, "regra_validacao": "gols_casa_5_plus"},
+    {"id": 7, "slug": "gols_fora_5_plus", "nome_display": "Gols Fora 5+", "percentual": 0.01,
+     "odd_ref": 50.00, "regra_validacao": "gols_fora_5_plus"},
 ]
 
 

@@ -8,6 +8,7 @@ Provides:
 - ensure_schema(conn): creates the signals table and indexes if not present
 """
 import os
+
 import psycopg2
 from dotenv import load_dotenv
 

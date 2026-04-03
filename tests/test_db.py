@@ -10,11 +10,12 @@ Verifica:
 
 Requer conexão PostgreSQL configurada via .env.
 """
-import pytest
 from decimal import Decimal
 
+import pytest
+
 try:
-    from helpertips.db import get_connection, ensure_schema
+    from helpertips.db import ensure_schema, get_connection
     _IMPORTS_OK = True
 except ImportError as e:
     _IMPORTS_OK = False

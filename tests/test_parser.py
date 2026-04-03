@@ -10,9 +10,7 @@ Format observed:
   - RED: same as new but ends with "✖ Red" (no ✅ on any tentativa)
 """
 
-import pytest
 from helpertips.parser import parse_message
-
 
 # ---------------------------------------------------------------------------
 # PARS-01: liga extraction

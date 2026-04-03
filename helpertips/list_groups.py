@@ -17,8 +17,8 @@ import os
 import re
 
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 from telethon import TelegramClient
 from telethon.tl.types import Channel, Chat
 
@@ -101,6 +101,7 @@ def _salvar_group_id(group_id: int):
 
 if __name__ == "__main__":
     import asyncio
+
     from dotenv import load_dotenv
 
     load_dotenv()

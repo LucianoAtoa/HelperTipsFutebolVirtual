@@ -21,29 +21,29 @@ process from listener.py — do NOT import Telethon here.
 import os
 
 import dash
-import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
-from dash import dcc, html, Input, Output, State, callback, no_update, ctx
+import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+from dash import Input, Output, State, callback, ctx, dcc, html, no_update
 
 from helpertips.db import get_connection
 from helpertips.queries import (
-    get_filtered_stats,
-    get_signal_history,
-    get_distinct_values,
+    calculate_equity_curve,
     calculate_roi,
-    get_complementares_config,
     calculate_roi_complementares,
+    calculate_streaks,
+    get_complementares_config,
+    get_cross_dimensional,
+    get_distinct_values,
+    get_filtered_stats,
+    get_gale_analysis,
     # Novas funcoes — Phase 3
     get_heatmap_data,
+    get_parse_failures_detail,
+    get_signal_history,
+    get_volume_by_day,
     get_winrate_by_dow,
     get_winrate_by_periodo,
-    calculate_equity_curve,
-    calculate_streaks,
-    get_gale_analysis,
-    get_volume_by_day,
-    get_cross_dimensional,
-    get_parse_failures_detail,
 )
 from helpertips.store import get_stats
 
@@ -709,22 +709,22 @@ def update_dashboard(liga, entrada, date_start, date_end, gale_on, stake, odd, _
         # --- Win rate per liga chart (horizontal bar) ---
         liga_stats: dict = {}
         for sig in history:
-            l = sig.get("liga") or "Sem Liga"
-            if l not in liga_stats:
-                liga_stats[l] = {"greens": 0, "total": 0}
+            liga_key = sig.get("liga") or "Sem Liga"
+            if liga_key not in liga_stats:
+                liga_stats[liga_key] = {"greens": 0, "total": 0}
             if sig.get("resultado") in ("GREEN", "RED"):
-                liga_stats[l]["total"] += 1
+                liga_stats[liga_key]["total"] += 1
                 if sig["resultado"] == "GREEN":
-                    liga_stats[l]["greens"] += 1
+                    liga_stats[liga_key]["greens"] += 1
 
         liga_names = sorted(liga_stats.keys())
         liga_winrates = [
             (
-                liga_stats[l]["greens"] / liga_stats[l]["total"] * 100
-                if liga_stats[l]["total"] > 0
+                liga_stats[liga_key]["greens"] / liga_stats[liga_key]["total"] * 100
+                if liga_stats[liga_key]["total"] > 0
                 else 0
             )
-            for l in liga_names
+            for liga_key in liga_names
         ]
         winrate_fig = go.Figure(
             go.Bar(

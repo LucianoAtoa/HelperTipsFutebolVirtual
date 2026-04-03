@@ -15,9 +15,10 @@ All tests are pure unit tests:
 No database connection or live server required. All imports are safe to run in CI.
 """
 
-from helpertips.dashboard import app, _format_streak
-from helpertips.queries import calculate_roi
+import os
 
+from helpertips.dashboard import _format_streak, app
+from helpertips.queries import calculate_roi
 
 # ---------------------------------------------------------------------------
 # Helper: collect all component IDs from the layout tree
@@ -252,8 +253,6 @@ def test_format_streak():
 # ---------------------------------------------------------------------------
 # SEC-02 — Debug mode controlado por env var
 # ---------------------------------------------------------------------------
-
-import os
 
 
 def test_debug_mode_off_by_default(monkeypatch):

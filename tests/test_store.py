@@ -7,13 +7,12 @@ If the database is not available, tests will be skipped with a clear message.
 Run with:
     python3 -m pytest tests/test_store.py -x -v
 """
-import os
 import pytest
 
 # Skip all tests if DB imports fail or connection not available
 try:
-    from helpertips.db import get_connection, ensure_schema
-    from helpertips.store import upsert_signal, get_stats, log_parse_failure
+    from helpertips.db import ensure_schema, get_connection
+    from helpertips.store import get_stats, log_parse_failure, upsert_signal
     _IMPORTS_OK = True
 except ImportError as e:
     _IMPORTS_OK = False
@@ -32,7 +31,7 @@ def _make_signal(message_id: int, resultado=None, placar=None, tentativa=None) -
         "resultado": resultado,
         "placar": placar,
         "tentativa": tentativa,
-        "raw_text": f"LIGA: Euro League\nEntrada: Over 1.5 Gols\nHorario: 14:30",
+        "raw_text": "LIGA: Euro League\nEntrada: Over 1.5 Gols\nHorario: 14:30",
     }
 
 

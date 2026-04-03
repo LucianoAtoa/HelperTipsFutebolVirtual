@@ -6,8 +6,8 @@ Behaviors tested:
 - test_all_vars_present_passes: All vars set → no exception
 - test_empty_var_raises: Empty string value triggers SystemExit
 """
+
 import pytest
-import os
 
 # All required environment variable names
 REQUIRED_VARS = [

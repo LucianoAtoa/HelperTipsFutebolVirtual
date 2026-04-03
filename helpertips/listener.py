@@ -2,19 +2,21 @@
 """HelperTips Listener — captures signals from {VIP} ExtremeTips Telegram group."""
 
 import asyncio
+import logging
 import os
 import signal
 import sys
-import logging
-from telethon import TelegramClient, events
+
 from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
 from rich.logging import RichHandler
-from helpertips.db import validate_config, get_connection, ensure_schema
-from helpertips.parser import parse_message
-from helpertips.store import upsert_signal, get_stats, log_parse_failure
+from rich.panel import Panel
+from rich.table import Table
+from telethon import TelegramClient, events
+
+from helpertips.db import ensure_schema, get_connection, validate_config
 from helpertips.list_groups import selecionar_grupo
+from helpertips.parser import parse_message
+from helpertips.store import get_stats, log_parse_failure, upsert_signal
 
 # ---------------------------------------------------------------------------
 # Logging configuration — RichHandler integrates with stdlib logging (D-04)
