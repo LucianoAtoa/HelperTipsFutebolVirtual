@@ -15,6 +15,11 @@ Provides filtered SQL queries and pure-Python ROI calculation:
   - get_winrate_by_dow: win rate per day-of-week list for bar chart
   - calculate_equity_curve: bankroll curve for Stake Fixa and Gale (pure Python, no DB)
   - calculate_streaks: current and historical max streaks (pure Python, no DB)
+  - get_gale_analysis: recovery rate by gale level (tentativa), excluding NULL
+  - get_volume_by_day: signal count grouped by day for bar chart
+  - get_cross_dimensional: win rate breakdown by (liga, entrada), ordered by win_rate DESC
+  - get_parse_failures_detail: last N parse failures for modal display (OPER-01)
+  - get_winrate_by_periodo: win rate grouped by periodo (1T/2T/FT), excluding NULL (ANAL-03)
 
 Design notes:
   - All SQL uses %s parameterized queries — no f-strings for values
@@ -774,3 +779,202 @@ def calculate_streaks(signals_desc: list) -> dict:
         "max_green": max_green,
         "max_red": max_red,
     }
+
+
+# ---------------------------------------------------------------------------
+# Fase 3 Plan 02: Gale analysis, volume por dia, cross-dimensional,
+# parse failures detail, win rate por periodo
+# ---------------------------------------------------------------------------
+
+
+def get_gale_analysis(conn, liga=None, entrada=None, date_start=None, date_end=None) -> list:
+    """
+    Taxa de recuperacao por nivel de tentativa (Gale). Exclui sinais sem tentativa.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+    liga, entrada, date_start, date_end : filtros opcionais
+
+    Retorna
+    -------
+    list[dict]
+        Lista ordenada por tentativa (1..4) com chaves:
+        tentativa (int), greens (int), total (int), win_rate (float 0-100).
+        Apenas tentativas com ao menos 1 sinal resolvido sao incluidas.
+    """
+    where, params = _build_where(liga=liga, entrada=entrada,
+                                 date_start=date_start, date_end=date_end)
+    sql = f"""
+        SELECT
+            tentativa,
+            COUNT(*) FILTER (WHERE resultado = 'GREEN') AS greens,
+            COUNT(*) FILTER (WHERE resultado IN ('GREEN', 'RED')) AS total
+        FROM signals
+        WHERE resultado IN ('GREEN', 'RED')
+          AND tentativa IS NOT NULL
+          AND {where}
+        GROUP BY tentativa
+        ORDER BY tentativa
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    return [
+        {
+            "tentativa": int(t),
+            "greens": int(g),
+            "total": int(total),
+            "win_rate": round(g / total * 100, 1) if total > 0 else 0.0,
+        }
+        for t, g, total in rows
+    ]
+
+
+def get_volume_by_day(conn, liga=None, entrada=None, date_start=None, date_end=None) -> list:
+    """
+    Volume de sinais agrupado por dia. Retorna lista de {data, count}.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+    liga, entrada, date_start, date_end : filtros opcionais
+
+    Retorna
+    -------
+    list[dict]
+        Lista ordenada por data com chaves: data (str YYYY-MM-DD), count (int).
+    """
+    where, params = _build_where(liga=liga, entrada=entrada,
+                                 date_start=date_start, date_end=date_end)
+    sql = f"""
+        SELECT
+            DATE_TRUNC('day', received_at)::DATE AS data,
+            COUNT(*) AS count
+        FROM signals
+        WHERE {where}
+        GROUP BY 1
+        ORDER BY 1
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    return [{"data": str(d), "count": int(c)} for d, c in rows]
+
+
+def get_cross_dimensional(conn, liga=None, entrada=None, date_start=None, date_end=None) -> list:
+    """
+    Breakdown cross-dimensional: win rate e contagem por (liga, entrada).
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+    liga, entrada, date_start, date_end : filtros opcionais
+
+    Retorna
+    -------
+    list[dict]
+        Lista ordenada por win_rate DESC com chaves:
+        liga (str), entrada (str), greens (int), total (int), win_rate (float 0-100).
+    """
+    where, params = _build_where(liga=liga, entrada=entrada,
+                                 date_start=date_start, date_end=date_end)
+    sql = f"""
+        SELECT
+            liga,
+            entrada,
+            COUNT(*) FILTER (WHERE resultado = 'GREEN') AS greens,
+            COUNT(*) FILTER (WHERE resultado IN ('GREEN', 'RED')) AS total
+        FROM signals
+        WHERE resultado IN ('GREEN', 'RED') AND {where}
+        GROUP BY liga, entrada
+        HAVING COUNT(*) FILTER (WHERE resultado IN ('GREEN', 'RED')) > 0
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    result = [
+        {
+            "liga": liga_val,
+            "entrada": entrada_val,
+            "greens": int(g),
+            "total": int(t),
+            "win_rate": round(g / t * 100, 1) if t > 0 else 0.0,
+        }
+        for liga_val, entrada_val, g, t in rows
+    ]
+    result.sort(key=lambda r: r["win_rate"], reverse=True)
+    return result
+
+
+def get_parse_failures_detail(conn, limit: int = 100) -> list:
+    """
+    Retorna ultimas parse_failures para exibir no modal de operacoes (OPER-01).
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+    limit : int
+        Numero maximo de registros a retornar (padrao 100).
+
+    Retorna
+    -------
+    list[dict]
+        Lista com chaves: raw_text (str), failure_reason (str), received_at.
+        Ordenada por received_at DESC (mais recentes primeiro).
+    """
+    sql = """
+        SELECT raw_text, failure_reason, received_at
+        FROM parse_failures
+        ORDER BY received_at DESC
+        LIMIT %s
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, (limit,))
+        columns = [desc[0] for desc in cur.description]
+        rows = cur.fetchall()
+    return [dict(zip(columns, row)) for row in rows]
+
+
+def get_winrate_by_periodo(conn, liga=None, entrada=None, date_start=None, date_end=None) -> list:
+    """
+    Win rate por periodo (1T/2T/FT). Exclui sinais com periodo NULL (ANAL-03).
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+    liga, entrada, date_start, date_end : filtros opcionais
+
+    Retorna
+    -------
+    list[dict]
+        Lista ordenada por periodo com chaves:
+        periodo (str), greens (int), total (int), win_rate (float 0-100).
+        Apenas periodos com ao menos 1 sinal resolvido sao incluidos.
+    """
+    where, params = _build_where(liga=liga, entrada=entrada,
+                                 date_start=date_start, date_end=date_end)
+    sql = f"""
+        SELECT
+            periodo,
+            COUNT(*) FILTER (WHERE resultado = 'GREEN') AS greens,
+            COUNT(*) FILTER (WHERE resultado IN ('GREEN', 'RED')) AS total
+        FROM signals
+        WHERE resultado IN ('GREEN', 'RED')
+          AND periodo IS NOT NULL
+          AND {where}
+        GROUP BY periodo
+        ORDER BY periodo
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    return [
+        {
+            "periodo": str(p),
+            "greens": int(g),
+            "total": int(t),
+            "win_rate": round(g / t * 100, 1) if t > 0 else 0.0,
+        }
+        for p, g, t in rows
+    ]
