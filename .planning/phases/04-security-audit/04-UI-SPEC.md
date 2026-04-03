@@ -69,9 +69,11 @@ Exceptions: none — dashboard existente mantém Bootstrap spacing sem alteraç�
 | Body | 14px | 400 (regular) | 1.5 | Texto de parágrafo, labels de filtro, células de tabela |
 | Label | 14px | 600 (semibold) | 1.4 | Labels de KPI card, cabeçalhos de coluna de tabela |
 | Heading | 20px | 600 (semibold) | 1.2 | Títulos de seção do dashboard (H4/H5 Bootstrap) |
-| Display | 28px | 700 (bold) | 1.1 | Valores numéricos de KPI (H3 Bootstrap) |
+| Display | 28px | 600 (semibold) | 1.1 | Valores numéricos de KPI (H3 Bootstrap) |
 
 Source: Inferido do tema Bootstrap DARKLY — escala tipográfica padrão do Bootstrap 5.
+
+**Weights system:** 400 (regular) + 600 (semibold) — 2 weights total. Display visual dominance is established by size (28px vs 20px heading), not by extra weight.
 
 **Para o README.md (Markdown):**
 
