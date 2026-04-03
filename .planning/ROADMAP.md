@@ -28,13 +28,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. When a signal message is edited with a result (GREEN/RED), the existing database row is updated without creating a duplicate
   4. The listener can be stopped with Ctrl+C and restarted without losing any previously captured data
   5. A `.env` file holds all credentials; `.session` and `.env` are in `.gitignore` before the first commit
-**Plans:** 4 plans
+**Plans:** 7 plans
 
 Plans:
 - [ ] 01-01-PLAN.md — Project bootstrap: .gitignore, .env config validation, DB schema, dependencies
 - [ ] 01-02-PLAN.md — Signal message parser (TDD): pure-function regex extraction of liga, entrada, horario, resultado, placar
 - [ ] 01-03-PLAN.md — Store repository layer: upsert_signal with ON CONFLICT, get_stats for terminal summary
 - [ ] 01-04-PLAN.md — Listener integration: Telethon event handlers, startup summary, graceful shutdown, auto-reconnect
+- [ ] 01-05-PLAN.md — Reestruturacao em pacote Python: helpertips/ + pyproject.toml + pip install -e .
+- [ ] 01-06-PLAN.md — Tabela parse_failures + rich terminal output (Panel, Table, RichHandler)
+- [ ] 01-07-PLAN.md — Fixtures reais do Telegram + ajuste de regex do parser
 
 ### Phase 2: Core Dashboard
 **Goal**: Users can open a web dashboard and immediately answer "are these signals profitable?" with live data from PostgreSQL
@@ -65,10 +68,10 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3
+Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/4 | Planning complete | - |
+| 1. Foundation | 0/7 | Planning complete | - |
 | 2. Core Dashboard | 0/? | Not started | - |
 | 3. Analytics Depth | 0/? | Not started | - |
