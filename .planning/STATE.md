@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation 01-05-PLAN.md (Package Structure)
-last_updated: "2026-04-03T10:18:47.031Z"
+stopped_at: Completed 01-foundation 01-06-PLAN.md (parse_failures + rich)
+last_updated: "2026-04-03T10:22:58.401Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 3
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P03 | 2min | 1 tasks | 2 files |
 | Phase 01-foundation P04 | 4min | 2 tasks | 1 files |
 | Phase 01-foundation P05 | 2min | 2 tasks | 9 files |
+| Phase 01-foundation P06 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Used setuptools.build_meta as build-backend (plan had invalid setuptools.backends._legacy:_Backend for setuptools 82)
 - [Phase 01-foundation]: Removed pytest.ini — configuration migrated to pyproject.toml [tool.pytest.ini_options] (single config file)
 - [Phase 01-foundation]: All inter-module imports use from helpertips.X import Y — no relative imports, no sys.path manipulation
+- [Phase 01-foundation]: get_stats() changed return type from tuple to dict — enables named access to coverage and parse_failures count
+- [Phase 01-foundation]: RichHandler replaces logging.basicConfig format string — all Telethon + helpertips logs rendered via rich
+- [Phase 01-foundation]: log_parse_failure uses 'no_liga_match' reason — parser returns None only when LIGA regex fails
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T10:18:47.029Z
-Stopped at: Completed 01-foundation 01-05-PLAN.md (Package Structure)
+Last session: 2026-04-03T10:22:58.399Z
+Stopped at: Completed 01-foundation 01-06-PLAN.md (parse_failures + rich)
 Resume file: None
