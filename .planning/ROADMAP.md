@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. When a signal message is edited with a result (GREEN/RED), the existing database row is updated without creating a duplicate
   4. The listener can be stopped with Ctrl+C and restarted without losing any previously captured data
   5. A `.env` file holds all credentials; `.session` and `.env` are in `.gitignore` before the first commit
-**Plans:** 5/7 plans executed
+**Plans:** 7 plans
 
 Plans:
 - [x] 01-01-PLAN.md — Project bootstrap: .gitignore, .env config validation, DB schema, dependencies
@@ -49,7 +49,12 @@ Plans:
   3. Selecting an entrada from the filter updates all stats to show only signals of that bet type
   4. The ROI simulation card shows profit/loss for a configurable fixed stake applied to all filtered signals
   5. The signal history table lists past signals with pagination and pending signals (no result yet) are visually distinct
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Dash dependencies + queries.py data layer (filtered stats, ROI calculation, signal history)
+- [ ] 02-02-PLAN.md — Dashboard layout and reactive callbacks (dark theme, KPI cards, filters, charts, AG Grid)
+- [ ] 02-03-PLAN.md — Visual and functional verification checkpoint
 **UI hint**: yes
 
 ### Phase 3: Analytics Depth
@@ -72,6 +77,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 5/7 | In Progress|  |
-| 2. Core Dashboard | 0/? | Not started | - |
+| 1. Foundation | 7/7 | Complete |  |
+| 2. Core Dashboard | 0/3 | In Progress | - |
 | 3. Analytics Depth | 0/? | Not started | - |
