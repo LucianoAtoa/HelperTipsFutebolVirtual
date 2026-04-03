@@ -9,9 +9,9 @@ Requirements para deploy em produção na AWS. Cada um mapeia para fases do road
 
 ### Segurança
 
-- [ ] **SEC-01**: Histórico git auditado — nenhum secret (.env, .session, API keys) presente em commits antigos
-- [ ] **SEC-02**: Dashboard roda com `debug=False` em produção (elimina REPL remoto)
-- [ ] **SEC-03**: `.env.example` atualizado com todas as variáveis necessárias (inclusive AWS) sem valores reais
+- [x] **SEC-01**: Histórico git auditado — nenhum secret (.env, .session, API keys) presente em commits antigos
+- [x] **SEC-02**: Dashboard roda com `debug=False` em produção (elimina REPL remoto)
+- [x] **SEC-03**: `.env.example` atualizado com todas as variáveis necessárias (inclusive AWS) sem valores reais
 - [x] **SEC-04**: README.md com instruções de setup local, deploy, e aviso de segurança
 
 ### GitHub
@@ -74,9 +74,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 4 | Pending |
-| SEC-02 | Phase 4 | Pending |
-| SEC-03 | Phase 4 | Pending |
+| SEC-01 | Phase 4 | Complete |
+| SEC-02 | Phase 4 | Complete |
+| SEC-03 | Phase 4 | Complete |
 | SEC-04 | Phase 4 | Complete |
 | GH-01 | Phase 5 | Pending |
 | GH-02 | Phase 5 | Pending |
