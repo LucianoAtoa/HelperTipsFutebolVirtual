@@ -7,20 +7,31 @@ import signal
 import sys
 import logging
 from telethon import TelegramClient, events
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.logging import RichHandler
 from helpertips.db import validate_config, get_connection, ensure_schema
 from helpertips.parser import parse_message
-from helpertips.store import upsert_signal, get_stats
+from helpertips.store import upsert_signal, get_stats, log_parse_failure
 
 # ---------------------------------------------------------------------------
-# Logging configuration
+# Logging configuration — RichHandler integrates with stdlib logging (D-04)
 # ---------------------------------------------------------------------------
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)],
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("helpertips")
+
+# ---------------------------------------------------------------------------
+# Rich console instance for formatted output
+# ---------------------------------------------------------------------------
+
+console = Console()
 
 # ---------------------------------------------------------------------------
 # Section 2: Parse coverage tracking (PARS-07)
@@ -28,34 +39,47 @@ logger = logging.getLogger(__name__)
 
 parse_total = 0
 parse_success = 0
-parse_failures = 0
+parse_fail_count = 0
 
 # Module-level connection — set in main(), shared with event handlers via closure
 conn = None
 
 # ---------------------------------------------------------------------------
-# Section 4: Startup summary (TERM-01, TERM-02)
+# Section 4: Startup summary (TERM-01, TERM-02) — rich Panel with Table (D-03)
 # ---------------------------------------------------------------------------
 
 def print_startup_summary(conn, group_title):
-    """Print a formatted startup summary with DB stats and group connection info."""
-    total, greens, reds, pending = get_stats(conn)
-    taxa = (greens / total * 100) if total > 0 else 0.0
-    print("=" * 50)
-    print("  HelperTips Listener")
-    print(f"  Connected to: {group_title}")
-    print(f"  Signals in DB: {total}")
-    print(f"  GREEN: {greens} | RED: {reds} | Pending: {pending}")
-    print(f"  Win rate: {taxa:.1f}%")
-    print("=" * 50)
-    print("Listening for new signals... (Ctrl+C to stop)")
+    """Print a formatted startup summary using rich Panel and Table."""
+    stats = get_stats(conn)  # returns dict with total, greens, reds, pending, parse_failures, coverage
+
+    table = Table(title="Estatisticas", show_header=True, header_style="bold cyan")
+    table.add_column("Metrica", style="bold")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Total de sinais", str(stats['total']))
+    table.add_row("[green]GREEN[/green]", str(stats['greens']))
+    table.add_row("[red]RED[/red]", str(stats['reds']))
+    table.add_row("Pendentes", str(stats['pending']))
+
+    taxa = (stats['greens'] / stats['total'] * 100) if stats['total'] > 0 else 0.0
+    table.add_row("Taxa de acerto", f"{taxa:.1f}%")
+    table.add_row("Cobertura parser", f"{stats['coverage']:.1f}%")
+    table.add_row("Falhas de parse", str(stats['parse_failures']))
+
+    panel = Panel(
+        table,
+        title=f"[bold]HelperTips[/bold] - {group_title}",
+        subtitle="Ctrl+C para encerrar",
+        border_style="blue",
+    )
+    console.print(panel)
 
 # ---------------------------------------------------------------------------
 # Section 5: Main async function
 # ---------------------------------------------------------------------------
 
 async def main():
-    global conn, parse_total, parse_success, parse_failures
+    global conn, parse_total, parse_success, parse_fail_count
 
     # Section 1: Configuration — validate_config() fails fast before any connection
     validate_config()
@@ -72,7 +96,7 @@ async def main():
     @client.on(events.MessageEdited(chats=group_id))
     async def handle_signal(event):
         """Handle incoming and edited signal messages from the VIP Telegram group."""
-        global parse_total, parse_success, parse_failures
+        global parse_total, parse_success, parse_fail_count
 
         # LIST-04: ignore media, stickers, photos — only process text messages
         if not event.message.text:
@@ -83,11 +107,10 @@ async def main():
         parsed = parse_message(event.message.text, event.message.id)
 
         if parsed is None:
-            parse_failures += 1
-            logger.warning(
-                "Parse failure (not a signal): %.50s...",
-                event.message.text.replace('\n', ' ')
-            )
+            parse_fail_count += 1
+            reason = "no_liga_match"  # parser returns None when no LIGA match found
+            logger.warning("Parse falhou: %.80s...", event.message.text.replace('\n', ' '))
+            await asyncio.to_thread(log_parse_failure, conn, event.message.text, reason)
             return
 
         parse_success += 1
@@ -96,12 +119,14 @@ async def main():
         # psycopg2 makes blocking syscalls; asyncio.to_thread() wraps it safely.
         await asyncio.to_thread(upsert_signal, conn, parsed)
 
-        logger.info(
-            "Signal saved: %s | %s | resultado=%s",
-            parsed['liga'],
-            parsed['entrada'],
-            parsed['resultado'],
-        )
+        # D-03, D-05: colored output per resultado (GREEN=verde, RED=vermelho, NOVO=amarelo)
+        resultado = parsed.get('resultado')
+        if resultado == 'GREEN':
+            console.print(f"  [bold green]GREEN[/bold green] | {parsed['liga']} | {parsed['entrada']}")
+        elif resultado == 'RED':
+            console.print(f"  [bold red]RED[/bold red] | {parsed['liga']} | {parsed['entrada']}")
+        else:
+            console.print(f"  [yellow]NOVO[/yellow] | {parsed['liga']} | {parsed['entrada']}")
 
     # Database connection
     conn = get_connection()
@@ -139,13 +164,13 @@ async def main():
     try:
         await stop
     finally:
-        print("\nShutting down gracefully...")
         if parse_total > 0:
             coverage = (parse_success / parse_total * 100)
-            print(f"Session parse coverage: {coverage:.1f}% ({parse_success}/{parse_total})")
+            console.print(f"\n[bold]Sessao encerrada[/bold] — cobertura: {coverage:.1f}% ({parse_success}/{parse_total})")
+        else:
+            console.print("\n[bold]Sessao encerrada[/bold] — nenhuma mensagem processada")
         conn.close()
         await client.disconnect()
-        print("Done.")
 
 # ---------------------------------------------------------------------------
 # Section 6: Entry point with auto-reconnect (LIST-05)
@@ -170,5 +195,5 @@ if __name__ == '__main__':
                 logger.error("Max retries reached. Exiting.")
                 sys.exit(1)
         except KeyboardInterrupt:
-            print("\nBye!")
+            console.print("\n[bold]Bye![/bold]")
             break
