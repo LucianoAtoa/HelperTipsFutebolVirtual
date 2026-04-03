@@ -26,6 +26,8 @@ try:
         get_signal_history,
         get_distinct_values,
         calculate_roi,
+        _parse_placar,
+        validar_complementar,
     )
     _IMPORTS_OK = True
 except ImportError as e:
@@ -386,3 +388,133 @@ def test_calculate_roi_gale_accumulates_across_tentativas():
     assert result_t3["total_invested"] > result_t1["total_invested"], (
         "Gale at tentativa=3 should cost more than tentativa=1"
     )
+
+
+# ---------------------------------------------------------------------------
+# _parse_placar tests — pure Python, no DB
+# ---------------------------------------------------------------------------
+
+
+def test_parse_placar_valid():
+    """_parse_placar converte 'X-Y' em tupla (int, int)."""
+    assert _parse_placar("3-2") == (3, 2)
+    assert _parse_placar("0-0") == (0, 0)
+    assert _parse_placar("10-5") == (10, 5)
+
+
+def test_parse_placar_none_input():
+    """_parse_placar retorna None quando a entrada e None."""
+    assert _parse_placar(None) is None
+
+
+def test_parse_placar_empty_string():
+    """_parse_placar retorna None para string vazia."""
+    assert _parse_placar("") is None
+
+
+def test_parse_placar_invalid_format():
+    """_parse_placar retorna None para strings que nao sao 'X-Y'."""
+    assert _parse_placar("abc") is None
+    assert _parse_placar("3-2-1") is None
+
+
+# ---------------------------------------------------------------------------
+# validar_complementar tests — pure Python, no DB
+# ---------------------------------------------------------------------------
+
+
+def test_validar_complementar_over_3_5_green():
+    """over_3_5 retorna GREEN quando total de gols > 3.5."""
+    assert validar_complementar("over_3_5", "3-2", "GREEN") == "GREEN"  # total=5
+
+
+def test_validar_complementar_over_3_5_red():
+    """over_3_5 retorna RED quando total de gols nao excede 3.5."""
+    assert validar_complementar("over_3_5", "2-0", "GREEN") == "RED"  # total=2
+
+
+def test_validar_complementar_over_5_plus_green():
+    """over_5_plus retorna GREEN quando total >= 6."""
+    assert validar_complementar("over_5_plus", "4-3", "GREEN") == "GREEN"  # total=7
+
+
+def test_validar_complementar_over_5_plus_red():
+    """over_5_plus retorna RED quando total < 6."""
+    assert validar_complementar("over_5_plus", "3-2", "GREEN") == "RED"  # total=5
+
+
+def test_validar_complementar_empate_3_3_4_4_green():
+    """empate_3_3_4_4 retorna GREEN para placar 3-3 e 4-4."""
+    assert validar_complementar("empate_3_3_4_4", "3-3", "GREEN") == "GREEN"
+    assert validar_complementar("empate_3_3_4_4", "4-4", "GREEN") == "GREEN"
+
+
+def test_validar_complementar_empate_3_3_4_4_falso_positivo():
+    """empate_3_3_4_4 NAO aceita placar 2-4 ou 4-2 como GREEN (falso-positivo trap)."""
+    assert validar_complementar("empate_3_3_4_4", "2-4", "GREEN") == "RED"
+    assert validar_complementar("empate_3_3_4_4", "5-1", "GREEN") == "RED"
+
+
+def test_validar_complementar_gols_casa_4_green():
+    """gols_casa_4 retorna GREEN quando casa == 4."""
+    assert validar_complementar("gols_casa_4", "4-1", "GREEN") == "GREEN"
+
+
+def test_validar_complementar_gols_casa_4_red():
+    """gols_casa_4 retorna RED quando casa != 4."""
+    assert validar_complementar("gols_casa_4", "3-1", "GREEN") == "RED"
+
+
+def test_validar_complementar_gols_fora_4_green():
+    """gols_fora_4 retorna GREEN quando fora == 4."""
+    assert validar_complementar("gols_fora_4", "1-4", "GREEN") == "GREEN"
+
+
+def test_validar_complementar_gols_fora_4_red():
+    """gols_fora_4 retorna RED quando fora != 4."""
+    assert validar_complementar("gols_fora_4", "1-3", "GREEN") == "RED"
+
+
+def test_validar_complementar_gols_casa_5_plus_green():
+    """gols_casa_5_plus retorna GREEN quando casa >= 5."""
+    assert validar_complementar("gols_casa_5_plus", "5-0", "GREEN") == "GREEN"
+
+
+def test_validar_complementar_gols_casa_5_plus_red():
+    """gols_casa_5_plus retorna RED quando casa < 5."""
+    assert validar_complementar("gols_casa_5_plus", "4-0", "GREEN") == "RED"
+
+
+def test_validar_complementar_gols_fora_5_plus_green():
+    """gols_fora_5_plus retorna GREEN quando fora >= 5."""
+    assert validar_complementar("gols_fora_5_plus", "0-6", "GREEN") == "GREEN"
+
+
+def test_validar_complementar_gols_fora_5_plus_red():
+    """gols_fora_5_plus retorna RED quando fora < 5."""
+    assert validar_complementar("gols_fora_5_plus", "0-4", "GREEN") == "RED"
+
+
+def test_validar_complementar_principal_pendente():
+    """resultado_principal=None retorna None (sinal pendente — D-09)."""
+    assert validar_complementar("over_3_5", "3-2", None) is None
+
+
+def test_validar_complementar_principal_red_sem_placar():
+    """resultado_principal='RED' com placar=None retorna RED (D-08)."""
+    assert validar_complementar("over_3_5", None, "RED") == "RED"
+
+
+def test_validar_complementar_principal_red_com_placar():
+    """resultado_principal='RED' sempre retorna RED, independente do placar (D-08)."""
+    assert validar_complementar("over_3_5", "3-2", "RED") == "RED"
+
+
+def test_validar_complementar_placar_ausente_principal_green():
+    """resultado_principal='GREEN' com placar=None retorna RED (conservador)."""
+    assert validar_complementar("over_3_5", None, "GREEN") == "RED"
+
+
+def test_validar_complementar_regra_invalida():
+    """Regra desconhecida retorna RED (comportamento conservador)."""
+    assert validar_complementar("regra_invalida", "3-2", "GREEN") == "RED"
