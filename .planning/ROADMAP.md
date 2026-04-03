@@ -38,11 +38,11 @@
   2. Dashboard abre sem expor o Flask debugger — `debug=False` ou controlado por variável de ambiente em produção
   3. `.env.example` lista todas as variáveis necessárias (Telegram, DB, AWS) sem valores reais
   4. README.md tem seção de setup local, seção de deploy e aviso explícito de segurança para o arquivo .session
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Auditar histórico git e corrigir exposição de secrets (SEC-01)
-- [ ] 04-02: Configurar debug=False, atualizar .env.example e escrever README.md (SEC-02, SEC-03, SEC-04)
+- [ ] 04-01-PLAN.md — Auditoria git, correcao debug mode, .env.example e testes (SEC-01, SEC-02, SEC-03)
+- [ ] 04-02-PLAN.md — Criacao do README.md completo (SEC-04)
 
 ### Phase 5: GitHub Publication
 **Goal**: Código publicado no GitHub com CI automatizado validando qualidade a cada push
