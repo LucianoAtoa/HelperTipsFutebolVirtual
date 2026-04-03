@@ -21,7 +21,7 @@
 
 **Milestone Goal:** Subir o HelperTips para a AWS com custo mínimo, garantindo segurança antes de expor na nuvem, e publicar o repositório no GitHub.
 
-- [ ] **Phase 4: Security Audit** - Repositório limpo de secrets, debug=False, documentação de segurança
+- [x] **Phase 4: Security Audit** - Repositório limpo de secrets, debug=False, documentação de segurança (completed 2026-04-03)
 - [ ] **Phase 5: GitHub Publication** - Repositório público com CI/CD automatizado via GitHub Actions
 - [ ] **Phase 6: AWS Infrastructure** - EC2 t3.micro provisionada com PostgreSQL, billing alert e credenciais seguras
 - [ ] **Phase 7: Listener Deployment** - Listener rodando 24/7 via systemd com sessão Telethon autenticada
@@ -41,8 +41,8 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Auditoria git, correcao debug mode, .env.example e testes (SEC-01, SEC-02, SEC-03)
-- [ ] 04-02-PLAN.md — Criacao do README.md completo (SEC-04)
+- [x] 04-01-PLAN.md — Auditoria git, correcao debug mode, .env.example e testes (SEC-01, SEC-02, SEC-03)
+- [x] 04-02-PLAN.md — Criacao do README.md completo (SEC-04)
 
 ### Phase 5: GitHub Publication
 **Goal**: Código publicado no GitHub com CI automatizado validando qualidade a cada push
@@ -110,7 +110,7 @@ Plans:
 | 2. Core Dashboard | v1.0 | 3/3 | Complete | 2026-04-03 |
 | 2.1 Market Config | v1.0 | 4/4 | Complete | 2026-04-03 |
 | 3. Analytics Depth | v1.0 | 4/4 | Complete | 2026-04-03 |
-| 4. Security Audit | v1.1 | 0/2 | Not started | - |
+| 4. Security Audit | v1.1 | 2/2 | Complete   | 2026-04-03 |
 | 5. GitHub Publication | v1.1 | 0/2 | Not started | - |
 | 6. AWS Infrastructure | v1.1 | 0/3 | Not started | - |
 | 7. Listener Deployment | v1.1 | 0/1 | Not started | - |
