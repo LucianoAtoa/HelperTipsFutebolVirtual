@@ -54,10 +54,12 @@ Tipografia controlada pelo tema DARKLY (Bootstrap 5). Declarar apenas sobreposic
 
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
-| Body | 14px (0.875rem Bootstrap default in dbc) | 400 (regular) | 1.5 | Legendas de graficos, labels de filtros, conteudo modal |
-| Label | 12px (0.75rem, `small` Bootstrap) | 400 (regular) | 1.4 | Eixos dos graficos (plotly font_size=11), badge de cobertura |
-| Heading | 16px (1rem, `h5` Bootstrap) | 600 (semibold, `fw-bold`) | 1.2 | Titulos de cards KPI, titulos de tabs |
+| Body | 14px (0.875rem Bootstrap default in dbc) | 400 (regular, `fw-normal`) | 1.5 | Legendas de graficos, labels de filtros, conteudo modal |
+| Label | 12px (0.75rem, `small` Bootstrap) | 400 (regular, `fw-normal`) | 1.4 | Eixos dos graficos (plotly font_size=11), badge de cobertura |
+| Heading | 16px (1rem, `h5` Bootstrap) | 700 (bold, `fw-bold`) | 1.2 | Titulos de cards KPI, titulos de tabs |
 | Display | 24px (1.5rem, `h3` Bootstrap) | 700 (bold, `fw-bold`) | 1.1 | Valores numericos nos KPI cards (win rate, streaks) |
+
+Pesos declarados: 2 pesos apenas — 400 (`fw-normal`) e 700 (`fw-bold`). Ambos cobertos nativamente pelo Bootstrap 5 DARKLY sem CSS customizado adicional.
 
 Plotly chart axis font_size: 11 (consistente com graficos existentes em dashboard.py).
 Plotly chart title font_size: 13 (nao usar titulo interno de figura — usar `dbc.CardHeader` como titulo).
@@ -92,6 +94,20 @@ Accent reservado para:
 
 Segunda linha da equity curve (Gale):
 - Cor: `#ffc107` (laranja Bootstrap warning) — semanticamente associado a risco/apostas, consistente com destacar pendentes
+
+---
+
+## Visuals
+
+Ancora visual principal por aba:
+
+| Aba | Componente focal | Altura | Justificativa |
+|-----|-----------------|--------|---------------|
+| Temporal | `graph-heatmap` (400px) | 400px | Grafico maior da aba; matriz 24x7 requer altura generosa para leitura das celulas; ancora visual primaria ao carregar a aba |
+| Gale & Streaks | `graph-gale` (300px) | 300px | Barras horizontais com 4 categorias; ancora principal da aba |
+| Volume | `graph-volume` (280px) | 280px | Unico grafico de barras da aba; ancora principal |
+
+Ponto focal — Aba Temporal: `graph-heatmap` a 400px de altura e a ancora visual primaria no layout default da aba Temporal. O executor deve posicionar o heatmap antes do `graph-equity` e do `graph-dow` na ordem vertical, garantindo que ocupe a largura total da coluna (`md=12`) sem divisao de colunas.
 
 ---
 
