@@ -40,7 +40,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Dashboard — Stats Core
 
-- [ ] **DASH-01**: Dashboard web com interface elaborada e responsiva
+- [x] **DASH-01**: Dashboard web com interface elaborada e responsiva
 - [x] **DASH-02**: Card de estatísticas: total de sinais, greens, reds, taxa de acerto, percentuais
 - [x] **DASH-03**: Simulação de ROI com stake fixa configurável
 - [x] **DASH-04**: Filtro interativo por liga
@@ -126,7 +126,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TERM-03 | Phase 1 | Complete |
 | OPER-02 | Phase 1 | Complete |
 | OPER-03 | Phase 1 | Complete |
-| DASH-01 | Phase 2 | Pending |
+| DASH-01 | Phase 2 | Complete |
 | DASH-02 | Phase 2 | Complete |
 | DASH-03 | Phase 2 | Complete |
 | DASH-04 | Phase 2 | Complete |

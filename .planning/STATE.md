@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-core-dashboard 02-01-PLAN.md (queries.py data layer + Dash deps)
-last_updated: "2026-04-03T12:44:37.674Z"
+stopped_at: Completed 02-core-dashboard 02-02-PLAN.md (dashboard layout, callbacks, tests)
+last_updated: "2026-04-03T12:50:09.503Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 02 (core-dashboard) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P06 | 5min | 2 tasks | 4 files |
 | Phase 01-foundation P07 | 8min | 1 tasks | 6 files |
 | Phase 02-core-dashboard P01 | 8min | 2 tasks | 3 files |
+| Phase 02-core-dashboard P02 | 3min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Recent decisions affecting current work:
 - [Phase 02-core-dashboard]: calculate_roi is pure Python with no DB dependency — enables test-first development without PostgreSQL
 - [Phase 02-core-dashboard]: get_distinct_values validates field name against frozenset allowlist before SQL interpolation — prevents SQL injection on column names
 - [Phase 02-core-dashboard]: db_conn fixture truncates before AND after yield — test isolation against real listener data
+- [Phase 02-core-dashboard]: received_at datetime objects converted to str() inside callback before returning rowData — psycopg2 returns Python datetime, AG Grid expects JSON-serializable values
+- [Phase 02-core-dashboard]: Dash 4.x @callback decorator used at module level (not app.callback) — correct pattern for dashboard.py standalone module
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T12:44:37.672Z
-Stopped at: Completed 02-core-dashboard 02-01-PLAN.md (queries.py data layer + Dash deps)
+Last session: 2026-04-03T12:50:09.501Z
+Stopped at: Completed 02-core-dashboard 02-02-PLAN.md (dashboard layout, callbacks, tests)
 Resume file: None
