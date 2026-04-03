@@ -27,7 +27,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Database
 
-- [ ] **DB-01**: Schema PostgreSQL para sinais com campos: liga, entrada, horários, resultado, placares, timestamps
+- [x] **DB-01**: Schema PostgreSQL para sinais com campos: liga, entrada, horários, resultado, placares, timestamps
 - [ ] **DB-02**: Upsert de sinais com deduplicação por telegram_msg_id
 - [ ] **DB-03**: Update de resultado quando mensagem é editada
 - [ ] **DB-04**: Chamadas ao banco não bloqueiam o event loop do asyncio (asyncio.to_thread)
@@ -62,8 +62,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Operacional
 
 - [ ] **OPER-01**: Exibir taxa de cobertura do parser (% de mensagens parseadas com sucesso)
-- [ ] **OPER-02**: Arquivo .session no .gitignore antes do primeiro commit
-- [ ] **OPER-03**: Configuração via .env com validação de variáveis obrigatórias
+- [x] **OPER-02**: Arquivo .session no .gitignore antes do primeiro commit
+- [x] **OPER-03**: Configuração via .env com validação de variáveis obrigatórias
 
 ## v2 Requirements
 
@@ -117,15 +117,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PARS-05 | Phase 1 | Pending |
 | PARS-06 | Phase 1 | Pending |
 | PARS-07 | Phase 1 | Pending |
-| DB-01 | Phase 1 | Pending |
+| DB-01 | Phase 1 | Complete |
 | DB-02 | Phase 1 | Pending |
 | DB-03 | Phase 1 | Pending |
 | DB-04 | Phase 1 | Pending |
 | TERM-01 | Phase 1 | Pending |
 | TERM-02 | Phase 1 | Pending |
 | TERM-03 | Phase 1 | Pending |
-| OPER-02 | Phase 1 | Pending |
-| OPER-03 | Phase 1 | Pending |
+| OPER-02 | Phase 1 | Complete |
+| OPER-03 | Phase 1 | Complete |
 | DASH-01 | Phase 2 | Pending |
 | DASH-02 | Phase 2 | Pending |
 | DASH-03 | Phase 2 | Pending |
