@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Foundation** - Listener pipeline captures signals into PostgreSQL with terminal validation
 - [ ] **Phase 2: Core Dashboard** - Plotly Dash dashboard with aggregate stats, filters, ROI simulation, and signal history
-- [x] **Phase 3: Analytics Depth** - Dimensional breakdowns, equity curve, cross-filtering, and parser coverage tracking (completed 2026-04-03)
+- [ ] **Phase 3: Analytics Depth** - Dimensional breakdowns, equity curve, cross-filtering, and parser coverage tracking
 
 ## Phase Details
 
@@ -87,13 +87,14 @@ Plans:
   3. The equity curve chart shows cumulative bankroll over time with a fixed stake, revealing winning and losing streaks visually
   4. A Gale analysis panel shows win rate at gale levels 1, 2, and 3, and a streak tracker shows the current and longest win/loss streaks
   5. The dashboard header or footer displays the parser coverage rate (percentage of messages successfully parsed)
-**Plans:** 3/3 plans complete
+**Plans:** 4 plans
 **UI hint**: yes
 
 Plans:
 - [x] 03-01-PLAN.md — Camada de dados temporal: heatmap, win rate por dia, equity curve, streaks (TDD)
 - [x] 03-02-PLAN.md — Camada de dados Gale + volume + cross-dimensional + parse failures (TDD)
 - [x] 03-03-PLAN.md — Dashboard integration: tabs, badge, modal, callbacks
+- [ ] 03-04-PLAN.md — Gap closure: wiring ANAL-03 (win rate por periodo) no dashboard
 
 ## Progress
 
@@ -105,4 +106,4 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 3
 | 1. Foundation | 7/7 | Complete |  |
 | 2. Core Dashboard | 2/3 | In Progress | - |
 | 2.1 Market Config | 4/4 | Complete | - |
-| 3. Analytics Depth | 3/3 | Complete   | 2026-04-03 |
+| 3. Analytics Depth | 3/4 | Gap closure | - |
