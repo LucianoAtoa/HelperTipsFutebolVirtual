@@ -87,11 +87,11 @@ Plans:
   3. The equity curve chart shows cumulative bankroll over time with a fixed stake, revealing winning and losing streaks visually
   4. A Gale analysis panel shows win rate at gale levels 1, 2, and 3, and a streak tracker shows the current and longest win/loss streaks
   5. The dashboard header or footer displays the parser coverage rate (percentage of messages successfully parsed)
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01-PLAN.md — Camada de dados temporal: heatmap, win rate por dia, equity curve, streaks (TDD)
+- [x] 03-01-PLAN.md — Camada de dados temporal: heatmap, win rate por dia, equity curve, streaks (TDD)
 - [ ] 03-02-PLAN.md — Camada de dados Gale + volume + cross-dimensional + parse failures (TDD)
 - [ ] 03-03-PLAN.md — Dashboard integration: tabs, badge, modal, callbacks
 
@@ -105,4 +105,4 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 3
 | 1. Foundation | 7/7 | Complete |  |
 | 2. Core Dashboard | 2/3 | In Progress | - |
 | 2.1 Market Config | 4/4 | Complete | - |
-| 3. Analytics Depth | 0/3 | Not started | - |
+| 3. Analytics Depth | 1/3 | In Progress|  |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 3 context gathered
-last_updated: "2026-04-03T18:23:02.104Z"
+status: executing
+stopped_at: Completed 03-analytics-depth 03-01-PLAN.md
+last_updated: "2026-04-03T19:19:35.213Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 14
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 14
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 02.1 — market-config
+**Current focus:** Phase 03 — analytics-depth
 
 ## Current Position
 
-Phase: 02.1 (market-config) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 03 (analytics-depth) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-03
 
 Progress: [░░░░░░░░░░] 0%
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02.1-market-config P02 | 8 | 2 tasks | 2 files |
 | Phase 02.1-market-config P03 | 2min | 2 tasks | 2 files |
 | Phase 02.1-market-config P04 | 79min | 2 tasks | 1 files |
+| Phase 03-analytics-depth P01 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Recent decisions affecting current work:
 - [Phase 02.1-market-config]: calculate_roi_complementares usa mesmo padrao de Gale que calculate_roi mas com stake_base = stake * percentual — consistencia com funcao existente
 - [Phase 02.1-market-config]: Decimal do PostgreSQL convertido para float() antes de calculos em calculate_roi_complementares — evita TypeError silencioso com NUMERIC(5,4)
 - [Phase 02.1-market-config]: Card ROI Complementares inserido apos card ROI Principal no layout; Output adicionado ao final do master callback; ROI Total Combinado calculado inline
+- [Phase 03-analytics-depth]: calculate_equity_curve e calculate_streaks sao funcoes puras Python sem DB — seguem padrao de calculate_roi()
+- [Phase 03-analytics-depth]: Heatmap inicializado com None (nao 0) — distingue 'sem dados' de win_rate real de 0% no go.Heatmap
 
 ### Pending Todos
 
@@ -126,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T18:23:02.094Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-analytics-depth/03-CONTEXT.md
+Last session: 2026-04-03T19:19:35.211Z
+Stopped at: Completed 03-analytics-depth 03-01-PLAN.md
+Resume file: None

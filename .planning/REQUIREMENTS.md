@@ -60,12 +60,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Dashboard — Análises Avançadas
 
-- [ ] **ANAL-01**: Taxa de acerto por horário do dia (heatmap)
-- [ ] **ANAL-02**: Taxa de acerto por dia da semana
+- [x] **ANAL-01**: Taxa de acerto por horário do dia (heatmap)
+- [x] **ANAL-02**: Taxa de acerto por dia da semana
 - [ ] **ANAL-03**: Taxa de acerto por período (1T/2T/FT se aplicável)
 - [ ] **ANAL-04**: Análise cross-dimensional (filtros compostos: liga + entrada + horário + dia)
-- [ ] **ANAL-05**: Curva de equity (bankroll acumulado ao longo do tempo com stake fixa)
-- [ ] **ANAL-06**: Tracking de sequências (streaks) — atual e maior histórica
+- [x] **ANAL-05**: Curva de equity (bankroll acumulado ao longo do tempo com stake fixa)
+- [x] **ANAL-06**: Tracking de sequências (streaks) — atual e maior histórica
 - [ ] **ANAL-07**: Análise de Gale (martingale 1x/2x/3x) — taxa de recuperação por nível
 - [ ] **ANAL-08**: Gráfico de volume de sinais por dia/semana
 
@@ -150,12 +150,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MKT-05 | Phase 2.1 | Complete |
 | MKT-06 | Phase 2.1 | Complete |
 | MKT-07 | Phase 2.1 | Complete |
-| ANAL-01 | Phase 3 | Pending |
-| ANAL-02 | Phase 3 | Pending |
+| ANAL-01 | Phase 3 | Complete |
+| ANAL-02 | Phase 3 | Complete |
 | ANAL-03 | Phase 3 | Pending |
 | ANAL-04 | Phase 3 | Pending |
-| ANAL-05 | Phase 3 | Pending |
-| ANAL-06 | Phase 3 | Pending |
+| ANAL-05 | Phase 3 | Complete |
+| ANAL-06 | Phase 3 | Complete |
 | ANAL-07 | Phase 3 | Pending |
 | ANAL-08 | Phase 3 | Pending |
 | OPER-01 | Phase 3 | Pending |
