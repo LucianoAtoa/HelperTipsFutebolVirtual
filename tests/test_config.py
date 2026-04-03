@@ -42,7 +42,7 @@ def set_all_vars(monkeypatch):
 def test_all_vars_present_passes(monkeypatch):
     """When all required vars are set, validate_config() returns without error."""
     set_all_vars(monkeypatch)
-    from db import validate_config
+    from helpertips.db import validate_config
     validate_config()  # must not raise
 
 
@@ -52,7 +52,7 @@ def test_missing_var_raises(monkeypatch):
     for var in REQUIRED_VARS:
         monkeypatch.delenv(var, raising=False)
         with pytest.raises(SystemExit):
-            from db import validate_config
+            from helpertips.db import validate_config
             validate_config()
         # Restore for next iteration
         monkeypatch.setenv(var, SAMPLE_VALUES[var])
@@ -64,7 +64,7 @@ def test_empty_var_raises(monkeypatch):
     for var in REQUIRED_VARS:
         monkeypatch.setenv(var, '')
         with pytest.raises(SystemExit):
-            from db import validate_config
+            from helpertips.db import validate_config
             validate_config()
         # Restore for next iteration
         monkeypatch.setenv(var, SAMPLE_VALUES[var])

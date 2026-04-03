@@ -7,9 +7,9 @@ import signal
 import sys
 import logging
 from telethon import TelegramClient, events
-from db import validate_config, get_connection, ensure_schema
-from parser import parse_message
-from store import upsert_signal, get_stats
+from helpertips.db import validate_config, get_connection, ensure_schema
+from helpertips.parser import parse_message
+from helpertips.store import upsert_signal, get_stats
 
 # ---------------------------------------------------------------------------
 # Logging configuration

@@ -12,8 +12,8 @@ import pytest
 
 # Skip all tests if DB imports fail or connection not available
 try:
-    from db import get_connection, ensure_schema
-    from store import upsert_signal, get_stats
+    from helpertips.db import get_connection, ensure_schema
+    from helpertips.store import upsert_signal, get_stats
     _IMPORTS_OK = True
 except ImportError as e:
     _IMPORTS_OK = False

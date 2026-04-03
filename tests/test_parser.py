@@ -9,7 +9,7 @@ All tests must PASS after parser.py is created (GREEN phase).
 """
 
 import pytest
-from parser import parse_message
+from helpertips.parser import parse_message
 
 
 # ---------------------------------------------------------------------------
