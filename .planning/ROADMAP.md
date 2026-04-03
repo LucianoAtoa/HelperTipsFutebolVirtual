@@ -59,14 +59,23 @@ Plans:
 
 ### Phase 02.1: Market Config (INSERTED)
 
-**Goal:** Implementar configuração de mercados (principal + complementares) com cálculo de stakes por tentativa Martingale, percentuais configuráveis via JSON, e validação independente de GREEN/RED por entrada complementar. Atualizar simulação ROI no dashboard para considerar investimento total (principal + complementares).
-**Requirements**: TBD
+**Goal:** Implementar configuracao de mercados (principal + complementares) com calculo de stakes Martingale por tentativa, percentuais configuraveis via tabela PostgreSQL, e validacao independente de GREEN/RED por entrada complementar baseada no placar do sinal principal. Atualizar dashboard com cards separados de ROI principal e complementares.
+**Requirements**: MKT-01, MKT-02, MKT-03, MKT-04, MKT-05, MKT-06, MKT-07
 **Depends on:** Phase 2
 **Canonical refs:** `/Users/luciano/Downloads/documentacao_entradas_mercado.md`
-**Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
+  1. ensure_schema() cria tabelas `mercados` e `complementares` no PostgreSQL com seed data de 2 mercados e 14 complementares
+  2. Validacao de complementares por placar funciona: dado placar "3-2" e regra "over_3_5", retorna GREEN (total=5 > 3.5)
+  3. Sinal RED (sem placar) faz todas complementares retornarem RED automaticamente
+  4. Card ROI Complementares no dashboard mostra tabela de breakdown por mercado quando entrada filtrada
+  5. Card mostra alerta "Selecione uma entrada" quando sem filtro de entrada
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 02.1 to break down)
+- [ ] 02.1-01-PLAN.md — Schema extension: tabelas mercados + complementares + seed data em ensure_schema()
+- [ ] 02.1-02-PLAN.md — Validacao de complementares por placar (TDD): _parse_placar, _REGRA_VALIDATORS, validar_complementar
+- [ ] 02.1-03-PLAN.md — ROI complementares (TDD): get_complementares_config + calculate_roi_complementares
+- [ ] 02.1-04-PLAN.md — Dashboard card ROI Complementares + verificacao visual
 
 ### Phase 3: Analytics Depth
 **Goal**: Users can identify which leagues, bet types, time slots, and days of the week produce the best results, and track bankroll growth over time
@@ -84,10 +93,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3
+Phases execute in numeric order: 1 -> 2 -> 2.1 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete |  |
-| 2. Core Dashboard | 0/3 | In Progress | - |
+| 2. Core Dashboard | 2/3 | In Progress | - |
+| 2.1 Market Config | 0/4 | Not started | - |
 | 3. Analytics Depth | 0/? | Not started | - |

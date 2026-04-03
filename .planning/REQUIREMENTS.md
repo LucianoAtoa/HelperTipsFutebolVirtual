@@ -48,6 +48,16 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **DASH-06**: Lista de histórico de sinais paginada
 - [x] **DASH-07**: Visualização de sinais pendentes (sem resultado)
 
+### Market Config — Mercados e Complementares
+
+- [ ] **MKT-01**: Tabelas PostgreSQL `mercados` e `complementares` com seed data de 2 mercados principais e 14 complementares
+- [ ] **MKT-02**: Validação independente de GREEN/RED por entrada complementar baseada no placar do sinal principal
+- [ ] **MKT-03**: Cálculo de stakes Martingale para complementares (stake_comp = stake_principal * percentual * 2^(N-1))
+- [ ] **MKT-04**: Cálculo de ROI complementares puro Python com breakdown por mercado
+- [ ] **MKT-05**: Query get_complementares_config() para carregar configuração do banco
+- [ ] **MKT-06**: Card ROI Complementares no dashboard com tabela de breakdown por mercado
+- [ ] **MKT-07**: ROI total considera investimento principal + todas complementares
+
 ### Dashboard — Análises Avançadas
 
 - [ ] **ANAL-01**: Taxa de acerto por horário do dia (heatmap)
@@ -133,6 +143,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-05 | Phase 2 | Complete |
 | DASH-06 | Phase 2 | Complete |
 | DASH-07 | Phase 2 | Complete |
+| MKT-01 | Phase 2.1 | Pending |
+| MKT-02 | Phase 2.1 | Pending |
+| MKT-03 | Phase 2.1 | Pending |
+| MKT-04 | Phase 2.1 | Pending |
+| MKT-05 | Phase 2.1 | Pending |
+| MKT-06 | Phase 2.1 | Pending |
+| MKT-07 | Phase 2.1 | Pending |
 | ANAL-01 | Phase 3 | Pending |
 | ANAL-02 | Phase 3 | Pending |
 | ANAL-03 | Phase 3 | Pending |
@@ -144,10 +161,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPER-01 | Phase 3 | Pending |
 
 **Coverage:**
-- v1 requirements: 37 total
-- Mapped to phases: 37
-- Unmapped: 0 ✓
+- v1 requirements: 44 total
+- Mapped to phases: 44
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after roadmap creation*
+*Last updated: 2026-04-03 after Phase 02.1 planning*
