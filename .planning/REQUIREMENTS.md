@@ -16,7 +16,7 @@ Requirements para deploy em produção na AWS. Cada um mapeia para fases do road
 
 ### GitHub
 
-- [ ] **GH-01**: Repositório publicado no GitHub com .gitignore correto (*.session, .env, __pycache__, *.pyc)
+- [x] **GH-01**: Repositório publicado no GitHub com .gitignore correto (*.session, .env, __pycache__, *.pyc)
 - [x] **GH-02**: GitHub Actions workflow roda lint + testes automaticamente em cada push
 
 ### Infraestrutura AWS
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-02 | Phase 4 | Complete |
 | SEC-03 | Phase 4 | Complete |
 | SEC-04 | Phase 4 | Complete |
-| GH-01 | Phase 5 | Pending |
+| GH-01 | Phase 5 | Complete |
 | GH-02 | Phase 5 | Complete |
 | AWS-01 | Phase 6 | Pending |
 | AWS-02 | Phase 6 | Pending |

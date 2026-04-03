@@ -22,7 +22,7 @@
 **Milestone Goal:** Subir o HelperTips para a AWS com custo mínimo, garantindo segurança antes de expor na nuvem, e publicar o repositório no GitHub.
 
 - [x] **Phase 4: Security Audit** - Repositório limpo de secrets, debug=False, documentação de segurança (completed 2026-04-03)
-- [ ] **Phase 5: GitHub Publication** - Repositório público com CI/CD automatizado via GitHub Actions
+- [x] **Phase 5: GitHub Publication** - Repositório público com CI/CD automatizado via GitHub Actions (completed 2026-04-03)
 - [ ] **Phase 6: AWS Infrastructure** - EC2 t3.micro provisionada com PostgreSQL, billing alert e credenciais seguras
 - [ ] **Phase 7: Listener Deployment** - Listener rodando 24/7 via systemd com sessão Telethon autenticada
 - [ ] **Phase 8: Dashboard & Proxy** - Dashboard acessível via nginx com HTTP Basic Auth
@@ -55,7 +55,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — Configurar ruff lint, corrigir codigo existente, criar CI workflow e badge (GH-02)
-- [ ] 05-02-PLAN.md — Publicar repositorio no GitHub, verificar CI verde (GH-01, GH-02)
+- [x] 05-02-PLAN.md — Publicar repositorio no GitHub, verificar CI verde (GH-01, GH-02)
 
 ### Phase 6: AWS Infrastructure
 **Goal**: Instância EC2 provisionada e funcional com banco de dados, billing controlado e credenciais seguras
@@ -111,7 +111,7 @@ Plans:
 | 2.1 Market Config | v1.0 | 4/4 | Complete | 2026-04-03 |
 | 3. Analytics Depth | v1.0 | 4/4 | Complete | 2026-04-03 |
 | 4. Security Audit | v1.1 | 2/2 | Complete   | 2026-04-03 |
-| 5. GitHub Publication | v1.1 | 1/2 | In Progress|  |
+| 5. GitHub Publication | v1.1 | 2/2 | Complete   | 2026-04-03 |
 | 6. AWS Infrastructure | v1.1 | 0/3 | Not started | - |
 | 7. Listener Deployment | v1.1 | 0/1 | Not started | - |
 | 8. Dashboard & Proxy | v1.1 | 0/2 | Not started | - |
