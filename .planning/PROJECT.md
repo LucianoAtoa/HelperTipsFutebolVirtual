@@ -57,13 +57,24 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-(Nenhum — próximo milestone ainda não definido)
+- Listener multi-grupo (Over 2.5 + Ambas Marcam simultaneamente)
+- Cálculo financeiro P&L com complementares, odds de referência e Martingale
+- Redesign completo do Dashboard com foco em análise de lucro/prejuízo
+
+## Current Milestone: v1.2 Multi-Market Analytics
+
+**Goal:** Adicionar captura do grupo Ambas Marcam, implementar cálculo financeiro P&L com complementares e Martingale, e redesenhar o Dashboard com foco em análise de lucro/prejuízo.
+
+**Target features:**
+- Listener multi-grupo (Over 2.5 + Ambas Marcam)
+- Entradas complementares com P&L financeiro por mercado (stake %, odds referência, Martingale 4 tentativas)
+- Redesign Dashboard: filtros globais, KPIs com P&L, config de mercados, performance por entrada, análise por liga, equity curve, análise de gale
 
 ### Out of Scope
 
 - Automação de apostas na Bet365 via Selenium/Playwright — risco de banimento, complexidade alta
 - App mobile — web-first, dashboard responsivo cobre o caso
-- Múltiplos grupos do Telegram — foco no {VIP} ExtremeTips
+- Múltiplos grupos do Telegram além de Over 2.5 e Ambas Marcam — foco nesses dois mercados
 - Kelly Criterion — requer probabilidade de acerto estável
 - IA preditiva — futebol virtual é RNG, ML encontra padrões em ruído
 - Push real-time no browser — sinais infrequentes, refresh manual/periódico suficiente
@@ -118,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after v1.1 Cloud Deploy milestone complete*
+*Last updated: 2026-04-04 after v1.2 Multi-Market Analytics milestone started*
