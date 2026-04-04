@@ -98,7 +98,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Expor WSGI callable, adicionar gunicorn, criar script systemd + logrotate (DEP-02)
+- [x] 08-01-PLAN.md — Expor WSGI callable, adicionar gunicorn, criar script systemd + logrotate (DEP-02)
 - [ ] 08-02-PLAN.md — Configurar nginx como reverse proxy com HTTP Basic Auth (DEP-03, DEP-04)
 
 ## Progress
@@ -113,4 +113,4 @@ Plans:
 | 5. GitHub Publication | v1.1 | 2/2 | Complete   | 2026-04-03 |
 | 6. AWS Infrastructure | v1.1 | 2/3 | In Progress|  |
 | 7. Listener Deployment | v1.1 | 1/1 | Complete   | 2026-04-04 |
-| 8. Dashboard & Proxy | v1.1 | 0/2 | Not started | - |
+| 8. Dashboard & Proxy | v1.1 | 1/2 | In Progress|  |

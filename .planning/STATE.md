@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
-status: verifying
-stopped_at: Phase 8 context gathered
-last_updated: "2026-04-04T04:24:54.909Z"
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-04-04T04:38:52.819Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 07 — listener-deployment
+**Current focus:** Phase 08 — dashboard-proxy
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 08 (dashboard-proxy) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-aws-infrastructure P02 | 1 | 1 tasks | 2 files |
 | Phase 06-aws-infrastructure P03 | 1 | 1 tasks | 2 files |
 | Phase 07 P01 | 189 | 2 tasks | 4 files |
+| Phase 08-dashboard-proxy P01 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 - [Phase 07]: StartLimitBurst/StartLimitIntervalSec na secao [Unit] (nao [Service]) — pitfall critico que causa ignoramento silencioso
 - [Phase 07]: StandardOutput=null no unit file — logs vao para RotatingFileHandler, evita duplicacao no journald
 - [Phase 07]: Autenticacao Telethon concluida na EC2 — .session gerado, servico helpertips-listener active (running), sinais sendo capturados no banco
+- [Phase 08-dashboard-proxy]: server = app.server em dashboard.py — gunicorn importa WSGI callable sem precisar alterar o bloco __main__
+- [Phase 08-dashboard-proxy]: Logrotate compartilhado listener + dashboard substitui configuracao anterior em /etc/logrotate.d/helpertips
+- [Phase 08-dashboard-proxy]: postrotate USR1 para gunicorn — graceful log reopen sem matar workers (zero downtime)
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-04T04:24:54.905Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-dashboard-proxy/08-CONTEXT.md
+Last session: 2026-04-04T04:38:52.816Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None

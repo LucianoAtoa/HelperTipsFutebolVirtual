@@ -30,7 +30,7 @@ Requirements para deploy em produção na AWS. Cada um mapeia para fases do road
 ### Deploy & Operação
 
 - [x] **DEP-01**: Listener rodando como systemd service com `Restart=on-failure` e `RestartSec=60`
-- [ ] **DEP-02**: Dashboard rodando via gunicorn como systemd service com `Restart=on-failure`
+- [x] **DEP-02**: Dashboard rodando via gunicorn como systemd service com `Restart=on-failure`
 - [ ] **DEP-03**: Nginx configurado como reverse proxy para o dashboard (porta 80/443 → localhost:8050)
 - [ ] **DEP-04**: HTTP Basic Auth no nginx protege dashboard de acesso público não autorizado
 - [x] **DEP-05**: Primeira autenticação Telethon feita interativamente via SSH no EC2
@@ -87,7 +87,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AWS-05 | Phase 6 | Complete |
 | DEP-05 | Phase 7 | Complete |
 | DEP-01 | Phase 7 | Complete |
-| DEP-02 | Phase 8 | Pending |
+| DEP-02 | Phase 8 | Complete |
 | DEP-03 | Phase 8 | Pending |
 | DEP-04 | Phase 8 | Pending |
 
