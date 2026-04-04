@@ -54,7 +54,7 @@
 
 **Milestone Goal:** Página `/config` editável para odds/stakes dos mercados, listener usando config ativa do banco, e dashboard com KPI Total Investido e Performance por Mercado.
 
-- [ ] **Phase 16: Navegação + Schema DB** — Menu entre Dashboard e Configurações + colunas de config no banco
+- [x] **Phase 16: Navegação + Schema DB** — Menu entre Dashboard e Configurações + colunas de config no banco (completed 2026-04-04)
 - [ ] **Phase 17: Página de Configurações** — Formulário `/config` com preview em tempo real e persistência no banco
 - [ ] **Phase 18: Listener Config-Aware** — Listener lê config ativa ao processar sinais, sem retroatividade
 - [ ] **Phase 19: Dashboard Ajustes** — Sinais pendentes com timer, remoção de seções obsoletas, KPI Total Investido e Performance por Mercado
@@ -180,7 +180,7 @@ Plans:
   4. Migração idempotente: rodar duas vezes não gera erro
 **Plans**: 1 plan
 Plans:
-- [ ] 16-01-PLAN.md — Navegacao tabs (Dashboard/Config) + migration colunas config em mercados + pagina placeholder /config
+- [x] 16-01-PLAN.md — Navegacao tabs (Dashboard/Config) + migration colunas config em mercados + pagina placeholder /config
 **UI hint**: yes
 
 ### Phase 17: Página de Configurações
@@ -240,7 +240,7 @@ Plans:
 | 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 14. Migração Multi-Page | v1.3 | 1/1 | Complete | 2026-04-04 |
 | 15. Página de Detalhe do Sinal | v1.3 | 2/2 | Complete | 2026-04-04 |
-| 16. Navegação + Schema DB | v1.4 | 0/1 | Not started | - |
+| 16. Navegação + Schema DB | v1.4 | 1/1 | Complete   | 2026-04-04 |
 | 17. Página de Configurações | v1.4 | 0/? | Not started | - |
 | 18. Listener Config-Aware | v1.4 | 0/? | Not started | - |
 | 19. Dashboard Ajustes | v1.4 | 0/? | Not started | - |

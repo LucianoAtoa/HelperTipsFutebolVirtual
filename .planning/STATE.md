@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Configurações de Mercado + Dashboard Ajustes
-status: roadmap ready
-stopped_at: null
-last_updated: "2026-04-04"
+status: verifying
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-04-04T22:28:08.093Z"
 last_activity: 2026-04-04
 progress:
-  total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 11
+  completed_phases: 8
+  total_plans: 14
+  completed_plans: 14
   percent: 0
 ---
 
@@ -21,24 +21,26 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** v1.4 — Phase 16 ready to plan
+**Current focus:** Phase 16 — navega-o-schema-db
 
 ## Current Position
 
-Phase: 16 of 19 v1.4 (Navegação + Schema DB)
-Plan: —
-Status: Ready to plan
-Last activity: 2026-04-04 — Roadmap v1.4 criado (Phases 16-19)
+Phase: 16 (navega-o-schema-db) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity (v1.3):**
+
 - Total plans completed: 3 (Phase 14: 1, Phase 15: 2)
 - Average duration: ~10 min/plan
 
 **Velocity (v1.2 baseline):**
+
 - Total plans completed: 10 (2 plans × 5 phases)
 - Average duration: ~10 min/plan
 
@@ -52,6 +54,8 @@ Decisions arquivadas em PROJECT.md Key Decisions table.
 - [Phase 14]: dash.register_page duplo registro em testes — usar >= 1 em vez de == 1
 - [Phase 15]: placar=None → complementares N/A com lucro=0 e investido=0
 - [Phase 15]: stake_efetiva adicionada ao dict principal para expor winning_stake do Gale ao chamador
+- [Phase 16-navega-o-schema-db]: dbc.NavLink active='exact' destaca tab ativa nativamente sem callback — funciona com Dash Pages + dbc 2.x
+- [Phase 16-navega-o-schema-db]: ADD COLUMN IF NOT EXISTS para migrations idemptentes em ensure_schema — padrao Phase 16
 
 ### Pending Todos
 
@@ -65,6 +69,6 @@ Decisions arquivadas em PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-04-04
-Stopped at: Roadmap v1.4 criado — Phases 16-19 definidas
+Last session: 2026-04-04T22:28:08.090Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
