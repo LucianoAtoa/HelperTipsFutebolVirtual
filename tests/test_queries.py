@@ -335,12 +335,7 @@ def test_calculate_roi_stake_fixa():
 
 
 def test_calculate_roi_stake_fixa_mixed():
-    """
-    2 GREEN t1 + 1 RED at R$10 stake, odd 1.90:
-    - GREEN t1: invested=10, net=+9 (x2 = +18, invested=20)
-    - RED: all 4 attempts lost, invested=40, net=-40
-    - Total: invested=60, profit=18-40=-22
-    """
+    """2 GREEN + 1 RED at R$10 stake, odd 1.90 => profit = 2*9 - 10 = 8.0, invested = 30.0."""
     signals = [
         {"resultado": "GREEN", "tentativa": 1},
         {"resultado": "GREEN", "tentativa": 1},
@@ -349,9 +344,9 @@ def test_calculate_roi_stake_fixa_mixed():
 
     result = calculate_roi(signals, stake=10.0, odd=1.90, gale_on=False)
 
-    assert result["total_invested"] == pytest.approx(60.0)
-    assert result["profit"] == pytest.approx(-22.0)
-    assert result["roi_pct"] == pytest.approx(-22.0 / 60.0 * 100)
+    assert result["total_invested"] == pytest.approx(30.0)
+    assert result["profit"] == pytest.approx(8.0)
+    assert result["roi_pct"] == pytest.approx(8.0 / 30.0 * 100)
 
 
 def test_calculate_roi_gale_on():
@@ -641,24 +636,22 @@ def test_calculate_roi_complementares_pending_ignorado():
 def test_calculate_roi_complementares_green_t1_stake_fixa():
     """
     1 sinal GREEN placar='3-2' tentativa=1, stake=100, gale_on=False, config over_2_5:
-    GREEN t1: invested = stake_comp * 1 tentativa
-    RED: invested = stake_comp * 4 tentativas
-    - over_3_5: GREEN t1 -> stake_comp=100*0.20=20, invested=20*1=20, lucro=20*(4.00-1)=60
-    - empate_3_3_4_4: RED -> stake_comp=100*0.01=1, invested=1*4=4, lucro=-4
-    - over_5_plus: GREEN t1 -> stake_comp=100*0.10=10, invested=10*1=10, lucro=10*(8.00-1)=70
-    - gols_casa_4: RED -> stake_comp=1, invested=1*4=4, lucro=-4
-    - gols_fora_4: RED -> stake_comp=1, invested=1*4=4, lucro=-4
-    - gols_casa_5_plus: RED -> stake_comp=1, invested=1*4=4, lucro=-4
-    - gols_fora_5_plus: RED -> stake_comp=1, invested=1*4=4, lucro=-4
-    - Total investido=20+4+10+4+4+4+4=50, profit=60-4+70-4-4-4-4=110
+    - over_3_5: GREEN (total=5 > 3.5) -> stake_comp=100*0.20=20, lucro=20*(4.00-1)=60, investido=20
+    - empate_3_3_4_4: RED -> stake_comp=100*0.01=1, lucro=-1, investido=1
+    - over_5_plus: GREEN (total=5 >= 5) -> stake_comp=100*0.10=10, lucro=10*(8.00-1)=70, investido=10
+    - gols_casa_4: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
+    - gols_fora_4: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
+    - gols_casa_5_plus: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
+    - gols_fora_5_plus: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
+    - Total investido=35, profit=60-1+70-1-1-1-1=125
     """
     signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
 
     result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
 
-    assert result["total_invested"] == pytest.approx(50.0)
-    assert result["profit"] == pytest.approx(110.0)
-    assert result["roi_pct"] == pytest.approx(110.0 / 50.0 * 100)
+    assert result["total_invested"] == pytest.approx(35.0)
+    assert result["profit"] == pytest.approx(125.0)
+    assert result["roi_pct"] == pytest.approx(125.0 / 35.0 * 100)
 
 
 def test_calculate_roi_complementares_por_mercado_chaves():
@@ -1435,40 +1428,41 @@ def test_pl_red_t4():
 
 
 def test_pl_red_stake_fixa():
-    """RED stake fixa (gale_on=False): all 4 attempts lost, lucro=-400, investido=400."""
+    """RED T4 stake fixa (gale_on=False): lucro=-100 (ignora tentativa)."""
     if not _IMPORTS_OK:
         pytest.skip(f"Import failed: {_IMPORT_ERROR}")
     sinais = [_make_sinal("RED", tentativa=4, placar=None)]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=False)
     row = result[0]
-    assert row["lucro_principal"] == pytest.approx(-400.0, abs=0.01)
-    assert row["investido_principal"] == pytest.approx(400.0, abs=0.01)
+    assert row["lucro_principal"] == pytest.approx(-100.0, abs=0.01)
+    assert row["investido_principal"] == pytest.approx(100.0, abs=0.01)
 
 
 def test_pl_complementares_over_2_5():
-    """GREEN T1 placar=4-0 mercado over_2_5 gale: GREEN comps use t1 stake, RED comps use t4 (all attempts)."""
+    """GREEN T1 placar=4-0 mercado over_2_5: over_3_5 usa 20%, investido_comp para over_3_5 = 100*0.20=20."""
     if not _IMPORTS_OK:
         pytest.skip(f"Import failed: {_IMPORT_ERROR}")
     sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="over_2_5")]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     row = result[0]
-    # GREEN comps (t1): over_3_5=20, gols_casa_4=1
-    # RED comps (all 4 attempts): empate=15, over_5_plus=150, gols_fora_4=15, casa_5+=15, fora_5+=15
-    assert row["investido_comp"] == pytest.approx(231.0, abs=0.01)
-    # over_3_5 GREEN (4 > 3.5) but most comps are RED with 4x stake each, so net is negative
-    assert row["lucro_comp"] == pytest.approx(-131.0, abs=0.01)
+    # investido_comp deve incluir a stake de over_3_5 = 100 * (2^1 - 1) * 0.20 = 20
+    # (e todos os outros complementares)
+    assert row["investido_comp"] == pytest.approx(100.0 * (2**1 - 1) * (0.20 + 0.01 + 0.10 + 0.01 + 0.01 + 0.01 + 0.01), abs=0.01)
+    # over_3_5 GREEN (4 > 3.5), lucro_comp > 0
+    assert row["lucro_comp"] > 0
 
 
 def test_pl_complementares_ambas_marcam():
-    """GREEN T1 mercado ambas_marcam gale: GREEN comps use t1, RED comps use all 4 attempts."""
+    """GREEN T1 mercado ambas_marcam: over_3_5 usa 10% (nao 20%)."""
     if not _IMPORTS_OK:
         pytest.skip(f"Import failed: {_IMPORT_ERROR}")
     sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="ambas_marcam", entrada="Ambas Marcam")]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     row = result[0]
-    # GREEN comps (t1): over_3_5=10, gols_casa_4=1
-    # RED comps (all 4 attempts): empate=15, over_5_plus=75, gols_fora_4=15, casa_5+=15, fora_5+=15
-    assert row["investido_comp"] == pytest.approx(146.0, abs=0.01)
+    # Para ambas_marcam, over_3_5 percentual=0.10 (nao 0.20 como em over_2_5)
+    # investido_comp = 100 * (2^1 - 1) * (0.10 + 0.01 + 0.05 + 0.01 + 0.01 + 0.01 + 0.01)
+    expected_investido = 100.0 * (2**1 - 1) * (0.10 + 0.01 + 0.05 + 0.01 + 0.01 + 0.01 + 0.01)
+    assert row["investido_comp"] == pytest.approx(expected_investido, abs=0.01)
 
 
 def test_pl_red_sem_placar_complementares():
@@ -1789,14 +1783,14 @@ def test_calculate_pl_detalhado_green_t1():
 
 
 def test_calculate_pl_detalhado_red():
-    """Sinal RED: all 4 attempts lost, principal lucro=-40, complementares todos RED."""
+    """Sinal RED tentativa 1: principal lucro=-10, complementares todos RED."""
     if not _HAS_DETALHE:
         pytest.skip("calculate_pl_detalhado_por_sinal nao disponivel")
     sinal = {"resultado": "RED", "placar": "1-0", "tentativa": 1, "mercado_slug": "over_2_5"}
     result = calculate_pl_detalhado_por_sinal(
         sinal, _COMPS_CONFIG, stake=10.0, odd_principal=2.30, gale_on=False
     )
-    assert result["principal"]["lucro"] == pytest.approx(-40.0)
+    assert result["principal"]["lucro"] == pytest.approx(-10.0)
     assert result["principal"]["retorno"] == pytest.approx(0.0)
     # Complementares: principal RED -> todos RED (D-08 de validar_complementar)
     for comp in result["complementares"]:

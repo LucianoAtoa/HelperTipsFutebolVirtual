@@ -237,8 +237,6 @@ def calculate_roi(signals: list, stake: float, odd: float, gale_on: bool) -> dic
     total_invested = 0.0
     profit = 0.0
 
-    MAX_TENTATIVAS = 4  # Each signal has 4 attempts
-
     for signal in signals:
         resultado = signal.get("resultado")
 
@@ -249,31 +247,28 @@ def calculate_roi(signals: list, stake: float, odd: float, gale_on: bool) -> dic
         tentativa = signal.get("tentativa") or 1
 
         if not gale_on:
-            # Stake Fixa: same stake every attempt
+            # Stake Fixa: same stake every time
+            invested = stake
             if resultado == "GREEN":
-                # GREEN at tentativa N: lost (N-1) attempts, won the Nth
-                invested = stake * tentativa
-                net = stake * (odd - 1) - stake * (tentativa - 1)
+                net = stake * (odd - 1)
             else:
-                # RED: lost all 4 attempts
-                invested = stake * MAX_TENTATIVAS
-                net = -invested
+                net = -stake
         else:
             # Gale: stake doubles on each attempt
+            # Total invested across all N attempts: stake * (2^N - 1)
+            # The Nth attempt uses stake * 2^(N-1)
+            accumulated_stake = stake * (2 ** tentativa - 1)
+            winning_stake = stake * (2 ** (tentativa - 1))
+            invested = accumulated_stake
+
             if resultado == "GREEN":
-                # Total invested across all N attempts: stake * (2^N - 1)
-                # The Nth attempt uses stake * 2^(N-1)
-                accumulated_stake = stake * (2 ** tentativa - 1)
-                winning_stake = stake * (2 ** (tentativa - 1))
-                invested = accumulated_stake
                 # Win on last attempt: profit minus all prior losses
                 win_profit = winning_stake * (odd - 1)
                 prior_losses = accumulated_stake - winning_stake
                 net = win_profit - prior_losses
             else:
-                # RED: lost all 4 attempts with doubling stakes
-                invested = stake * (2 ** MAX_TENTATIVAS - 1)
-                net = -invested
+                # RED: lost all attempts
+                net = -accumulated_stake
 
         total_invested += invested
         profit += net
@@ -591,37 +586,31 @@ def calculate_roi_complementares(
                 signal.get("resultado"),
             )
 
-            MAX_TENTATIVAS = 4
-
             if not gale_on:
-                # Stake Fixa: same stake_comp every attempt
+                # Stake Fixa: stake_comp fixo independente da tentativa
                 stake_comp = stake * percentual
+                invested = stake_comp
 
                 if resultado_comp == "GREEN":
-                    # GREEN at tentativa N: lost (N-1) attempts, won the Nth
-                    invested = stake_comp * tentativa
-                    net = stake_comp * (odd_ref - 1) - stake_comp * (tentativa - 1)
+                    net = stake_comp * (odd_ref - 1)
                     per_comp[slug]["greens"] += 1
                 else:
-                    # RED: lost all 4 attempts
-                    invested = stake_comp * MAX_TENTATIVAS
-                    net = -invested
+                    net = -stake_comp
                     per_comp[slug]["reds"] += 1
             else:
                 # Gale: stake dobra a cada tentativa
+                # Acumulado = stake * (2^N - 1) * percentual
+                # Winning = stake * 2^(N-1) * percentual
+                accumulated_stake = stake * (2 ** tentativa - 1) * percentual
+                winning_stake = stake * (2 ** (tentativa - 1)) * percentual
+                invested = accumulated_stake
+
                 if resultado_comp == "GREEN":
-                    # Acumulado = stake * (2^N - 1) * percentual
-                    # Winning = stake * 2^(N-1) * percentual
-                    accumulated_stake = stake * (2 ** tentativa - 1) * percentual
-                    winning_stake = stake * (2 ** (tentativa - 1)) * percentual
-                    invested = accumulated_stake
                     prior_losses = accumulated_stake - winning_stake
                     net = winning_stake * (odd_ref - 1) - prior_losses
                     per_comp[slug]["greens"] += 1
                 else:
-                    # RED: lost all 4 attempts with doubling stakes
-                    invested = stake * (2 ** MAX_TENTATIVAS - 1) * percentual
-                    net = -invested
+                    net = -accumulated_stake
                     per_comp[slug]["reds"] += 1
 
             per_comp[slug]["lucro"] += net
@@ -688,29 +677,26 @@ def calculate_pl_por_entrada(
         mercado_slug = signal.get("mercado_slug") or "over_2_5"
         odd = odd_por_mercado.get(mercado_slug, 2.30)
 
-        MAX_TENTATIVAS = 4
-
         # Calculo principal (replicando formula exata de calculate_roi)
         if gale_on:
+            accumulated_stake = stake * (2 ** tentativa - 1)
+            winning_stake = stake * (2 ** (tentativa - 1))
+            investido_principal = accumulated_stake
+
             if resultado == "GREEN":
-                accumulated_stake = stake * (2 ** tentativa - 1)
-                winning_stake = stake * (2 ** (tentativa - 1))
-                investido_principal = accumulated_stake
                 retorno_principal = winning_stake * odd
                 lucro_principal = winning_stake * (odd - 1) - (accumulated_stake - winning_stake)
             else:
-                investido_principal = stake * (2 ** MAX_TENTATIVAS - 1)
                 retorno_principal = 0.0
-                lucro_principal = -investido_principal
+                lucro_principal = -accumulated_stake
         else:
+            investido_principal = stake
             if resultado == "GREEN":
-                investido_principal = stake * tentativa
                 retorno_principal = stake * odd
-                lucro_principal = stake * (odd - 1) - stake * (tentativa - 1)
+                lucro_principal = stake * (odd - 1)
             else:
-                investido_principal = stake * MAX_TENTATIVAS
                 retorno_principal = 0.0
-                lucro_principal = -investido_principal
+                lucro_principal = -stake
 
         # Calculo complementares (replicando logica de calculate_roi_complementares)
         comps = complementares_por_mercado.get(mercado_slug, [])
@@ -729,27 +715,26 @@ def calculate_pl_por_entrada(
             )
 
             if gale_on:
+                acc_comp = stake * (2 ** tentativa - 1) * percentual
+                win_comp = stake * (2 ** (tentativa - 1)) * percentual
+                invested_comp = acc_comp
+
                 if resultado_comp == "GREEN":
-                    acc_comp = stake * (2 ** tentativa - 1) * percentual
-                    win_comp = stake * (2 ** (tentativa - 1)) * percentual
-                    invested_comp = acc_comp
                     ret_comp = win_comp * odd_ref
                     net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
                 else:
-                    invested_comp = stake * (2 ** MAX_TENTATIVAS - 1) * percentual
                     ret_comp = 0.0
-                    net_comp = -invested_comp
+                    net_comp = -acc_comp
             else:
                 stake_comp = stake * percentual
+                invested_comp = stake_comp
 
                 if resultado_comp == "GREEN":
-                    invested_comp = stake_comp * tentativa
                     ret_comp = stake_comp * odd_ref
-                    net_comp = stake_comp * (odd_ref - 1) - stake_comp * (tentativa - 1)
+                    net_comp = stake_comp * (odd_ref - 1)
                 else:
-                    invested_comp = stake_comp * MAX_TENTATIVAS
                     ret_comp = 0.0
-                    net_comp = -invested_comp
+                    net_comp = -stake_comp
 
             investido_comp += invested_comp
             retorno_comp += ret_comp
@@ -850,33 +835,28 @@ def calculate_pl_detalhado_por_sinal(
     tentativa = sinal.get("tentativa") or 1
     placar = sinal.get("placar")
 
-    MAX_TENTATIVAS = 4
-
     # --- Principal ---
     if gale_on:
+        accumulated_stake = stake * (2 ** tentativa - 1)
+        winning_stake = stake * (2 ** (tentativa - 1))
+        investido_principal = accumulated_stake
+        stake_efetiva = winning_stake
+
         if resultado == "GREEN":
-            accumulated_stake = stake * (2 ** tentativa - 1)
-            winning_stake = stake * (2 ** (tentativa - 1))
-            investido_principal = accumulated_stake
-            stake_efetiva = winning_stake
             retorno_principal = winning_stake * odd_principal
             lucro_principal = winning_stake * (odd_principal - 1) - (accumulated_stake - winning_stake)
         else:
-            investido_principal = stake * (2 ** MAX_TENTATIVAS - 1)
-            stake_efetiva = stake * (2 ** (MAX_TENTATIVAS - 1))
             retorno_principal = 0.0
-            lucro_principal = -investido_principal
+            lucro_principal = -accumulated_stake
     else:
+        investido_principal = stake
+        stake_efetiva = stake
         if resultado == "GREEN":
-            investido_principal = stake * tentativa
-            stake_efetiva = stake
             retorno_principal = stake * odd_principal
-            lucro_principal = stake * (odd_principal - 1) - stake * (tentativa - 1)
+            lucro_principal = stake * (odd_principal - 1)
         else:
-            investido_principal = stake * MAX_TENTATIVAS
-            stake_efetiva = stake
             retorno_principal = 0.0
-            lucro_principal = -investido_principal
+            lucro_principal = -stake
 
     principal = {
         "odd": round(odd_principal, 2),
@@ -929,27 +909,26 @@ def calculate_pl_detalhado_por_sinal(
             continue
 
         if gale_on:
+            acc_comp = stake * (2 ** tentativa - 1) * percentual
+            win_comp = stake * (2 ** (tentativa - 1)) * percentual
+            invested_comp = acc_comp
+
             if resultado_comp == "GREEN":
-                acc_comp = stake * (2 ** tentativa - 1) * percentual
-                win_comp = stake * (2 ** (tentativa - 1)) * percentual
-                invested_comp = acc_comp
                 ret_comp = win_comp * odd_ref
                 net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
             else:
-                invested_comp = stake * (2 ** MAX_TENTATIVAS - 1) * percentual
                 ret_comp = 0.0
-                net_comp = -invested_comp
+                net_comp = -acc_comp
         else:
             stake_comp = stake * percentual
+            invested_comp = stake_comp
 
             if resultado_comp == "GREEN":
-                invested_comp = stake_comp * tentativa
                 ret_comp = stake_comp * odd_ref
-                net_comp = stake_comp * (odd_ref - 1) - stake_comp * (tentativa - 1)
+                net_comp = stake_comp * (odd_ref - 1)
             else:
-                invested_comp = stake_comp * MAX_TENTATIVAS
                 ret_comp = 0.0
-                net_comp = -invested_comp
+                net_comp = -stake_comp
 
         complementares.append({
             "nome": nome,
