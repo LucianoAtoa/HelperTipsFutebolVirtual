@@ -676,3 +676,24 @@ def test_build_gale_chart_colors():
     fig = _build_gale_chart(SAMPLE_GALE)
     expected_colors = ["#00bc8c", "#00a07a", "#008567", "#006a53"]
     assert list(fig.data[0].marker.colors) == expected_colors
+
+
+# ---------------------------------------------------------------------------
+# Phase 13 Plan 02 — _build_phase13_section: integracao no callback master
+# ---------------------------------------------------------------------------
+
+
+def test_layout_has_phase13_component_ids():
+    """Verifica que IDs dos componentes Phase 13 estao no layout."""
+    ids = collect_ids(app.layout)
+    assert "phase13-placeholder" in ids, (
+        f"phase13-placeholder ausente no layout. IDs encontrados: {sorted(ids)}"
+    )
+    # Os graficos sao criados dinamicamente pelo callback, nao estao no layout estatico.
+    # Verificar que o placeholder existe para receber o conteudo.
+
+
+def test_build_phase13_section_exists():
+    """Verifica que _build_phase13_section e importavel."""
+    from helpertips.dashboard import _build_phase13_section
+    assert callable(_build_phase13_section)

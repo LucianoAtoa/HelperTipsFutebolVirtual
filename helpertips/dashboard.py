@@ -31,6 +31,9 @@ from dash import Input, Output, State, callback, ctx, dash_table, dcc, html, no_
 
 from helpertips.db import get_connection
 from helpertips.queries import (
+    aggregate_pl_por_liga,
+    aggregate_pl_por_tentativa,
+    calculate_equity_curve_breakdown,
     calculate_pl_por_entrada,
     calculate_roi,
     calculate_roi_complementares,
@@ -38,6 +41,7 @@ from helpertips.queries import (
     get_complementares_config,
     get_distinct_values,
     get_filtered_stats,
+    get_gale_analysis,
     get_mercado_config,
     get_parse_failures_detail,
     get_signal_history,
@@ -388,6 +392,144 @@ def _build_gale_chart(gale_data: list[dict]) -> go.Figure:
     return fig
 
 
+def _build_phase13_section(
+    signals_placar: list[dict],
+    pl_lista: list[dict],
+    conn,
+    liga: str | None,
+    entrada: str | None,
+    date_start: str | None,
+    date_end: str | None,
+    stake: float,
+    odd_por_mercado: dict[str, float],
+    comps_por_mercado: dict[str, list[dict]],
+    gale_on: bool,
+) -> list:
+    """Constroi as 3 secoes Phase 13 (per D-04: liga -> equity -> gale)."""
+    # --- DASH-05: Analise por Liga ---
+    pl_por_liga = aggregate_pl_por_liga(pl_lista)
+    fig_liga = _build_liga_chart(pl_por_liga)
+
+    # Tabela de ligas com DataTable (coloracao condicional P&L)
+    liga_table_data = [
+        {
+            "liga": r["liga"],
+            "taxa_green": f"{r['taxa_green']:.1f}%",
+            "pl_principal": round(r["lucro_principal"], 2),
+            "pl_complementar": round(r["lucro_complementar"], 2),
+            "pl_total": round(r["pl_total"], 2),
+        }
+        for r in pl_por_liga
+    ]
+    liga_table = dash_table.DataTable(
+        data=liga_table_data,
+        columns=[
+            {"name": "Liga", "id": "liga"},
+            {"name": "Taxa Green", "id": "taxa_green"},
+            {"name": "P&L Principal (R$)", "id": "pl_principal", "type": "numeric"},
+            {"name": "P&L Complementar (R$)", "id": "pl_complementar", "type": "numeric"},
+            {"name": "P&L Total (R$)", "id": "pl_total", "type": "numeric"},
+        ],
+        style_header={"backgroundColor": "#303030", "color": "white", "fontWeight": "bold"},
+        style_cell={"backgroundColor": "#222", "color": "white", "border": "1px solid #444", "textAlign": "center"},
+        style_data_conditional=[
+            {"if": {"filter_query": "{pl_total} > 0", "column_id": "pl_total"}, "color": "#28a745", "fontWeight": "bold"},
+            {"if": {"filter_query": "{pl_total} < 0", "column_id": "pl_total"}, "color": "#dc3545", "fontWeight": "bold"},
+            {"if": {"filter_query": "{pl_principal} > 0", "column_id": "pl_principal"}, "color": "#28a745"},
+            {"if": {"filter_query": "{pl_principal} < 0", "column_id": "pl_principal"}, "color": "#dc3545"},
+            {"if": {"filter_query": "{pl_complementar} > 0", "column_id": "pl_complementar"}, "color": "#28a745"},
+            {"if": {"filter_query": "{pl_complementar} < 0", "column_id": "pl_complementar"}, "color": "#dc3545"},
+        ],
+        style_table={"overflowX": "auto"},
+    ) if liga_table_data else html.P("Sem dados de liga para o periodo.", className="text-muted")
+
+    card_liga = dbc.Card([
+        dbc.CardHeader(html.H5("Analise por Liga", className="mb-0")),
+        dbc.CardBody([
+            dcc.Graph(id="liga-chart", figure=fig_liga, config={"displayModeBar": False}),
+            html.Div(liga_table, className="mt-3"),
+        ]),
+    ], className="mb-3")
+
+    # --- DASH-06: Equity Curve ---
+    equity_data = calculate_equity_curve_breakdown(
+        signals_placar, comps_por_mercado, stake, odd_por_mercado, gale_on,
+    )
+    # Extrair datas dos sinais para hover (Pitfall 1)
+    resolved = [s for s in signals_placar if s.get("resultado") in ("GREEN", "RED")]
+    dates = None
+    if resolved:
+        dates = []
+        for s in resolved:
+            ra = s.get("received_at")
+            if ra is not None:
+                try:
+                    dates.append(ra.strftime("%d/%m/%Y %H:%M"))
+                except AttributeError:
+                    dates.append(str(ra))
+            else:
+                dates.append("")
+
+    fig_equity = _build_equity_curve_chart(equity_data, dates=dates)
+
+    card_equity = dbc.Card([
+        dbc.CardHeader(html.H5("Evolucao do Saldo (Equity Curve)", className="mb-0")),
+        dbc.CardBody([
+            dcc.Graph(id="equity-curve-chart", figure=fig_equity),
+        ]),
+    ], className="mb-3")
+
+    # --- DASH-07: Analise de Gale ---
+    gale_data = get_gale_analysis(conn, liga=liga, entrada=entrada,
+                                   date_start=date_start, date_end=date_end)
+    pl_por_tent = aggregate_pl_por_tentativa(pl_lista)
+
+    fig_gale = _build_gale_chart(gale_data)
+
+    # Merge gale_data com lucro_medio (per D-08/D-09, Padrao 6 do RESEARCH)
+    pl_tent_map = {r["tentativa"]: r for r in pl_por_tent}
+    gale_table_data = []
+    for row in gale_data:
+        t = row["tentativa"]
+        pl_row = pl_tent_map.get(t, {})
+        gale_table_data.append({
+            "tentativa": f"{t}a",
+            "greens": row["greens"],
+            "total": row["total"],
+            "win_rate": f"{row['win_rate']:.1f}%",
+            "lucro_medio": f"R$ {pl_row.get('lucro_medio_green', 0.0):+.2f}",
+        })
+
+    gale_table = dbc.Table(
+        [
+            html.Thead(html.Tr([
+                html.Th("Tentativa"), html.Th("Greens"), html.Th("Total"),
+                html.Th("Win Rate"), html.Th("Lucro Medio Green"),
+            ])),
+            html.Tbody([
+                html.Tr([
+                    html.Td(r["tentativa"]), html.Td(r["greens"]), html.Td(r["total"]),
+                    html.Td(r["win_rate"]), html.Td(r["lucro_medio"]),
+                ]) for r in gale_table_data
+            ]) if gale_table_data else html.Tbody(html.Tr(html.Td("Sem dados", colSpan=5))),
+        ],
+        color="dark", bordered=True, hover=True, size="sm",
+    )
+
+    card_gale = dbc.Card([
+        dbc.CardHeader(html.H5("Analise de Gale", className="mb-0")),
+        dbc.CardBody([
+            dbc.Row([
+                dbc.Col(dcc.Graph(id="gale-donut-chart", figure=fig_gale, config={"displayModeBar": False}), md=6),
+                dbc.Col(gale_table, md=6),
+            ]),
+        ]),
+    ], className="mb-3")
+
+    # Ordem per D-04: Liga -> Equity Curve -> Gale
+    return [card_liga, card_equity, card_gale]
+
+
 def make_kpi_card(title: str, value_id: str, color_class: str = "text-light"):
     """Constroi um KPI card com titulo muted e valor em bold colorido."""
     return dbc.Card(
@@ -626,6 +768,7 @@ def toggle_datepicker(periodo):
     Output("filter-liga",                 "options"),
     Output("config-mercados-container",   "children"),  # DASH-03
     Output("perf-table",                  "children"),  # DASH-04
+    Output("phase13-placeholder",         "children"),  # DASH-05, DASH-06, DASH-07
     Input("periodo-selector",             "value"),
     Input("filter-date-custom",           "start_date"),
     Input("filter-date-custom",           "end_date"),
@@ -751,10 +894,40 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
             conn, history, entrada, stake, odd, gale_on, perf_toggle or "pct"
         )
 
+        # 19. Phase 13 — Analise por Liga, Equity Curve, Gale (DASH-05, DASH-06, DASH-07)
+        # Calcular signals_placar, comps_por_mercado, odds_por_mercado e pl_lista no nivel do callback
+        # para reutilizacao em _build_phase13_section sem round-trips extras (D-08)
+        signals_placar_13 = get_signals_com_placar(
+            conn, entrada=entrada, liga=liga, date_start=date_start, date_end=date_end
+        )
+        comps_por_mercado_13 = {}
+        odds_por_mercado_13 = {}
+        for slug, nome in MERCADOS_CONFIG:
+            cfg = get_mercado_config(conn, slug)
+            if cfg:
+                odds_por_mercado_13[slug] = float(cfg["odd_ref"])
+                comps_por_mercado_13[slug] = get_complementares_config(conn, slug)
+        pl_lista_13 = calculate_pl_por_entrada(
+            signals_placar_13, comps_por_mercado_13, stake, odds_por_mercado_13, gale_on
+        )
+        phase13_section = _build_phase13_section(
+            signals_placar=signals_placar_13,
+            pl_lista=pl_lista_13,
+            conn=conn,
+            liga=liga,
+            entrada=entrada,
+            date_start=date_start,
+            date_end=date_end,
+            stake=stake,
+            odd_por_mercado=odds_por_mercado_13,
+            comps_por_mercado=comps_por_mercado_13,
+            gale_on=gale_on,
+        )
+
     finally:
         conn.close()
 
-    # 19. Return tuple com todos os 12 Outputs na ordem
+    # 20. Return tuple com todos os 13 Outputs na ordem
     return (
         str(total),
         winrate,
@@ -766,8 +939,9 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
         streak_red,
         row_data,
         liga_options,
-        config_section,   # NOVO
-        perf_section,     # NOVO
+        config_section,    # DASH-03
+        perf_section,      # DASH-04
+        phase13_section,   # DASH-05/06/07 — NOVO
     )
 
 
