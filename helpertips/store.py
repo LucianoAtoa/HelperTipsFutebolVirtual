@@ -4,6 +4,7 @@ store.py — Repository layer for HelperTips signal persistence.
 Provides:
 - upsert_signal(conn, data): Insert or update a signal row via ON CONFLICT
 - get_stats(conn): Return (total, greens, reds, pending) counts from signals table
+- _resolve_mercado_id(entrada): Resolve entrada string para mercado_id FK
 
 Design notes:
 - This module is SYNC ONLY — no asyncio, no telethon imports
@@ -11,13 +12,50 @@ Design notes:
 - Each upsert is its own committed transaction (conn.commit inside upsert_signal)
 - The ON CONFLICT WHERE clause prevents overwriting a known resultado with NULL
 """
+import logging
+
+logger = logging.getLogger("helpertips.store")
+
+# Mapeamento de strings de entrada para mercado_id (FK para tabela mercados)
+# mercados: id=1 slug='over_2_5', id=2 slug='ambas_marcam'
+ENTRADA_PARA_MERCADO_ID = {
+    "over 2.5": 1,
+    "ambas marcam": 2,
+    "ambas as equipes marcam": 2,
+}
+
+
+def _resolve_mercado_id(entrada: str | None) -> int | None:
+    """
+    Resolve o string de entrada para o mercado_id correspondente na tabela mercados.
+
+    Parâmetros
+    ----------
+    entrada : str | None
+        String de entrada do sinal (ex: 'Over 2.5', 'Ambas Marcam').
+
+    Retorna
+    -------
+    int | None
+        O mercado_id correspondente, ou None se desconhecido (D-06: não rejeita).
+    """
+    if not entrada:
+        return None
+    normalized = entrada.lower().strip()
+    mercado_id = ENTRADA_PARA_MERCADO_ID.get(normalized)
+    if mercado_id is None:
+        logger.warning(
+            "Mercado desconhecido para entrada '%s' — inserindo com mercado_id=NULL",
+            entrada,
+        )
+    return mercado_id
 
 
 def upsert_signal(conn, data: dict) -> None:
     """
-    Insert a new signal or update an existing one by message_id.
+    Insert a new signal or update an existing one by (group_id, message_id).
 
-    Uses a single INSERT ... ON CONFLICT (message_id) DO UPDATE statement
+    Uses a single INSERT ... ON CONFLICT (group_id, message_id) DO UPDATE statement
     so both NewMessage and MessageEdited events flow through the same code path.
 
     The WHERE clause on the DO UPDATE ensures that a known resultado (GREEN/RED)
@@ -29,33 +67,36 @@ def upsert_signal(conn, data: dict) -> None:
         An open psycopg2 connection. Caller manages its lifecycle.
     data : dict
         Signal dict as produced by parser.parse_message(). Required keys:
-        message_id, liga, entrada, horario, periodo, dia_semana,
+        message_id, group_id, liga, entrada, horario, periodo, dia_semana,
         resultado, placar, raw_text.
     """
+    mercado_id = _resolve_mercado_id(data.get('entrada'))
+    params = {**data, 'mercado_id': mercado_id}
+
     with conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO signals (
-                message_id, liga, entrada, horario, periodo,
+                message_id, group_id, mercado_id, liga, entrada, horario, periodo,
                 dia_semana, resultado, placar, tentativa, raw_text, received_at, updated_at
             ) VALUES (
-                %(message_id)s, %(liga)s, %(entrada)s, %(horario)s, %(periodo)s,
-                %(dia_semana)s, %(resultado)s, %(placar)s, %(tentativa)s, %(raw_text)s,
-                NOW(), NOW()
+                %(message_id)s, %(group_id)s, %(mercado_id)s, %(liga)s, %(entrada)s,
+                %(horario)s, %(periodo)s, %(dia_semana)s, %(resultado)s, %(placar)s,
+                %(tentativa)s, %(raw_text)s, NOW(), NOW()
             )
-            ON CONFLICT (message_id) DO UPDATE SET
+            ON CONFLICT (group_id, message_id) DO UPDATE SET
                 resultado  = COALESCE(EXCLUDED.resultado, signals.resultado),
                 placar     = COALESCE(EXCLUDED.placar, signals.placar),
                 tentativa  = COALESCE(EXCLUDED.tentativa, signals.tentativa),
+                mercado_id = COALESCE(EXCLUDED.mercado_id, signals.mercado_id),
                 liga       = EXCLUDED.liga,
                 entrada    = EXCLUDED.entrada,
                 updated_at = NOW()
             WHERE
                 EXCLUDED.resultado IS NOT NULL
                 OR signals.resultado IS NULL
-                OR signals.resultado IS NULL
             """,
-            data,
+            params,
         )
     conn.commit()
 

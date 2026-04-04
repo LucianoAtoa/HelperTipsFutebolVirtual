@@ -201,3 +201,52 @@ def test_seed_percentual_fracao(db_conn):
         f"Percentual esperado 0.2000 (fração), got {percentual}. "
         "Não usar 20 — deve ser 0.20"
     )
+
+
+# ---------------------------------------------------------------------------
+# Testes de migration Phase 09: group_id e mercado_id em signals
+# ---------------------------------------------------------------------------
+
+def test_migration_adds_group_id_column(db_conn):
+    """Após ensure_schema(), tabela signals tem coluna group_id."""
+    with db_conn.cursor() as cur:
+        cur.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'signals' AND column_name = 'group_id'
+        """)
+        row = cur.fetchone()
+
+    assert row is not None, "Coluna group_id deve existir na tabela signals após migration"
+
+
+def test_migration_adds_mercado_id_column(db_conn):
+    """Após ensure_schema(), tabela signals tem coluna mercado_id."""
+    with db_conn.cursor() as cur:
+        cur.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'signals' AND column_name = 'mercado_id'
+        """)
+        row = cur.fetchone()
+
+    assert row is not None, "Coluna mercado_id deve existir na tabela signals após migration"
+
+
+def test_migration_idempotent_with_new_columns(db_conn):
+    """ensure_schema() chamado 2x não gera erro e colunas existem."""
+    # Fixture já chamou ensure_schema() uma vez — chamar novamente
+    ensure_schema(db_conn)
+
+    with db_conn.cursor() as cur:
+        cur.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'signals'
+              AND column_name IN ('group_id', 'mercado_id')
+            ORDER BY column_name
+        """)
+        columns = {row[0] for row in cur.fetchall()}
+
+    assert 'group_id' in columns, "group_id deve existir após 2 chamadas de ensure_schema()"
+    assert 'mercado_id' in columns, "mercado_id deve existir após 2 chamadas de ensure_schema()"

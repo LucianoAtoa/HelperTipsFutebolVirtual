@@ -113,10 +113,11 @@ def ensure_schema(conn):
                 UNIQUE (mercado_id, slug)
             );
 
-            -- Seed: mercados principais (idempotente)
-            INSERT INTO mercados (slug, nome_display, odd_ref) VALUES
-                ('over_2_5',     'Over 2.5',     2.30),
-                ('ambas_marcam', 'Ambas Marcam', 2.10)
+            -- Seed: mercados principais com IDs fixos (id=1 Over 2.5, id=2 Ambas Marcam)
+            -- OVERRIDING SYSTEM VALUE permite inserir id explícito em coluna SERIAL
+            INSERT INTO mercados (id, slug, nome_display, odd_ref) OVERRIDING SYSTEM VALUE VALUES
+                (1, 'over_2_5',     'Over 2.5',     2.30),
+                (2, 'ambas_marcam', 'Ambas Marcam', 2.10)
             ON CONFLICT (slug) DO NOTHING;
         """)
 
@@ -155,5 +156,57 @@ def ensure_schema(conn):
             WHERE m.slug = 'ambas_marcam'
             ON CONFLICT (mercado_id, slug) DO NOTHING;
         """)
+
+        # --- Migration Phase 09: multi-grupo ---
+        # Passo 1: Adicionar colunas (idempotente via IF NOT EXISTS)
+        cur.execute("ALTER TABLE signals ADD COLUMN IF NOT EXISTS group_id BIGINT")
+        cur.execute("ALTER TABLE signals ADD COLUMN IF NOT EXISTS mercado_id INTEGER REFERENCES mercados(id)")
+
+        # Passo 2: UPDATE retroativo — dados históricos recebem group_id do grupo original
+        # Usa TELEGRAM_GROUP_IDS (Phase 09) ou TELEGRAM_GROUP_ID (legado) como fallback
+        original_group_id = os.environ.get(
+            'TELEGRAM_GROUP_IDS',
+            os.environ.get('TELEGRAM_GROUP_ID', '')
+        ).split(',')[0].strip()
+        if original_group_id:
+            cur.execute(
+                "UPDATE signals SET group_id = %s WHERE group_id IS NULL",
+                (int(original_group_id),)
+            )
+
+        # Passo 3: SET NOT NULL somente se não há NULLs restantes (evita erro em produção)
+        cur.execute("SELECT COUNT(*) FROM signals WHERE group_id IS NULL")
+        null_count = cur.fetchone()[0]
+        if null_count == 0:
+            cur.execute("""
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='signals' AND column_name='group_id'
+                        AND is_nullable='YES'
+                    ) THEN
+                        ALTER TABLE signals ALTER COLUMN group_id SET NOT NULL;
+                    END IF;
+                END $$;
+            """)
+
+        # Passo 4: Drop constraint única antiga e criar nova constraint composta
+        cur.execute("ALTER TABLE signals DROP CONSTRAINT IF EXISTS signals_message_id_key")
+        cur.execute("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'signals_group_message_unique'
+                ) THEN
+                    ALTER TABLE signals ADD CONSTRAINT signals_group_message_unique
+                        UNIQUE (group_id, message_id);
+                END IF;
+            END $$;
+        """)
+
+        # Passo 5: Índices em group_id e mercado_id para performance de queries
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_signals_group_id ON signals(group_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_signals_mercado_id ON signals(mercado_id)")
 
     conn.commit()

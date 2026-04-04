@@ -12,17 +12,23 @@ import pytest
 # Skip all tests if DB imports fail or connection not available
 try:
     from helpertips.db import ensure_schema, get_connection
-    from helpertips.store import get_stats, log_parse_failure, upsert_signal
+    from helpertips.store import (
+        _resolve_mercado_id,
+        get_stats,
+        log_parse_failure,
+        upsert_signal,
+    )
     _IMPORTS_OK = True
 except ImportError as e:
     _IMPORTS_OK = False
     _IMPORT_ERROR = str(e)
 
 
-def _make_signal(message_id: int, resultado=None, placar=None, tentativa=None) -> dict:
+def _make_signal(message_id: int, resultado=None, placar=None, tentativa=None, group_id=99999) -> dict:
     """Helper to build a minimal valid signal dict."""
     return {
         "message_id": message_id,
+        "group_id": group_id,
         "liga": "Euro League",
         "entrada": "Over 1.5 Gols",
         "horario": "14:30",
@@ -217,3 +223,106 @@ def test_coverage_with_failures(db_conn):
     assert result['total'] == 3, f"Expected total=3, got {result['total']}"
     assert result['parse_failures'] == 1, f"Expected parse_failures=1, got {result['parse_failures']}"
     assert result['coverage'] == 75.0, f"Expected coverage=75.0, got {result['coverage']}"
+
+
+# ---------------------------------------------------------------------------
+# _resolve_mercado_id unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_mercado_id_over():
+    """_resolve_mercado_id('Over 2.5') retorna 1."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    assert _resolve_mercado_id("Over 2.5") == 1
+
+
+def test_resolve_mercado_id_ambas():
+    """_resolve_mercado_id('Ambas Marcam') retorna 2."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    assert _resolve_mercado_id("Ambas Marcam") == 2
+
+
+def test_resolve_mercado_id_ambas_variante():
+    """_resolve_mercado_id('Ambas as equipes marcam') retorna 2."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    assert _resolve_mercado_id("Ambas as equipes marcam") == 2
+
+
+def test_resolve_mercado_id_case_insensitive():
+    """_resolve_mercado_id é case-insensitive."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    assert _resolve_mercado_id("over 2.5") == 1
+    assert _resolve_mercado_id("AMBAS MARCAM") == 2
+
+
+def test_resolve_mercado_id_unknown():
+    """_resolve_mercado_id com mercado desconhecido retorna None (não rejeita)."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    assert _resolve_mercado_id("Outro Mercado") is None
+
+
+def test_resolve_mercado_id_none():
+    """_resolve_mercado_id(None) retorna None."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    assert _resolve_mercado_id(None) is None
+
+
+# ---------------------------------------------------------------------------
+# upsert_signal com group_id e mercado_id
+# ---------------------------------------------------------------------------
+
+
+def test_upsert_with_group_id(db_conn):
+    """upsert_signal com group_id=12345 insere corretamente, row tem group_id=12345."""
+    signal = _make_signal(message_id=4001, group_id=12345)
+    upsert_signal(db_conn, signal)
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT group_id FROM signals WHERE message_id = %s AND group_id = %s",
+            (4001, 12345),
+        )
+        row = cur.fetchone()
+
+    assert row is not None, "Row com group_id=12345 deve existir"
+    assert row[0] == 12345, f"group_id esperado 12345, got {row[0]}"
+
+
+def test_upsert_with_mercado_id(db_conn):
+    """upsert_signal com entrada='Over 2.5' insere mercado_id=1 na row."""
+    signal = _make_signal(message_id=4002, group_id=99999)
+    signal["entrada"] = "Over 2.5"
+    upsert_signal(db_conn, signal)
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT mercado_id FROM signals WHERE message_id = %s AND group_id = %s",
+            (4002, 99999),
+        )
+        row = cur.fetchone()
+
+    assert row is not None, "Row deve existir"
+    assert row[0] == 1, f"mercado_id esperado 1 (Over 2.5), got {row[0]}"
+
+
+def test_upsert_two_groups_same_message_id(db_conn):
+    """group_id=111/msg=1000 e group_id=222/msg=1000 geram 2 rows distintas (LIST-01)."""
+    signal_a = _make_signal(message_id=1000, group_id=111)
+    signal_b = _make_signal(message_id=1000, group_id=222)
+    upsert_signal(db_conn, signal_a)
+    upsert_signal(db_conn, signal_b)
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM signals WHERE message_id = %s",
+            (1000,),
+        )
+        count = cur.fetchone()[0]
+
+    assert count == 2, f"Esperado 2 rows distintas (um por grupo), got {count}"
