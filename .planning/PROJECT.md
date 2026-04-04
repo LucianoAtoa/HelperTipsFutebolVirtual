@@ -61,6 +61,11 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Repo público no GitHub com CI automatizado (ruff lint + pytest) — Phase 5
 - ✓ `.gitignore` bloqueando `*.session`, `.env`, `__pycache__`, `*.pyc` — Phase 5
 - ✓ GitHub Actions CI passa verde a cada push para main — Phase 5
+- ✓ EC2 t3.micro provisionada com Elastic IP, Security Group restrito, swap 1GB — Phase 6
+- ✓ PostgreSQL 16 instalado com role/banco/schema migrado na EC2 — Phase 6
+- ✓ Budget alert AWS de $15/mês ativo no AWS Budgets — Phase 6
+- ✓ Credenciais protegidas com .env chmod 600 no servidor — Phase 6
+- ✓ Backup automático diário (pg_dump + .session) para S3 via IAM instance profile — Phase 6
 
 ### Out of Scope
 
@@ -120,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 5 (GitHub Publication) complete*
+*Last updated: 2026-04-04 after Phase 6 (AWS Infrastructure) complete*
