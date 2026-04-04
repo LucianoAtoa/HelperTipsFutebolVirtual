@@ -11,8 +11,8 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 ## Current State
 
 **Shipped:** v1.1 Cloud Deploy (2026-04-04)
-**Codebase:** ~16k LOC Python | 177 testes | ~175 commits
-**Phase 11 complete:** Dashboard Fundação — filtros globais e KPIs com P&L real
+**Codebase:** ~16k LOC Python | 190 testes | ~185 commits
+**Phase 12 complete:** Dashboard Mercados e Performance — config read-only e tabela P&L por entrada
 **Stack:** Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dash-bootstrap-components 2.0, gunicorn 25.x, nginx
 
 **O que funciona (produção na EC2):**
@@ -65,6 +65,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 - ✓ Cálculo financeiro P&L com complementares, odds de referência e Martingale — v1.2 Phase 10
 - ✓ Dashboard fundação: filtros globais (período/mercado/liga) e KPIs com P&L real — v1.2 Phase 11
+- ✓ Dashboard mercados e performance: config read-only e tabela P&L por entrada com toggle — v1.2 Phase 12
 
 ## Current Milestone: v1.2 Multi-Market Analytics
 
