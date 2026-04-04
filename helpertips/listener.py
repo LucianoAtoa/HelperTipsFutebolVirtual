@@ -8,7 +8,6 @@ import signal
 import sys
 
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.table import Table
 from telethon import TelegramClient, events
@@ -19,15 +18,41 @@ from helpertips.parser import parse_message
 from helpertips.store import get_stats, log_parse_failure, upsert_signal
 
 # ---------------------------------------------------------------------------
-# Logging configuration — RichHandler integrates with stdlib logging (D-04)
+# Logging configuration — RichHandler em TTY, RotatingFileHandler em daemon
 # ---------------------------------------------------------------------------
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True, show_path=False)],
-)
+LOG_PATH = "/var/log/helpertips/listener.log"
+
+
+def configure_logging():
+    """Configura logging: RichHandler em TTY, RotatingFileHandler em daemon."""
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    # Limpar handlers existentes para evitar duplicacao
+    root_logger.handlers.clear()
+
+    if sys.stdout.isatty():
+        from rich.logging import RichHandler
+        handler = RichHandler(rich_tracebacks=True, show_path=False)
+        handler.setLevel(logging.INFO)
+        root_logger.addHandler(handler)
+    else:
+        from logging.handlers import RotatingFileHandler
+        handler = RotatingFileHandler(
+            LOG_PATH,
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=7,
+            encoding="utf-8",
+        )
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        handler.setLevel(logging.INFO)
+        root_logger.addHandler(handler)
+
+
+configure_logging()
 logger = logging.getLogger("helpertips")
 
 # ---------------------------------------------------------------------------
@@ -52,30 +77,35 @@ conn = None
 # ---------------------------------------------------------------------------
 
 def print_startup_summary(conn, group_title):
-    """Print a formatted startup summary using rich Panel and Table."""
+    """Print a formatted startup summary — rich Panel em TTY, logger.info em daemon."""
     stats = get_stats(conn)  # returns dict with total, greens, reds, pending, parse_failures, coverage
-
-    table = Table(title="Estatisticas", show_header=True, header_style="bold cyan")
-    table.add_column("Metrica", style="bold")
-    table.add_column("Valor", justify="right")
-
-    table.add_row("Total de sinais", str(stats['total']))
-    table.add_row("[green]GREEN[/green]", str(stats['greens']))
-    table.add_row("[red]RED[/red]", str(stats['reds']))
-    table.add_row("Pendentes", str(stats['pending']))
-
     taxa = (stats['greens'] / stats['total'] * 100) if stats['total'] > 0 else 0.0
-    table.add_row("Taxa de acerto", f"{taxa:.1f}%")
-    table.add_row("Cobertura parser", f"{stats['coverage']:.1f}%")
-    table.add_row("Falhas de parse", str(stats['parse_failures']))
 
-    panel = Panel(
-        table,
-        title=f"[bold]HelperTips[/bold] - {group_title}",
-        subtitle="Ctrl+C para encerrar",
-        border_style="blue",
-    )
-    console.print(panel)
+    if sys.stdout.isatty():
+        table = Table(title="Estatisticas", show_header=True, header_style="bold cyan")
+        table.add_column("Metrica", style="bold")
+        table.add_column("Valor", justify="right")
+
+        table.add_row("Total de sinais", str(stats['total']))
+        table.add_row("[green]GREEN[/green]", str(stats['greens']))
+        table.add_row("[red]RED[/red]", str(stats['reds']))
+        table.add_row("Pendentes", str(stats['pending']))
+        table.add_row("Taxa de acerto", f"{taxa:.1f}%")
+        table.add_row("Cobertura parser", f"{stats['coverage']:.1f}%")
+        table.add_row("Falhas de parse", str(stats['parse_failures']))
+
+        panel = Panel(
+            table,
+            title=f"[bold]HelperTips[/bold] - {group_title}",
+            subtitle="Ctrl+C para encerrar",
+            border_style="blue",
+        )
+        console.print(panel)
+    else:
+        logger.info(
+            "HelperTips iniciado — grupo: %s | total: %d | greens: %d | reds: %d | taxa: %.1f%% | cobertura: %.1f%%",
+            group_title, stats['total'], stats['greens'], stats['reds'], taxa, stats['coverage'],
+        )
 
 # ---------------------------------------------------------------------------
 # Section 5: Main async function
@@ -97,10 +127,16 @@ async def main():
 
     # Se TELEGRAM_GROUP_ID não está configurado, oferece seleção interativa
     if not group_id_str:
-        console.print("[yellow]TELEGRAM_GROUP_ID não configurado.[/yellow]")
+        if sys.stdout.isatty():
+            console.print("[yellow]TELEGRAM_GROUP_ID não configurado.[/yellow]")
+        else:
+            logger.warning("TELEGRAM_GROUP_ID nao configurado — selecao interativa nao disponivel em daemon")
         group_id = await selecionar_grupo(client)
         if group_id is None:
-            console.print("[red]Nenhum grupo selecionado. Encerrando.[/red]")
+            if sys.stdout.isatty():
+                console.print("[red]Nenhum grupo selecionado. Encerrando.[/red]")
+            else:
+                logger.error("Nenhum grupo selecionado. Encerrando.")
             await client.disconnect()
             sys.exit(1)
     else:
@@ -135,12 +171,15 @@ async def main():
 
         # D-03, D-05: colored output per resultado (GREEN=verde, RED=vermelho, NOVO=amarelo)
         resultado = parsed.get('resultado')
-        if resultado == 'GREEN':
-            console.print(f"  [bold green]GREEN[/bold green] | {parsed['liga']} | {parsed['entrada']}")
-        elif resultado == 'RED':
-            console.print(f"  [bold red]RED[/bold red] | {parsed['liga']} | {parsed['entrada']}")
+        if sys.stdout.isatty():
+            if resultado == 'GREEN':
+                console.print(f"  [bold green]GREEN[/bold green] | {parsed['liga']} | {parsed['entrada']}")
+            elif resultado == 'RED':
+                console.print(f"  [bold red]RED[/bold red] | {parsed['liga']} | {parsed['entrada']}")
+            else:
+                console.print(f"  [yellow]NOVO[/yellow] | {parsed['liga']} | {parsed['entrada']}")
         else:
-            console.print(f"  [yellow]NOVO[/yellow] | {parsed['liga']} | {parsed['entrada']}")
+            logger.info("%s | %s | %s", resultado or "NOVO", parsed['liga'], parsed['entrada'])
 
     # Database connection
     conn = get_connection()
@@ -175,9 +214,15 @@ async def main():
     finally:
         if parse_total > 0:
             coverage = (parse_success / parse_total * 100)
-            console.print(f"\n[bold]Sessao encerrada[/bold] — cobertura: {coverage:.1f}% ({parse_success}/{parse_total})")
+            if sys.stdout.isatty():
+                console.print(f"\n[bold]Sessao encerrada[/bold] — cobertura: {coverage:.1f}% ({parse_success}/{parse_total})")
+            else:
+                logger.info("Sessao encerrada — cobertura: %.1f%% (%d/%d)", coverage, parse_success, parse_total)
         else:
-            console.print("\n[bold]Sessao encerrada[/bold] — nenhuma mensagem processada")
+            if sys.stdout.isatty():
+                console.print("\n[bold]Sessao encerrada[/bold] — nenhuma mensagem processada")
+            else:
+                logger.info("Sessao encerrada — nenhuma mensagem processada")
         conn.close()
         await client.disconnect()
 
@@ -204,5 +249,8 @@ if __name__ == '__main__':
                 logger.error("Max retries reached. Exiting.")
                 sys.exit(1)
         except KeyboardInterrupt:
-            console.print("\n[bold]Bye![/bold]")
+            if sys.stdout.isatty():
+                console.print("\n[bold]Bye![/bold]")
+            else:
+                logger.info("Listener encerrado via KeyboardInterrupt")
             break
