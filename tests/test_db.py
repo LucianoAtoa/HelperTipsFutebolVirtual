@@ -250,3 +250,30 @@ def test_migration_idempotent_with_new_columns(db_conn):
 
     assert 'group_id' in columns, "group_id deve existir após 2 chamadas de ensure_schema()"
     assert 'mercado_id' in columns, "mercado_id deve existir após 2 chamadas de ensure_schema()"
+
+
+# ---------------------------------------------------------------------------
+# Testes de migration Phase 16: config editavel em mercados
+# ---------------------------------------------------------------------------
+
+def test_mercados_config_columns_exist(db_conn):
+    """Phase 16: mercados tem colunas stake_base, fator_progressao, max_tentativas."""
+    ensure_schema(db_conn)
+    with db_conn.cursor() as cur:
+        cur.execute("""
+            SELECT column_name, data_type, column_default, is_nullable
+            FROM information_schema.columns
+            WHERE table_name = 'mercados'
+            AND column_name IN ('stake_base', 'fator_progressao', 'max_tentativas')
+            ORDER BY column_name
+        """)
+        cols = {row[0]: row for row in cur.fetchall()}
+    assert 'fator_progressao' in cols
+    assert 'max_tentativas' in cols
+    assert 'stake_base' in cols
+
+
+def test_ensure_schema_idempotent(db_conn):
+    """ensure_schema pode rodar multiplas vezes sem erro."""
+    ensure_schema(db_conn)
+    ensure_schema(db_conn)  # Segunda vez nao deve levantar excecao

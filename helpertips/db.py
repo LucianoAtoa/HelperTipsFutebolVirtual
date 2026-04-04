@@ -209,4 +209,9 @@ def ensure_schema(conn):
         cur.execute("CREATE INDEX IF NOT EXISTS idx_signals_group_id ON signals(group_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_signals_mercado_id ON signals(mercado_id)")
 
+        # --- Migration Phase 16: config editavel em mercados ---
+        cur.execute("ALTER TABLE mercados ADD COLUMN IF NOT EXISTS stake_base NUMERIC(10,2) NOT NULL DEFAULT 10.00")
+        cur.execute("ALTER TABLE mercados ADD COLUMN IF NOT EXISTS fator_progressao NUMERIC(4,2) NOT NULL DEFAULT 2.00")
+        cur.execute("ALTER TABLE mercados ADD COLUMN IF NOT EXISTS max_tentativas SMALLINT NOT NULL DEFAULT 4")
+
     conn.commit()
