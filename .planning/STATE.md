@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
-status: executing
-stopped_at: "Completed 06-aws-infrastructure-02-PLAN.md — aguardando Task 2 (checkpoint:human-action: instalar PostgreSQL, migrar schema e configurar budget alert no EC2)"
-last_updated: "2026-04-04T01:14:35.832Z"
+status: verifying
+stopped_at: "Completed 06-aws-infrastructure-03-PLAN.md — aguardando Task 2 (checkpoint:human-action: criar S3 bucket, IAM role e testar backup no EC2)"
+last_updated: "2026-04-04T02:18:46.561Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 Phase: 06 (aws-infrastructure) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-github-publication P02 | 2 | 2 tasks | 0 files |
 | Phase 06-aws-infrastructure P01 | 2 | 1 tasks | 2 files |
 | Phase 06-aws-infrastructure P02 | 1 | 1 tasks | 2 files |
+| Phase 06-aws-infrastructure P03 | 1 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 - [Phase 06-aws-infrastructure]: scram-sha-256 no pg_hba.conf — peer auth invalida para psycopg2 que autentica por senha
 - [Phase 06-aws-infrastructure]: shared_buffers=64MB para t3.micro — default 128MB consome RAM excessiva em instancia de 1GB com Telethon+Dash+PG
 - [Phase 06-aws-infrastructure]: Budget alert a 80% ($12) em vez de 100% ($15) — antecipacao para reagir antes de ultrapassar o limite
+- [Phase 06-aws-infrastructure]: IAM instance profile em vez de access keys estaticos — credenciais temporarias via IMDS sem segredo adicional em disco
+- [Phase 06-aws-infrastructure]: pg_dump formato custom (-Fc) — comprimido automaticamente, restauravel seletivamente com pg_restore
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-04T01:14:35.829Z
-Stopped at: Completed 06-aws-infrastructure-02-PLAN.md — aguardando Task 2 (checkpoint:human-action: instalar PostgreSQL, migrar schema e configurar budget alert no EC2)
+Last session: 2026-04-04T02:18:46.559Z
+Stopped at: Completed 06-aws-infrastructure-03-PLAN.md — aguardando Task 2 (checkpoint:human-action: criar S3 bucket, IAM role e testar backup no EC2)
 Resume file: None
