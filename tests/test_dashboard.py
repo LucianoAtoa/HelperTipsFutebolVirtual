@@ -368,3 +368,162 @@ def test_debug_mode_on_with_env(monkeypatch):
     monkeypatch.setenv('DASH_DEBUG', 'true')
     debug = os.getenv('DASH_DEBUG', 'false').lower() == 'true'
     assert debug is True
+
+
+# ---------------------------------------------------------------------------
+# Imports das novas funcoes helper (Phase 12) — RED intencional ate Plan 02
+# ---------------------------------------------------------------------------
+
+try:
+    from helpertips.dashboard import _calcular_stakes_gale
+    _HAS_STAKES = True
+except ImportError:
+    _calcular_stakes_gale = None
+    _HAS_STAKES = False
+
+try:
+    from helpertips.dashboard import _agregar_por_entrada
+    _HAS_AGREGAR = True
+except ImportError:
+    _agregar_por_entrada = None
+    _HAS_AGREGAR = False
+
+try:
+    from helpertips.dashboard import _get_colunas_visiveis
+    _HAS_COLUNAS = True
+except ImportError:
+    _get_colunas_visiveis = None
+    _HAS_COLUNAS = False
+
+
+# ---------------------------------------------------------------------------
+# Testes de _calcular_stakes_gale (DASH-03)
+# ---------------------------------------------------------------------------
+
+
+def test_config_stakes_calculo():
+    """_calcular_stakes_gale retorna (T1, T2, T3, T4) onde T2=T1*2, T3=T1*4, T4=T1*8."""
+    assert _HAS_STAKES, "_calcular_stakes_gale nao encontrado em helpertips.dashboard"
+    # Cenario 1: stake=100, pct=0.20 -> T1=20, T2=40, T3=80, T4=160
+    assert _calcular_stakes_gale(100.0, 0.20) == (20.0, 40.0, 80.0, 160.0), (
+        "100.0 * 0.20 deve retornar (20.0, 40.0, 80.0, 160.0)"
+    )
+    # Cenario 2: stake=50, pct=0.10 -> T1=5, T2=10, T3=20, T4=40
+    assert _calcular_stakes_gale(50.0, 0.10) == (5.0, 10.0, 20.0, 40.0), (
+        "50.0 * 0.10 deve retornar (5.0, 10.0, 20.0, 40.0)"
+    )
+    # Cenario 3: stake=10, pct=0.01 -> T1=0.10, T2=0.20, T3=0.40, T4=0.80
+    import pytest
+    assert _calcular_stakes_gale(10.0, 0.01) == pytest.approx((0.10, 0.20, 0.40, 0.80)), (
+        "10.0 * 0.01 deve retornar approx (0.10, 0.20, 0.40, 0.80)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Testes de _agregar_por_entrada (DASH-04)
+# ---------------------------------------------------------------------------
+
+
+def test_agregar_por_entrada_visao_geral():
+    """_agregar_por_entrada agrupa por entrada com greens, reds e campos financeiros."""
+    assert _HAS_AGREGAR, "_agregar_por_entrada nao encontrado em helpertips.dashboard"
+    pl_lista = [
+        {
+            "entrada": "Over 2.5",
+            "resultado": "GREEN",
+            "investido_total": 10.0,
+            "retorno_principal": 16.5,
+            "retorno_comp": 2.0,
+            "lucro_total": 8.5,
+        },
+        {
+            "entrada": "Over 2.5",
+            "resultado": "RED",
+            "investido_total": 10.0,
+            "retorno_principal": 0,
+            "retorno_comp": 0,
+            "lucro_total": -10.0,
+        },
+        {
+            "entrada": "Ambas Marcam",
+            "resultado": "GREEN",
+            "investido_total": 10.0,
+            "retorno_principal": 15.0,
+            "retorno_comp": 1.5,
+            "lucro_total": 6.5,
+        },
+    ]
+    resultado = _agregar_por_entrada(pl_lista)
+    assert len(resultado) == 2, f"Esperado 2 grupos, obtido {len(resultado)}"
+
+    # Encontrar grupos por nome
+    grupos = {g["entrada"]: g for g in resultado}
+    assert "Over 2.5" in grupos, "Grupo 'Over 2.5' nao encontrado"
+    assert "Ambas Marcam" in grupos, "Grupo 'Ambas Marcam' nao encontrado"
+
+    # Verificar Over 2.5
+    over = grupos["Over 2.5"]
+    assert over["greens"] == 1, f"Over 2.5: esperado greens=1, obtido {over['greens']}"
+    assert over["reds"] == 1, f"Over 2.5: esperado reds=1, obtido {over['reds']}"
+
+    # Verificar Ambas Marcam
+    ambas = grupos["Ambas Marcam"]
+    assert ambas["greens"] == 1, f"Ambas Marcam: esperado greens=1, obtido {ambas['greens']}"
+    assert ambas["reds"] == 0, f"Ambas Marcam: esperado reds=0, obtido {ambas['reds']}"
+
+    # Verificar chaves obrigatorias em cada grupo
+    chaves_obrigatorias = {"entrada", "greens", "reds", "investido", "retorno", "lucro", "taxa_green", "roi"}
+    for grupo in resultado:
+        faltando = chaves_obrigatorias - grupo.keys()
+        assert not faltando, f"Chaves faltando em grupo '{grupo.get('entrada')}': {faltando}"
+
+
+def test_agregar_por_entrada_vazio():
+    """_agregar_por_entrada([]) deve retornar lista vazia."""
+    assert _HAS_AGREGAR, "_agregar_por_entrada nao encontrado em helpertips.dashboard"
+    assert _agregar_por_entrada([]) == [], "Lista vazia deve retornar []"
+
+
+# ---------------------------------------------------------------------------
+# Testes de _get_colunas_visiveis (DASH-04)
+# ---------------------------------------------------------------------------
+
+
+def test_performance_toggle_colunas():
+    """_get_colunas_visiveis retorna colunas corretas para cada modo do toggle."""
+    assert _HAS_COLUNAS, "_get_colunas_visiveis nao encontrado em helpertips.dashboard"
+    # Modo percentual
+    cols_pct = _get_colunas_visiveis("pct")
+    assert "taxa_green" in cols_pct, f"Modo pct deve conter taxa_green, obtido {cols_pct}"
+    assert "roi" in cols_pct, f"Modo pct deve conter roi, obtido {cols_pct}"
+    # Modo quantidade
+    cols_qty = _get_colunas_visiveis("qty")
+    assert "greens" in cols_qty, f"Modo qty deve conter greens, obtido {cols_qty}"
+    assert "total" in cols_qty, f"Modo qty deve conter total, obtido {cols_qty}"
+    # Modo P&L
+    cols_pl = _get_colunas_visiveis("pl")
+    assert "investido" in cols_pl, f"Modo pl deve conter investido, obtido {cols_pl}"
+    assert "lucro" in cols_pl, f"Modo pl deve conter lucro, obtido {cols_pl}"
+
+
+# ---------------------------------------------------------------------------
+# Expansao de test_layout_has_required_component_ids ja feita inline acima
+# (via adicao de IDs ao required_ids set) — mas aqui adicionamos teste dedicado
+# para os novos IDs da Phase 12
+# ---------------------------------------------------------------------------
+
+
+def test_layout_has_phase12_component_ids():
+    """Phase 12: IDs dos novos componentes devem existir na arvore do layout."""
+    required_phase12 = {
+        "config-mercados-container",
+        "perf-toggle-view",
+        "perf-table",
+        "phase13-placeholder",
+    }
+    found_ids = collect_ids(app.layout)
+    missing = required_phase12 - found_ids
+    assert not missing, (
+        f"IDs Phase 12 ausentes: {sorted(missing)}\n"
+        f"IDs encontrados: {sorted(found_ids)}"
+    )
