@@ -80,8 +80,8 @@ Plans:
   5. KPI cards de streak (melhor green, pior red) refletem o período e mercado selecionados
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
-- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
+- [ ] 11-01-PLAN.md — Testes v1.2 + CSS override DARKLY (Wave 1)
+- [ ] 11-02-PLAN.md — Reescrita dashboard.py layout + callbacks + verificacao visual (Wave 2)
 **UI hint**: yes
 
 ### Phase 12: Dashboard Mercados e Performance
@@ -95,8 +95,8 @@ Plans:
   4. Visão "Por mercado" filtra para Over 2.5 ou Ambas Marcam mostrando principal + cada complementar separadamente
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
-- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
+- [ ] 12-01-PLAN.md — [To be planned]
+- [ ] 12-02-PLAN.md — [To be planned]
 **UI hint**: yes
 
 ### Phase 13: Dashboard Análises Visuais
@@ -111,8 +111,8 @@ Plans:
   5. Tabela de gale exibe quantidade, percentual e lucro médio por green para cada tentativa
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
-- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
+- [ ] 13-01-PLAN.md — [To be planned]
+- [ ] 13-02-PLAN.md — [To be planned]
 **UI hint**: yes
 
 ## Progress
@@ -130,6 +130,6 @@ Plans:
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
 | 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 11. Dashboard Fundação | v1.2 | 0/? | Not started | - |
+| 11. Dashboard Fundação | v1.2 | 0/2 | Not started | - |
 | 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
 | 13. Dashboard Análises Visuais | v1.2 | 0/? | Not started | - |
