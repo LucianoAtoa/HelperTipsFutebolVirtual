@@ -60,6 +60,7 @@ app = dash.Dash(
     ],
     title="HelperTips — Futebol Virtual",
 )
+server = app.server  # WSGI callable para gunicorn
 
 
 # ---------------------------------------------------------------------------
