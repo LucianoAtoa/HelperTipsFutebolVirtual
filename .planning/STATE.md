@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.3
-milestone_name: "An\u00e1lise Individual de Sinais"
-status: defining-requirements
-stopped_at: Milestone v1.3 started
-last_updated: "2026-04-04T17:50:00.000Z"
+milestone_name: "Análise Individual de Sinais"
+status: roadmap-ready
+stopped_at: Roadmap v1.3 criado — Phase 14 next
+last_updated: "2026-04-04T18:00:00.000Z"
 last_activity: 2026-04-04
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 14 — Migração Multi-Page (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-04 — Milestone v1.3 started
+Status: Roadmap aprovado, aguardando plan-phase 14
+Last activity: 2026-04-04 — Roadmap v1.3 criado
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -45,6 +45,12 @@ Progress: [░░░░░░░░░░] 0%
 - Total plans completed: 10
 - Average duration: ~9 min/plan
 - Total execution time: ~1.5 hours
+
+**Velocity (v1.2):**
+
+- Total plans completed: 10 (2 plans × 5 phases)
+- Average duration: ~10 min/plan
+- Total execution time: ~1.7 hours
 
 ## Accumulated Context
 
@@ -73,15 +79,17 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 ### Pending Todos
 
 - [ ] Obter o Group ID do grupo "Ambas Marcam" no Telegram para configurar TELEGRAM_GROUP_IDS
+- [ ] Phase 14: Confirmar localização atual de dashboard.py antes de planejar migração para pages/
 
 ### Blockers/Concerns
 
 - EC2 t3.micro tem ~650MB headroom — monitorar RAM com listener multi-grupo (Phase 9)
-- Dashboard redesign é breaking change — precisa de deploy coordenado após Phase 10 estar completa
-- Group ID do grupo Ambas Marcam ainda não está no .env — necessário antes de testar Phase 9
+- Phase 14 é etapa bloqueante: refatoração dashboard.py → pages/ deve ser validada localmente antes de deploy
+- Pitfall gunicorn + pages/ folder resolution: `dash.Dash(__name__, ...)` deve já ser o padrão do projeto — confirmar durante Phase 14
+- calculate_pl_por_entrada retorna totais agrupados (não por complementar individual) — Phase 15 precisa de nova função `calculate_pl_detalhado_por_sinal` em queries.py
 
 ## Session Continuity
 
-Last session: 2026-04-04T16:24:29.705Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-04-04T17:50:00.000Z
+Stopped at: Roadmap v1.3 criado
 Resume file: None

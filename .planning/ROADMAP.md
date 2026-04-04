@@ -4,7 +4,8 @@
 
 - ✅ **v1.0 MVP** — Phases 1-3 + 2.1 (shipped 2026-04-03) — [archive](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Cloud Deploy** — Phases 4-8 (shipped 2026-04-04) — [archive](milestones/v1.1-ROADMAP.md)
-- 🔄 **v1.2 Multi-Market Analytics** — Phases 9-13 (in progress)
+- ✅ **v1.2 Multi-Market Analytics** — Phases 9-13 (shipped 2026-04-04)
+- 🔄 **v1.3 Análise Individual de Sinais** — Phases 14-15 (in progress)
 
 ## Phases
 
@@ -29,13 +30,21 @@
 
 </details>
 
-### v1.2 Multi-Market Analytics (Phases 9-13)
+<details>
+<summary>✅ v1.2 Multi-Market Analytics (Phases 9-13) — SHIPPED 2026-04-04</summary>
 
 - [x] **Phase 9: Listener Multi-Grupo** — Listener escuta Over 2.5 e Ambas Marcam simultaneamente (completed 2026-04-04)
 - [x] **Phase 10: Lógica Financeira** — Cálculo P&L com complementares diferenciados por mercado e Martingale 4 tentativas (completed 2026-04-04)
 - [x] **Phase 11: Dashboard Fundação** — Filtros globais e KPIs com P&L que sustentam todo o redesign (completed 2026-04-04)
 - [x] **Phase 12: Dashboard Mercados e Performance** — Config de mercados read-only e tabela P&L por entrada (completed 2026-04-04)
 - [x] **Phase 13: Dashboard Análises Visuais** — Análise por liga, equity curve e análise de gale (completed 2026-04-04)
+
+</details>
+
+### v1.3 Análise Individual de Sinais (Phases 14-15)
+
+- [ ] **Phase 14: Migração Multi-Page** — Dashboard refatorado para Dash Pages com `use_pages=True` sem regressões
+- [ ] **Phase 15: Página de Detalhe do Sinal** — Usuário clica em sinal no histórico e visualiza breakdown completo de P&L
 
 ## Phase Details
 
@@ -115,6 +124,33 @@ Plans:
 - [x] 13-02-PLAN.md — Integracao callback master + _build_phase13_section + verificacao visual
 **UI hint**: yes
 
+### Phase 14: Migração Multi-Page
+**Goal**: Dashboard refatorado para Dash Pages sem nenhuma regressão visual ou funcional no dashboard existente
+**Depends on**: Phase 13 (dashboard completo e estável)
+**Requirements**: MPA-01, MPA-02
+**Success Criteria** (o que deve ser VERDADEIRO):
+  1. Dashboard existente abre no browser exatamente igual ao estado pré-migração (layout, filtros, gráficos, KPIs)
+  2. URL `/` carrega `pages/home.py` com todos os callbacks do dashboard funcionando sem erros no console
+  3. `use_pages=True` ativo em `dashboard.py` com `dash.page_container` no layout principal
+  4. Nenhum callback existente quebra por circular import — `@callback` (não `@app.callback`) usado em `pages/home.py`
+  5. `suppress_callback_exceptions=True` configurado no app para suportar callbacks de múltiplas páginas
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 15: Página de Detalhe do Sinal
+**Goal**: Usuário clica em um sinal no histórico e visualiza breakdown completo de P&L (principal + cada complementar)
+**Depends on**: Phase 14 (Dash Pages ativo com navegação via `dcc.Location`)
+**Requirements**: SIG-01, SIG-02, SIG-03, SIG-04, SIG-05, SIG-06
+**Success Criteria** (o que deve ser VERDADEIRO):
+  1. Clicar em qualquer linha do AG Grid navega para `/sinal?id=<n>` sem full page reload
+  2. Página exibe card da entrada principal com mercado, odd, stake (com progressão Gale quando tentativa > 1), resultado (GREEN/RED), horário e lucro/prejuízo
+  3. Página exibe uma linha por complementar com nome, odd, stake, resultado validado pelo placar (GREEN/RED/N/A), horário e lucro/prejuízo
+  4. Totais consolidados no rodapé: investido total, retorno total e lucro líquido somando principal + todos os complementares
+  5. Botão "Voltar" retorna ao dashboard preservando os filtros ativos
+  6. Acessar `/sinal?id=<inexistente>` exibe mensagem amigável "Sinal não encontrado" sem erro 500
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -128,8 +164,10 @@ Plans:
 | 6. AWS Infrastructure | v1.1 | 3/3 | Complete | 2026-04-04 |
 | 7. Listener Deployment | v1.1 | 1/1 | Complete | 2026-04-04 |
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
-| 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
-| 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 11. Dashboard Fundação | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete    | 2026-04-04 |
+| 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete | 2026-04-04 |
+| 10. Lógica Financeira | v1.2 | 2/2 | Complete | 2026-04-04 |
+| 11. Dashboard Fundação | v1.2 | 2/2 | Complete | 2026-04-04 |
+| 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete | 2026-04-04 |
+| 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete | 2026-04-04 |
+| 14. Migração Multi-Page | v1.3 | 0/? | Not started | - |
+| 15. Página de Detalhe do Sinal | v1.3 | 0/? | Not started | - |
