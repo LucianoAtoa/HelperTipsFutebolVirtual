@@ -27,6 +27,7 @@ Sem conexao com banco de dados ou servidor em execucao. Todos os imports sao seg
 import os
 from datetime import date, timedelta
 
+import pytest
 from helpertips.dashboard import app
 from helpertips.queries import calculate_roi
 
@@ -540,3 +541,138 @@ def test_layout_has_phase12_component_ids():
         f"IDs Phase 12 ausentes: {sorted(missing)}\n"
         f"IDs encontrados: {sorted(found_ids)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 13 — builders Plotly: _build_liga_chart, _build_equity_curve_chart, _build_gale_chart
+# ---------------------------------------------------------------------------
+
+try:
+    from helpertips.dashboard import _build_liga_chart
+    _HAS_LIGA_CHART = True
+except ImportError:
+    _HAS_LIGA_CHART = False
+
+try:
+    from helpertips.dashboard import _build_equity_curve_chart
+    _HAS_EQUITY_CHART = True
+except ImportError:
+    _HAS_EQUITY_CHART = False
+
+try:
+    from helpertips.dashboard import _build_gale_chart
+    _HAS_GALE_CHART = True
+except ImportError:
+    _HAS_GALE_CHART = False
+
+import plotly.graph_objects as go  # noqa: E402
+
+SAMPLE_PL_LIGA_CHART = [
+    {"liga": "Copa do Mundo", "lucro_principal": -3.5, "lucro_complementar": -1.0, "pl_total": -4.5,
+     "greens": 1, "reds": 1, "total": 2, "taxa_green": 50.0},
+    {"liga": "Euro Cup", "lucro_principal": 6.5, "lucro_complementar": 1.5, "pl_total": 8.0,
+     "greens": 1, "reds": 0, "total": 1, "taxa_green": 100.0},
+]
+
+SAMPLE_EQUITY = {
+    "x": [1, 2, 3], "y_principal": [10, 5, 15],
+    "y_complementar": [2, 1, 4], "y_total": [12, 6, 19],
+    "colors": ["#28a745", "#dc3545", "#28a745"],
+}
+
+SAMPLE_GALE = [
+    {"tentativa": 1, "greens": 50, "total": 60, "win_rate": 83.3},
+    {"tentativa": 2, "greens": 20, "total": 30, "win_rate": 66.7},
+    {"tentativa": 3, "greens": 5, "total": 15, "win_rate": 33.3},
+    {"tentativa": 4, "greens": 2, "total": 10, "win_rate": 20.0},
+]
+
+
+def test_build_liga_chart_basic():
+    """Input com 2 ligas: 2 traces Bar, barmode=stack, cores corretas."""
+    if not _HAS_LIGA_CHART:
+        pytest.skip("_build_liga_chart nao disponivel")
+    fig = _build_liga_chart(SAMPLE_PL_LIGA_CHART)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 2
+    assert fig.layout.barmode == "stack"
+    assert fig.data[0].name == "Principal"
+    assert fig.data[1].name == "Complementar"
+    assert fig.data[0].marker.color == "#00bc8c"
+    assert fig.data[1].marker.color == "#e74c3c"
+
+
+def test_build_liga_chart_empty():
+    """Input [] retorna go.Figure com 0 traces."""
+    if not _HAS_LIGA_CHART:
+        pytest.skip("_build_liga_chart nao disponivel")
+    fig = _build_liga_chart([])
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 0
+
+
+def test_build_liga_chart_dark_theme():
+    """paper_bgcolor deve ser '#222'."""
+    if not _HAS_LIGA_CHART:
+        pytest.skip("_build_liga_chart nao disponivel")
+    fig = _build_liga_chart(SAMPLE_PL_LIGA_CHART)
+    assert fig.layout.paper_bgcolor == "#222"
+
+
+def test_build_equity_curve_basic():
+    """Input com x=[1,2,3]: 3 traces Scatter, modo lines."""
+    if not _HAS_EQUITY_CHART:
+        pytest.skip("_build_equity_curve_chart nao disponivel")
+    fig = _build_equity_curve_chart(SAMPLE_EQUITY)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 3
+    for trace in fig.data:
+        assert trace.mode == "lines"
+
+
+def test_build_equity_curve_empty():
+    """Input com x=[] retorna go.Figure com 0 traces."""
+    if not _HAS_EQUITY_CHART:
+        pytest.skip("_build_equity_curve_chart nao disponivel")
+    fig = _build_equity_curve_chart({"x": [], "y_principal": [], "y_complementar": [], "y_total": []})
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 0
+
+
+def test_build_equity_curve_colors():
+    """Trace 0 cor '#00bc8c', trace 1 '#e74c3c', trace 2 '#f39c12'."""
+    if not _HAS_EQUITY_CHART:
+        pytest.skip("_build_equity_curve_chart nao disponivel")
+    fig = _build_equity_curve_chart(SAMPLE_EQUITY)
+    assert fig.data[0].line.color == "#00bc8c"
+    assert fig.data[1].line.color == "#e74c3c"
+    assert fig.data[2].line.color == "#f39c12"
+
+
+def test_build_gale_chart_basic():
+    """Input com 4 tentativas: go.Pie com hole=0.4."""
+    if not _HAS_GALE_CHART:
+        pytest.skip("_build_gale_chart nao disponivel")
+    fig = _build_gale_chart(SAMPLE_GALE)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+    assert isinstance(fig.data[0], go.Pie)
+    assert fig.data[0].hole == 0.4
+
+
+def test_build_gale_chart_empty():
+    """Input [] retorna go.Figure com 0 traces."""
+    if not _HAS_GALE_CHART:
+        pytest.skip("_build_gale_chart nao disponivel")
+    fig = _build_gale_chart([])
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 0
+
+
+def test_build_gale_chart_colors():
+    """Verifica 4 tons derivados de #00bc8c."""
+    if not _HAS_GALE_CHART:
+        pytest.skip("_build_gale_chart nao disponivel")
+    fig = _build_gale_chart(SAMPLE_GALE)
+    expected_colors = ["#00bc8c", "#00a07a", "#008567", "#006a53"]
+    assert list(fig.data[0].marker.colors) == expected_colors

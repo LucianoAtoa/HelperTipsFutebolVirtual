@@ -301,6 +301,93 @@ def _build_performance_section(
     )
 
 
+def _build_liga_chart(pl_por_liga: list[dict]) -> go.Figure:
+    """Grafico de barras empilhadas P&L por liga (DASH-05, D-01/D-03)."""
+    if not pl_por_liga:
+        return go.Figure()
+    ligas = [row["liga"] for row in pl_por_liga]
+    pl_principal = [row["lucro_principal"] for row in pl_por_liga]
+    pl_comp = [row["lucro_complementar"] for row in pl_por_liga]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name="Principal", x=ligas, y=pl_principal,
+        marker_color="#00bc8c",
+        hovertemplate="<b>%{x}</b><br>P&L Principal: R$ %{y:+.2f}<extra></extra>",
+    ))
+    fig.add_trace(go.Bar(
+        name="Complementar", x=ligas, y=pl_comp,
+        marker_color="#e74c3c",
+        hovertemplate="<b>%{x}</b><br>P&L Complementar: R$ %{y:+.2f}<extra></extra>",
+    ))
+    fig.update_layout(
+        barmode="stack", paper_bgcolor="#222", plot_bgcolor="#222",
+        font={"color": "white"}, legend={"orientation": "h"},
+        margin={"t": 30, "b": 40},
+    )
+    return fig
+
+
+def _build_equity_curve_chart(equity: dict, dates: list[str] | None = None) -> go.Figure:
+    """Equity curve com 3 linhas sobrepostas (DASH-06, D-01/D-11)."""
+    if not equity.get("x"):
+        return go.Figure()
+    x_vals = equity["x"]
+    customdata_dates = None
+    if dates and len(dates) == len(x_vals):
+        customdata_dates = dates
+
+    fig = go.Figure()
+    hover_tpl_p = "Sinal #%{x}<br>Principal: R$ %{y:.2f}<extra></extra>"
+    hover_tpl_c = "Sinal #%{x}<br>Complementar: R$ %{y:.2f}<extra></extra>"
+    hover_tpl_t = "Sinal #%{x}<br>Total: R$ %{y:.2f}<extra></extra>"
+    if customdata_dates:
+        hover_tpl_p = "%{customdata}<br>Principal: R$ %{y:.2f}<extra></extra>"
+        hover_tpl_c = "%{customdata}<br>Complementar: R$ %{y:.2f}<extra></extra>"
+        hover_tpl_t = "%{customdata}<br>Total: R$ %{y:.2f}<extra></extra>"
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=equity["y_principal"], mode="lines", name="Principal",
+        line={"color": "#00bc8c", "width": 2}, hovertemplate=hover_tpl_p,
+        customdata=customdata_dates,
+    ))
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=equity["y_complementar"], mode="lines", name="Complementar",
+        line={"color": "#e74c3c", "width": 2}, hovertemplate=hover_tpl_c,
+        customdata=customdata_dates,
+    ))
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=equity["y_total"], mode="lines", name="Total",
+        line={"color": "#f39c12", "width": 2}, hovertemplate=hover_tpl_t,
+        customdata=customdata_dates,
+    ))
+    fig.update_layout(
+        paper_bgcolor="#222", plot_bgcolor="#222",
+        font={"color": "white"}, xaxis={"showgrid": False},
+        yaxis={"gridcolor": "#444"}, legend={"orientation": "h"},
+        margin={"t": 30, "b": 40},
+    )
+    return fig
+
+
+def _build_gale_chart(gale_data: list[dict]) -> go.Figure:
+    """Donut de distribuicao de greens por tentativa (DASH-07, D-02)."""
+    if not gale_data:
+        return go.Figure()
+    labels = [f"{row['tentativa']}a Tentativa" for row in gale_data]
+    values = [row["greens"] for row in gale_data]
+    colors = ["#00bc8c", "#00a07a", "#008567", "#006a53"][:len(gale_data)]
+    fig = go.Figure(go.Pie(
+        labels=labels, values=values, hole=0.4,
+        marker={"colors": colors},
+        hovertemplate="<b>%{label}</b><br>Greens: %{value}<br>%{percent}<extra></extra>",
+    ))
+    fig.update_layout(
+        paper_bgcolor="#222", font={"color": "white"},
+        showlegend=True, legend={"orientation": "h"},
+        margin={"t": 30, "b": 40},
+    )
+    return fig
+
+
 def make_kpi_card(title: str, value_id: str, color_class: str = "text-light"):
     """Constroi um KPI card com titulo muted e valor em bold colorido."""
     return dbc.Card(
