@@ -733,3 +733,48 @@ def test_home_page_registered():
         f"Esperado pelo menos 1 pagina com path='/', encontrado {len(home_entries)}. "
         f"Registry: {list(registry.keys())}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 15 — Navegacao AG Grid (SIG-01)
+# ---------------------------------------------------------------------------
+
+
+def test_navigate_to_sinal():
+    """navigate_to_sinal com cell_clicked contendo id=42 deve retornar '/sinal?id=42'."""
+    from helpertips.pages.home import navigate_to_sinal
+    result = navigate_to_sinal({"rowData": {"id": 42}})
+    assert result == "/sinal?id=42", (
+        f"Esperado '/sinal?id=42', obtido {result!r}"
+    )
+
+
+def test_navigate_to_sinal_no_id():
+    """navigate_to_sinal sem campo 'id' no rowData deve retornar no_update."""
+    from dash import no_update
+    from helpertips.pages.home import navigate_to_sinal
+    result = navigate_to_sinal({"rowData": {}})
+    assert result is no_update, (
+        f"Esperado no_update para rowData sem id, obtido {result!r}"
+    )
+
+
+def test_navigate_to_sinal_none():
+    """navigate_to_sinal com cell_clicked=None deve retornar no_update."""
+    from dash import no_update
+    from helpertips.pages.home import navigate_to_sinal
+    result = navigate_to_sinal(None)
+    assert result is no_update, (
+        f"Esperado no_update para cell_clicked=None, obtido {result!r}"
+    )
+
+
+def test_history_rowdata_includes_id():
+    """Verifica que o campo 'id' e incluido no rowData do AG Grid."""
+    # Verificar no codigo-fonte que "id": sig.get("id") esta presente no rowData
+    import helpertips.pages.home as home_module
+    import inspect
+    source = inspect.getsource(home_module)
+    assert '"id": sig.get("id")' in source, (
+        "Campo 'id' nao encontrado no rowData do AG Grid em home.py"
+    )

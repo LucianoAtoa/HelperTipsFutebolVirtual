@@ -917,6 +917,7 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
             lucro = pl_by_id.get(sig_id, 0.0)
             lucro_fmt = f"R$ {lucro:+.2f}" if sig.get("resultado") in ("GREEN", "RED") else ""
             row_data.append({
+                "id": sig.get("id"),  # necessario para navegacao /sinal?id=N
                 "data_hora": data_hora,
                 "liga": sig.get("liga", ""),
                 "entrada": sig.get("entrada", ""),
@@ -971,3 +972,24 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
         perf_section,      # DASH-04
         phase13_section,   # DASH-05/06/07 — NOVO
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 15 — Navegacao AG Grid para pagina de detalhe do sinal (SIG-01)
+# ---------------------------------------------------------------------------
+
+
+@callback(
+    Output("url-nav", "href"),
+    Input("history-table", "cellClicked"),
+    prevent_initial_call=True,
+)
+def navigate_to_sinal(cell_clicked):
+    """Navega para /sinal?id=N ao clicar em qualquer celula do AG Grid."""
+    if not cell_clicked:
+        return no_update
+    row_data = cell_clicked.get("rowData", {})
+    signal_id = row_data.get("id")
+    if signal_id is None:
+        return no_update
+    return f"/sinal?id={signal_id}"
