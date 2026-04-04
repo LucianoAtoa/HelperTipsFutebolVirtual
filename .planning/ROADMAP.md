@@ -80,7 +80,7 @@ Plans:
   5. KPI cards de streak (melhor green, pior red) refletem o período e mercado selecionados
 **Plans**: 2 plans
 Plans:
-- [ ] 11-01-PLAN.md — Testes v1.2 + CSS override DARKLY (Wave 1)
+- [x] 11-01-PLAN.md — Testes v1.2 + CSS override DARKLY (Wave 1)
 - [ ] 11-02-PLAN.md — Reescrita dashboard.py layout + callbacks + verificacao visual (Wave 2)
 **UI hint**: yes
 
@@ -130,6 +130,6 @@ Plans:
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
 | 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 11. Dashboard Fundação | v1.2 | 0/2 | Not started | - |
+| 11. Dashboard Fundação | v1.2 | 1/2 | In Progress|  |
 | 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
 | 13. Dashboard Análises Visuais | v1.2 | 0/? | Not started | - |

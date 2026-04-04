@@ -15,13 +15,13 @@ Requirements para multi-mercado, cálculo financeiro e redesign do dashboard.
 ### Cálculo Financeiro
 
 - [x] **FIN-01**: Cada sinal gera entradas complementares com stake proporcional (% da principal) e odds de referência configuráveis por mercado
-- [ ] **FIN-02**: Cálculo de P&L por entrada (investido, retorno, lucro/prejuízo líquido) com Martingale progressivo de 4 tentativas (1x, 2x, 4x, 8x)
+- [x] **FIN-02**: Cálculo de P&L por entrada (investido, retorno, lucro/prejuízo líquido) com Martingale progressivo de 4 tentativas (1x, 2x, 4x, 8x)
 - [x] **FIN-03**: Complementares têm configuração diferenciada por mercado — Over 2.5 (7 complementares com % específicos) vs Ambas Marcam (7 complementares com % distintos)
 
 ### Dashboard Redesign
 
-- [ ] **DASH-01**: Filtros globais fixos no topo (período: Hoje/Semana/Mês/Mês Passado/Personalizado/Toda a Vida, mercado: Todos/Over 2.5/Ambas Marcam, liga: Todas/Copa do Mundo/Euro Cup/Sul-Americana/Premier League) afetam todos os cards e gráficos
-- [ ] **DASH-02**: KPI cards: total sinais, taxa green (%), P&L total (R$) principal+complementar, ROI (%), melhor streak green, pior streak red
+- [x] **DASH-01**: Filtros globais fixos no topo (período: Hoje/Semana/Mês/Mês Passado/Personalizado/Toda a Vida, mercado: Todos/Over 2.5/Ambas Marcam, liga: Todas/Copa do Mundo/Euro Cup/Sul-Americana/Premier League) afetam todos os cards e gráficos
+- [x] **DASH-02**: KPI cards: total sinais, taxa green (%), P&L total (R$) principal+complementar, ROI (%), melhor streak green, pior streak red
 - [ ] **DASH-03**: Seção configuração de mercados: painel read-only com principal (odd, stake, progressão) e tabela complementares (mercado, %, odd ref, stakes T1-T4)
 - [ ] **DASH-04**: Seção performance das entradas: tabela P&L por mercado (greens, reds, taxa, investido, retorno, P&L, ROI) com toggle percentual/quantidade/R$ e visão geral vs por mercado
 - [ ] **DASH-05**: Seção análise por liga: gráfico de barras empilhadas (P&L principal vs complementar) + tabela com taxa, P&L principal, P&L complementar, P&L total por liga
@@ -68,10 +68,10 @@ Deferred to future release.
 | LIST-01 | Phase 9 | Complete |
 | LIST-02 | Phase 9 | Complete |
 | FIN-01 | Phase 10 | Complete |
-| FIN-02 | Phase 10 | Pending |
+| FIN-02 | Phase 10 | Complete |
 | FIN-03 | Phase 10 | Complete |
-| DASH-01 | Phase 11 | Pending |
-| DASH-02 | Phase 11 | Pending |
+| DASH-01 | Phase 11 | Complete |
+| DASH-02 | Phase 11 | Complete |
 | DASH-03 | Phase 12 | Pending |
 | DASH-04 | Phase 12 | Pending |
 | DASH-05 | Phase 13 | Pending |
