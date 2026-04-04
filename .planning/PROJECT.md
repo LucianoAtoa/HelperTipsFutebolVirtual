@@ -11,8 +11,8 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 ## Current State
 
 **Shipped:** v1.1 Cloud Deploy (2026-04-04)
-**Codebase:** ~16k LOC Python | 190 testes | ~185 commits
-**Phase 12 complete:** Dashboard Mercados e Performance — config read-only e tabela P&L por entrada
+**Codebase:** ~16k LOC Python | 209 testes | ~195 commits
+**Phase 13 complete:** Dashboard Análises Visuais — análise por liga, equity curve 3 linhas, donut gale
 **Stack:** Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dash-bootstrap-components 2.0, gunicorn 25.x, nginx
 
 **O que funciona (produção na EC2):**
@@ -59,13 +59,14 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-- Redesign completo do Dashboard com foco em análise de lucro/prejuízo
+- (Milestone v1.2 completo — todas as fases entregues)
 
 ### Validated (v1.2)
 
 - ✓ Cálculo financeiro P&L com complementares, odds de referência e Martingale — v1.2 Phase 10
 - ✓ Dashboard fundação: filtros globais (período/mercado/liga) e KPIs com P&L real — v1.2 Phase 11
 - ✓ Dashboard mercados e performance: config read-only e tabela P&L por entrada com toggle — v1.2 Phase 12
+- ✓ Dashboard análises visuais: análise por liga, equity curve, análise de gale — v1.2 Phase 13
 
 ## Current Milestone: v1.2 Multi-Market Analytics
 
