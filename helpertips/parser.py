@@ -55,9 +55,10 @@ LIGA_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# ENTRADA (mercado): after "Entrada recomendada:", surrounded by optional 🔥
+# ENTRADA (mercado): after "Entrada recomendada:", surrounded by optional 🔥 and ** markdown
+# Real format: **Entrada recomendada:** Ambas marcam  OR  Entrada recomendada: 🔥 Over 2.5 🔥
 ENTRADA_PATTERN = re.compile(
-    r'Entrada recomendada:\s*🔥?\s*(.+?)\s*🔥?\s*(?:\n|$)',
+    r'Entrada recomendada:\*{0,2}\s*🔥?\s*(.+?)\s*🔥?\s*(?:\n|$)',
     re.IGNORECASE,
 )
 
@@ -79,9 +80,10 @@ RESULTADO_RED_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# PLACAR: from the tentativa line that has ✅ — format: ✅ (X-Y)
+# PLACAR: from the tentativa line that has ✅ — format: ✅ (X-Y) or ✅ __(X-Y)__
+# Real format uses markdown bold: __(1-1)__ around the score
 PLACAR_PATTERN = re.compile(
-    r'✅\s*\((\d+-\d+)\)',
+    r'✅\s*_*\(?(\d+-\d+)\)?_*',
 )
 
 # TENTATIVA: which number (1-4) has the ✅ on its line
@@ -134,11 +136,11 @@ def parse_message(text: str, message_id: int) -> dict | None:
     if not liga_match:
         return None
 
-    liga = liga_match.group(1).strip()
+    liga = liga_match.group(1).strip().strip('*').strip()
 
     # ENTRADA (mercado) — optional but always present in real signals
     entrada_match = ENTRADA_PATTERN.search(text)
-    entrada = entrada_match.group(1).strip() if entrada_match else None
+    entrada = entrada_match.group(1).strip().strip('*').strip() if entrada_match else None
 
     # HORARIO — use the FIRST tentativa time as the signal reference time
     tentativa_times = TENTATIVA_PATTERN.findall(text)
