@@ -26,6 +26,8 @@ try:
         _build_where,
         _parse_placar,
         calculate_equity_curve,
+        calculate_equity_curve_breakdown,
+        calculate_pl_por_entrada,
         calculate_roi,
         calculate_roi_complementares,
         calculate_streaks,
@@ -1315,3 +1317,186 @@ def test_get_signals_com_placar_sem_filtro(db_conn):
 
     rows = get_signals_com_placar(db_conn)
     assert len(rows) >= 2, f"Esperado >= 2 sinais resolvidos, recebido {len(rows)}"
+
+
+# ---------------------------------------------------------------------------
+# Fixtures de complementares para testes puros (sem DB)
+# ---------------------------------------------------------------------------
+
+COMP_OVER_2_5 = [
+    {"slug": "over_3_5", "nome_display": "Over 3.5", "percentual": 0.20, "odd_ref": 4.00, "regra_validacao": "over_3_5"},
+    {"slug": "empate_3_3_4_4", "nome_display": "Empate 3-3/4-4", "percentual": 0.01, "odd_ref": 40.00, "regra_validacao": "empate_3_3_4_4"},
+    {"slug": "over_5_plus", "nome_display": "Over 5+", "percentual": 0.10, "odd_ref": 8.00, "regra_validacao": "over_5_plus"},
+    {"slug": "gols_casa_4", "nome_display": "Gols Casa=4", "percentual": 0.01, "odd_ref": 20.00, "regra_validacao": "gols_casa_4"},
+    {"slug": "gols_fora_4", "nome_display": "Gols Fora=4", "percentual": 0.01, "odd_ref": 20.00, "regra_validacao": "gols_fora_4"},
+    {"slug": "gols_casa_5_plus", "nome_display": "Gols Casa 5+", "percentual": 0.01, "odd_ref": 25.00, "regra_validacao": "gols_casa_5_plus"},
+    {"slug": "gols_fora_5_plus", "nome_display": "Gols Fora 5+", "percentual": 0.01, "odd_ref": 25.00, "regra_validacao": "gols_fora_5_plus"},
+]
+
+COMP_AMBAS_MARCAM = [
+    {"slug": "over_3_5", "nome_display": "Over 3.5", "percentual": 0.10, "odd_ref": 4.00, "regra_validacao": "over_3_5"},
+    {"slug": "empate_3_3_4_4", "nome_display": "Empate 3-3/4-4", "percentual": 0.01, "odd_ref": 40.00, "regra_validacao": "empate_3_3_4_4"},
+    {"slug": "over_5_plus", "nome_display": "Over 5+", "percentual": 0.05, "odd_ref": 8.00, "regra_validacao": "over_5_plus"},
+    {"slug": "gols_casa_4", "nome_display": "Gols Casa=4", "percentual": 0.01, "odd_ref": 20.00, "regra_validacao": "gols_casa_4"},
+    {"slug": "gols_fora_4", "nome_display": "Gols Fora=4", "percentual": 0.01, "odd_ref": 20.00, "regra_validacao": "gols_fora_4"},
+    {"slug": "gols_casa_5_plus", "nome_display": "Gols Casa 5+", "percentual": 0.01, "odd_ref": 25.00, "regra_validacao": "gols_casa_5_plus"},
+    {"slug": "gols_fora_5_plus", "nome_display": "Gols Fora 5+", "percentual": 0.01, "odd_ref": 25.00, "regra_validacao": "gols_fora_5_plus"},
+]
+
+COMPLEMENTARES_POR_MERCADO = {
+    "over_2_5": COMP_OVER_2_5,
+    "ambas_marcam": COMP_AMBAS_MARCAM,
+}
+
+ODD_POR_MERCADO = {
+    "over_2_5": 2.30,
+    "ambas_marcam": 2.10,
+}
+
+
+def _make_sinal(resultado, tentativa=1, placar=None, mercado_slug="over_2_5",
+                entrada="Over 2.5", liga="Superliga"):
+    return {
+        "resultado": resultado,
+        "tentativa": tentativa,
+        "placar": placar,
+        "mercado_slug": mercado_slug,
+        "entrada": entrada,
+        "liga": liga,
+    }
+
+
+# ---------------------------------------------------------------------------
+# calculate_pl_por_entrada — testes puros (sem DB) — Task 1
+# ---------------------------------------------------------------------------
+
+
+def test_pl_green_t1():
+    """GREEN T1 Gale: investido=100, retorno=230, lucro=130."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=1, placar="3-0")]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert len(result) == 1
+    row = result[0]
+    assert row["investido_principal"] == pytest.approx(100.0, abs=0.01)
+    assert row["retorno_principal"] == pytest.approx(230.0, abs=0.01)
+    assert row["lucro_principal"] == pytest.approx(130.0, abs=0.01)
+
+
+def test_pl_green_t2_gale():
+    """GREEN T2 Gale: accumulated=300, winning=200, lucro=200*1.30-100=160."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=2, placar="3-0")]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    row = result[0]
+    assert row["investido_principal"] == pytest.approx(300.0, abs=0.01)
+    assert row["lucro_principal"] == pytest.approx(160.0, abs=0.01)
+
+
+def test_pl_green_t3_gale():
+    """GREEN T3 Gale: accumulated_stake = 100 * (2^3 - 1) = 700."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=3, placar="3-0")]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    row = result[0]
+    assert row["investido_principal"] == pytest.approx(700.0, abs=0.01)
+
+
+def test_pl_green_t4_gale():
+    """GREEN T4 Gale: accumulated_stake = 100 * (2^4 - 1) = 1500."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=4, placar="3-0")]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    row = result[0]
+    assert row["investido_principal"] == pytest.approx(1500.0, abs=0.01)
+
+
+def test_pl_red_t4():
+    """RED T4 Gale: lucro=-1500, retorno=0."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("RED", tentativa=4, placar=None)]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    row = result[0]
+    assert row["lucro_principal"] == pytest.approx(-1500.0, abs=0.01)
+    assert row["retorno_principal"] == pytest.approx(0.0, abs=0.01)
+
+
+def test_pl_red_stake_fixa():
+    """RED T4 stake fixa (gale_on=False): lucro=-100 (ignora tentativa)."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("RED", tentativa=4, placar=None)]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=False)
+    row = result[0]
+    assert row["lucro_principal"] == pytest.approx(-100.0, abs=0.01)
+    assert row["investido_principal"] == pytest.approx(100.0, abs=0.01)
+
+
+def test_pl_complementares_over_2_5():
+    """GREEN T1 placar=4-0 mercado over_2_5: over_3_5 usa 20%, investido_comp para over_3_5 = 100*0.20=20."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="over_2_5")]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    row = result[0]
+    # investido_comp deve incluir a stake de over_3_5 = 100 * (2^1 - 1) * 0.20 = 20
+    # (e todos os outros complementares)
+    assert row["investido_comp"] == pytest.approx(100.0 * (2**1 - 1) * (0.20 + 0.01 + 0.10 + 0.01 + 0.01 + 0.01 + 0.01), abs=0.01)
+    # over_3_5 GREEN (4 > 3.5), lucro_comp > 0
+    assert row["lucro_comp"] > 0
+
+
+def test_pl_complementares_ambas_marcam():
+    """GREEN T1 mercado ambas_marcam: over_3_5 usa 10% (nao 20%)."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="ambas_marcam", entrada="Ambas Marcam")]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    row = result[0]
+    # Para ambas_marcam, over_3_5 percentual=0.10 (nao 0.20 como em over_2_5)
+    # investido_comp = 100 * (2^1 - 1) * (0.10 + 0.01 + 0.05 + 0.01 + 0.01 + 0.01 + 0.01)
+    expected_investido = 100.0 * (2**1 - 1) * (0.10 + 0.01 + 0.05 + 0.01 + 0.01 + 0.01 + 0.01)
+    assert row["investido_comp"] == pytest.approx(expected_investido, abs=0.01)
+
+
+def test_pl_red_sem_placar_complementares():
+    """RED sem placar: todos complementares RED (validar_complementar retorna RED quando principal=RED)."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("RED", tentativa=1, placar=None)]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    row = result[0]
+    # Todos complementares RED -> lucro_comp < 0
+    assert row["lucro_comp"] < 0
+
+
+def test_pl_retorno_lista_dicts():
+    """Retorno e lista de dicts com todas as chaves esperadas."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=1, placar="3-0")]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert isinstance(result, list)
+    assert len(result) == 1
+    row = result[0]
+    chaves_esperadas = {
+        "mercado_slug", "resultado", "tentativa", "placar", "liga", "entrada",
+        "investido_principal", "retorno_principal", "lucro_principal",
+        "investido_comp", "retorno_comp", "lucro_comp",
+        "investido_total", "lucro_total",
+    }
+    assert chaves_esperadas.issubset(set(row.keys())), f"Chaves faltando: {chaves_esperadas - set(row.keys())}"
+
+
+def test_pl_pendente_ignorado():
+    """Sinais com resultado=None sao ignorados."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal(None, tentativa=1, placar=None)]
+    result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert result == []
