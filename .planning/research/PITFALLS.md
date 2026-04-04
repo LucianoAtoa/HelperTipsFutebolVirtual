@@ -481,3 +481,383 @@ Fase 2 de Cloud Deploy — parte essencial do setup de infraestrutura.
 - Telethon GitHub issue #980 — ban risks: https://github.com/LonamiWebs/Telethon/issues/980 — MEDIUM confidence (community)
 - python-systemd-tutorial: https://github.com/torfsen/python-systemd-tutorial — MEDIUM confidence
 - Tech Champion — Solving Telethon Timeouts and FloodWaitError: https://tech-champion.com/database/solving-telethon-telegram-timeouts-and-floodwaiterror-on-servers/ — MEDIUM confidence
+
+---
+
+## Part 3 — Pitfalls de Conversão Single-Page para Multi-Page + Página de Detalhe (v1.3)
+
+Erros específicos ao adicionar uma página de detalhe a um Dash single-page app existente com AG Grid, gunicorn e nginx.
+
+**Confidence:** HIGH — verificado em docs oficiais Plotly Dash + issues GitHub + forum Plotly Community
+
+---
+
+## Critical Pitfalls (Multi-Page Conversion)
+
+---
+
+### Pitfall 17: Gunicorn não encontra a pasta `pages/` em produção Linux
+
+**What goes wrong:**
+O app funciona com `python -m helpertips.dashboard` localmente mas falha no startup do gunicorn na EC2 com `A folder called 'pages' does not exist`. O dashboard fica indisponível — o systemd tenta reiniciar em loop.
+
+**Why it happens:**
+O Dash usa `flask.helpers.get_root_path(name)` para resolver o caminho da pasta `pages/`. Quando o gunicorn carrega o módulo, o parâmetro `name` resolve diferente de quando o script é executado diretamente. Se o construtor `Dash()` for chamado sem `__name__` explícito (ou se o módulo for refatorado e `__name__` for omitido no novo local), o path resolution falha no ambiente gunicorn.
+
+**How to avoid:**
+Sempre passar `__name__` explicitamente, independente de refatorações:
+```python
+app = dash.Dash(
+    __name__,        # NUNCA omitir — path resolution depende disso no gunicorn
+    use_pages=True,
+    external_stylesheets=[dbc.themes.DARKLY],
+    title="HelperTips — Futebol Virtual",
+)
+```
+Testar o startup via gunicorn localmente antes de fazer `git push` para EC2:
+```bash
+gunicorn 'helpertips.dashboard:server' --bind 0.0.0.0:8050 --workers 1
+```
+
+**Warning signs:**
+- App funciona com `python -m helpertips.dashboard` mas falha com gunicorn
+- `journalctl -u helpertips-dashboard` mostra erro com "pages folder" ou "does not exist"
+- Systemd mostrando restart loop imediatamente após deploy
+
+**Phase to address:**
+Fase de estruturação multi-page — primeiro passo antes de qualquer outra mudança de código.
+
+---
+
+### Pitfall 18: Import circular ao usar `@app.callback` em arquivos de página
+
+**What goes wrong:**
+O arquivo `pages/sinal_detalhe.py` importa `app` de `helpertips/dashboard.py`. O `dashboard.py`, ao inicializar com `use_pages=True`, auto-importa todos os módulos de `pages/`. Resultado: `ImportError: cannot import name 'app' from partially initialized module 'helpertips.dashboard'`.
+
+**Why it happens:**
+O Dash Pages detecta e importa automaticamente todos os arquivos dentro da pasta `pages/` durante a inicialização do `app`. Se qualquer página importar de volta o módulo sendo inicializado, o ciclo de importação do Python quebra.
+
+**How to avoid:**
+Usar `@callback` importado diretamente de `dash` em todos os arquivos de página — nunca `@app.callback`:
+```python
+# pages/sinal_detalhe.py — CORRETO
+from dash import callback, Input, Output, html, dcc
+
+dash.register_page(__name__, path="/sinal")
+
+@callback(
+    Output("detalhe-content", "children"),
+    Input("url", "search"),
+    prevent_initial_call=True,
+)
+def render_detalhe(search):
+    ...
+```
+O `dashboard.py` principal pode usar `@callback` ou `@app.callback` — mas as páginas só podem usar `@callback`.
+
+**Warning signs:**
+- `ImportError` ou `CircularImportError` no startup do gunicorn
+- Qualquer `from helpertips.dashboard import app` dentro de um arquivo em `pages/`
+
+**Phase to address:**
+Fase de estruturação multi-page — estabelecer a convenção de `@callback` antes de criar qualquer arquivo de página.
+
+---
+
+### Pitfall 19: `suppress_callback_exceptions=True` silencia bugs de ID de componente
+
+**What goes wrong:**
+Sem `suppress_callback_exceptions=True`, o Dash valida todos os IDs de callback contra o layout inicial na inicialização. Como as páginas carregam dinamicamente, qualquer componente definido na página de detalhe causa `CallbackException` no startup — antes do usuário navegar para aquela página.
+
+Ativar `suppress_callback_exceptions=True` resolve o problema de validação, mas também silencia erros de ID errado (typos). Um callback com `Output("detalhe-lucro-total", "children")` falha silenciosamente se o componente for `id="detalhe_lucro_total"` (underscore vs hífen). O callback nunca dispara e não há erro visível.
+
+**How to avoid:**
+1. Ativar `suppress_callback_exceptions=True` na inicialização (obrigatório para multi-page):
+```python
+app = dash.Dash(
+    __name__,
+    use_pages=True,
+    suppress_callback_exceptions=True,
+    ...
+)
+```
+2. Compensar com constantes Python para IDs compartilhados entre layout e callback:
+```python
+# pages/sinal_detalhe.py
+_ID_DETALHE_LUCRO = "detalhe-lucro-total"  # definir uma vez
+
+layout = html.Div(id=_ID_DETALHE_LUCRO)   # usar a constante
+
+@callback(Output(_ID_DETALHE_LUCRO, "children"), ...)  # mesma constante
+def render(...): ...
+```
+3. Adicionar teste de integração que renderiza a página de detalhe com um ID de sinal válido e verifica que o conteúdo é renderizado.
+
+**Warning signs:**
+- Callback da página de detalhe nunca dispara, sem erro no console
+- `no_update` retornado implicitamente (callback não executa)
+
+**Phase to address:**
+Fase de estruturação multi-page — configurar `suppress_callback_exceptions=True` junto com `use_pages=True`.
+
+---
+
+### Pitfall 20: AG Grid `cellClicked` não contém `signal_id` sem configuração de `getRowId`
+
+**What goes wrong:**
+O callback de navegação escuta `cellClicked` do AG Grid e tenta extrair o `signal_id` para construir a URL `/sinal/?id=123`. Porém, `cellClicked` retorna `{"rowIndex": 0, "colId": "liga", "value": "Premier League", ...}` — o `signal_id` não está no evento se não for a coluna clicada.
+
+Usando `selectedRows` como alternativa também falha: se o usuário clicar na mesma linha duas vezes, a seleção não muda e o callback não dispara — navegação para re-abrir o mesmo sinal fica impossível.
+
+**Why it happens:**
+`cellClicked` retorna dados da célula específica clicada, não da linha inteira. `selectedRows` é stateful e não re-dispara para a mesma seleção. Sem `getRowId` configurado, `cell["rowId"]` retorna o índice numérico da linha, não o ID do negócio.
+
+**How to avoid:**
+Configurar `getRowId` no AG Grid para usar `signal_id` como identificador:
+```python
+dag.AgGrid(
+    id="grid-historico",
+    getRowId="params.data.signal_id",  # rowId = signal_id do banco
+    dashGridOptions={"rowSelection": "single"},
+    ...
+)
+```
+No callback de navegação, usar `cell["rowId"]`:
+```python
+@callback(
+    Output("url", "search"),
+    Input("grid-historico", "cellClicked"),
+    prevent_initial_call=True,
+)
+def navegar_detalhe(cell):
+    if not cell:
+        return no_update
+    signal_id = cell.get("rowId")   # confiável com getRowId configurado
+    if not signal_id:
+        return no_update
+    return f"?id={signal_id}"
+```
+
+**Warning signs:**
+- `cell["rowId"]` retorna `"0"`, `"1"`, `"2"` (índices) em vez de IDs reais
+- Clicar em colunas diferentes do `signal_id` não navega corretamente
+
+**Phase to address:**
+Fase de implementação da navegação — primeiro passo antes de implementar a página de detalhe.
+
+---
+
+### Pitfall 21: `dcc.Location` com `refresh` errado quebra navegação ou perde estado
+
+**What goes wrong:**
+- `refresh=True` (padrão histórico): ao navegar para `/sinal/?id=123`, recarrega a página inteira — os filtros aplicados no dashboard (liga, mercado, período) são perdidos. O usuário volta ao estado inicial ao pressionar "voltar".
+- `refresh=False`: atualiza a URL no browser sem disparar o callback de roteamento do Dash Pages — a página de detalhe não é renderizada, o conteúdo não muda.
+- `refresh="callback-nav"`: navega para a nova página sem full reload, mantendo o estado do SPA — comportamento correto para este projeto.
+
+**Why it happens:**
+O default histórico do Dash era `refresh=True`. O valor `"callback-nav"` foi introduzido em versões mais recentes do Dash. Exemplos antigos da documentação e Stack Overflow ainda mostram os valores `True`/`False`.
+
+**How to avoid:**
+Usar `refresh="callback-nav"` no componente `dcc.Location` do layout principal:
+```python
+# No layout principal do dashboard.py
+dcc.Location(id="url", refresh="callback-nav"),
+```
+Testar explicitamente: clicar em linha do grid → URL muda para `/sinal/?id=X` → conteúdo do detalhe renderiza → botão voltar retorna ao dashboard com filtros intactos.
+
+**Warning signs:**
+- Filtros do dashboard são resetados após navegar para o detalhe e voltar
+- URL muda no browser mas o conteúdo da página não atualiza
+- Console do browser mostra full page reload ao navegar
+
+**Phase to address:**
+Fase de estruturação multi-page — configurar `dcc.Location` corretamente antes de implementar callbacks de navegação.
+
+---
+
+## Moderate Pitfalls (Multi-Page Conversion)
+
+---
+
+### Pitfall 22: Estado global mutable entre workers gunicorn
+
+**What goes wrong:**
+Uma variável global Python (ex: `_ultimo_sinal_clicado = None`) modificada dentro de um callback para "lembrar" qual sinal foi selecionado funciona com `--workers 1`, mas com `--workers 2+` (configuração de produção), cada worker tem sua própria cópia da variável. Worker A recebe o clique e seta `_ultimo_sinal_clicado = 42`. O request da página de detalhe vai para Worker B que ainda tem `_ultimo_sinal_clicado = None`. O detalhe carrega vazio.
+
+**Why it happens:**
+Gunicorn usa processos separados (não threads compartilhadas). Memória não é compartilhada entre workers. Este é o padrão anti-pattern mais documentado no Dash — a documentação oficial o chama explicitamente de errado.
+
+**How to avoid:**
+Passar o `signal_id` via URL search params — é o mecanismo correto e stateless:
+```
+/sinal/?id=123
+```
+O callback da página de detalhe lê `Input("url", "search")` e faz a query ao banco:
+```python
+import urllib.parse
+
+@callback(Output("detalhe-content", "children"), Input("url", "search"))
+def render_detalhe(search):
+    if not search:
+        return html.P("Sinal não encontrado.")
+    params = urllib.parse.parse_qs(search.lstrip("?"))
+    signal_id = params.get("id", [None])[0]
+    if not signal_id:
+        return html.P("ID inválido.")
+    # query ao banco com signal_id
+    ...
+```
+
+**Warning signs:**
+- Página de detalhe mostra dados inconsistentes ou vazios intermitentemente
+- Funciona corretamente com `--workers 1` mas falha com `--workers 2`
+- Qualquer `global _variavel` modificada dentro de um `@callback`
+
+**Phase to address:**
+Fase de implementação da página de detalhe — definir passagem de dados via URL desde o primeiro callback.
+
+---
+
+### Pitfall 23: nginx não precisa de mudança — mas é fácil presumir que precisa
+
+**What goes wrong:**
+Ao converter para multi-page, o desenvolvedor assume que o nginx precisa de configuração adicional para rotear `/sinal/` para o Dash, e adiciona regras de `location /sinal/` no nginx.conf apontando para destinos diferentes. Isso quebra o roteamento porque o Dash (via Flask) já lida com todas as rotas internamente — o nginx deve apenas fazer proxy para o gunicorn sem tentar rotear sub-paths.
+
+**Why it happens:**
+Analogia errada com frameworks SPA como React onde o nginx precisa de `try_files $uri /index.html` para deep links. O Dash não é um SPA estático — é uma aplicação Flask que responde a qualquer path via Python.
+
+**How to avoid:**
+Manter o `location /` do nginx inalterado — fazer proxy de tudo para o gunicorn:
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8050;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    # auth_basic e auth_basic_user_file já cobrem todas as sub-rotas
+}
+```
+Não adicionar `location /sinal/` separado. Não adicionar `try_files`. O Dash responde a `/sinal/?id=123` da mesma forma que responde a `/`.
+
+**Warning signs:**
+- 404 ao acessar `/sinal/?id=123` diretamente, mas `/` funciona
+- nginx.conf tem múltiplos blocos `location` para sub-paths do Dash
+
+**Phase to address:**
+Fase de deploy/validação — verificar que nginx.conf não foi modificado desnecessariamente.
+
+---
+
+### Pitfall 24: `signal_id` da URL não validado — exceções expostas no browser
+
+**What goes wrong:**
+O callback da página de detalhe recebe `search="?id=abc"` ou `search="?id=99999"` (ID inexistente) e tenta fazer a query ao banco sem validação. A query retorna `None` e o código levanta `TypeError: 'NoneType' object is not subscriptable` ou `KeyError`. Com `debug=False` em produção, o Dash retorna um erro 500 genérico, mas logs detalhados ficam nos logs do gunicorn (acessíveis via journalctl para qualquer usuário com SSH).
+
+**How to avoid:**
+Validar o `signal_id` e retornar layout de erro gracioso:
+```python
+@callback(Output("detalhe-content", "children"), Input("url", "search"))
+def render_detalhe(search):
+    try:
+        params = urllib.parse.parse_qs((search or "").lstrip("?"))
+        signal_id_str = params.get("id", [None])[0]
+        if not signal_id_str:
+            return _layout_erro("Nenhum sinal especificado.")
+        signal_id = int(signal_id_str)
+        dados = _query_sinal(signal_id)
+        if not dados:
+            return _layout_erro(f"Sinal #{signal_id} não encontrado.")
+        return _layout_detalhe(dados)
+    except (ValueError, TypeError):
+        return _layout_erro("ID de sinal inválido.")
+```
+
+**Warning signs:**
+- Acessar `/sinal/?id=abc` levanta exceção não tratada
+- Stack trace visível no HTML da resposta (debug=True em produção)
+
+**Phase to address:**
+Fase de implementação da página de detalhe — tratamento de erros deve estar presente desde o primeiro commit da página.
+
+---
+
+## Technical Debt Patterns (Multi-Page Conversion)
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Manter layout inteiro em `dashboard.py` sem criar pasta `pages/` | Menos reorganização de arquivos | Arquivo monolítico dificulta adicionar mais páginas futuras | Nunca — `pages/` é a arquitetura correta do Dash Pages |
+| Passar `signal_id` via variável global em vez de URL param | Sem necessidade de parsear URL | Quebra com múltiplos workers, sem deep link, sem histórico do browser | Nunca |
+| `suppress_callback_exceptions=True` sem testes de IDs | Resolve erros de startup imediatamente | Bugs de ID errado ficam invisíveis por tempo indeterminado | Aceitável se houver plano de adicionar teste de integração na mesma fase |
+| Re-query banco para cada render da página de detalhe sem cache | Mais simples | Latência extra ~5-20ms por load | Aceitável — volume de sinais é baixo, query é simples |
+| Coluna `signal_id` oculta no AG Grid em vez de `getRowId` | Menos configuração | Frágil — depende de índice de coluna, quebra ao reordenar colunas | Nunca — `getRowId` é a abordagem correta |
+
+---
+
+## Integration Gotchas (Multi-Page Conversion)
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| AG Grid → navegação | Usar `selectedRows` como Input — não re-dispara ao clicar na mesma linha | Usar `cellClicked` como Input para navegação |
+| AG Grid → `signal_id` | Assumir que `cell["value"]` contém o ID — depende da coluna clicada | Configurar `getRowId="params.data.signal_id"` e usar `cell["rowId"]` |
+| URL search params → detalhe | Parsear `dcc.Location.search` manualmente com string split | Usar `urllib.parse.parse_qs(search.lstrip("?"))` |
+| `@callback` em páginas | Importar `app` de `dashboard.py` para usar `@app.callback` | Usar `from dash import callback` — sem importar `app` nas páginas |
+| gunicorn + `pages/` folder | Omitir `__name__` ao refatorar o construtor Dash | Sempre `Dash(__name__, use_pages=True, ...)` explícito |
+| nginx + multi-page | Adicionar `location /sinal/` separado no nginx.conf | Manter `location /` único — Dash/Flask lida com sub-paths internamente |
+| `dcc.Location` + navegação | `refresh=True` ou `refresh=False` em vez de `"callback-nav"` | `dcc.Location(id="url", refresh="callback-nav")` |
+
+---
+
+## "Looks Done But Isn't" Checklist (Multi-Page Conversion)
+
+- [ ] **Multi-page structure:** `use_pages=True` no construtor E `dash.register_page(__name__)` em cada arquivo de página — ambos presentes
+- [ ] **Gunicorn compatibility:** `gunicorn 'helpertips.dashboard:server'` inicia sem erro localmente após refatoração
+- [ ] **Import circular:** `python -c "from helpertips.dashboard import server"` executa sem `ImportError`
+- [ ] **AG Grid navigation:** Clicar na mesma linha duas vezes ainda navega — `cellClicked` sendo usado (não `selectedRows`)
+- [ ] **URL params parsing:** `search=None` (primeira carga) não levanta exceção no callback de detalhe
+- [ ] **nginx intacto:** nginx.conf não foi modificado — `location /` cobre tudo, inclusive `/sinal/`
+- [ ] **Basic Auth:** Acessar `/sinal/?id=1` diretamente via curl com credenciais retorna 200, não 403
+- [ ] **Worker safety:** Dois requests simultâneos com `--workers 2` retornam dados corretos para cada `signal_id`
+- [ ] **Erro gracioso:** `/sinal/?id=abc` e `/sinal/?id=99999` retornam layout de erro, não 500
+- [ ] **Botão voltar:** Página de detalhe tem `dcc.Link("← Voltar", href="/")` visível
+
+---
+
+## Recovery Strategies (Multi-Page Conversion)
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Import circular descoberto após estruturar páginas | LOW | Substituir `@app.callback` por `@callback` em todos os arquivos `pages/` — mudança mecânica de 1-2 linhas por arquivo |
+| Gunicorn não acha `pages/` em produção | LOW | Adicionar `__name__` explícito no construtor Dash; `systemctl restart helpertips-dashboard` |
+| AG Grid não passa `signal_id` correto | LOW | Adicionar `getRowId="params.data.signal_id"` ao componente grid; ajustar callback para usar `cell["rowId"]` |
+| `dcc.Location` com `refresh` errado | LOW | Mudar para `refresh="callback-nav"` no componente `dcc.Location` |
+| Variável global causando inconsistência entre workers | MEDIUM | Refatorar para URL param + query banco; requer re-teste do fluxo completo |
+
+---
+
+## Pitfall-to-Phase Mapping (v1.3 Multi-Page)
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Gunicorn não acha `pages/` (Pitfall 17) | Fase 1: Estrutura multi-page | `gunicorn` startup sem erro localmente |
+| Import circular (Pitfall 18) | Fase 1: Estrutura multi-page | `python -c "from helpertips.dashboard import server"` sem erro |
+| `suppress_callback_exceptions` silencia bugs (Pitfall 19) | Fase 1: Estrutura multi-page | Constantes para IDs de componente; teste de integração |
+| AG Grid não passa `signal_id` (Pitfall 20) | Fase 2: Navegação AG Grid → URL | Clicar em linha navega para URL com ID correto |
+| `dcc.Location refresh` errado (Pitfall 21) | Fase 2: Navegação AG Grid → URL | Navegação SPA sem full reload; filtros preservados ao voltar |
+| Estado global entre workers (Pitfall 22) | Fase 2: Navegação AG Grid → URL | Dados corretos com `--workers 2` |
+| nginx modificado desnecessariamente (Pitfall 23) | Fase 3: Deploy e validação | nginx.conf diff mostra zero mudanças |
+| `signal_id` inválido não tratado (Pitfall 24) | Fase 3: Página de detalhe | `/sinal/?id=abc` retorna layout de erro gracioso |
+
+---
+
+## Sources
+
+**v1.3 — Multi-Page Conversion + Detail Page:**
+- Dash Pages official docs — conversão para multi-page: https://dash.plotly.com/urls — HIGH confidence (docs oficiais)
+- Gunicorn + `pages/` folder não encontrada no Linux: https://community.plotly.com/t/multi-page-app-pages-folder-undiscoverable-by-gunicorn-on-linux/67788 — HIGH confidence (caso exato documentado no forum)
+- Basic Auth com multi-page apps — problema de 403 e monkey patch: https://community.plotly.com/t/basic-auth-with-multi-page-apps-incompatible/71210 — HIGH confidence (forum oficial Plotly)
+- Sharing data between callbacks — anti-padrão de variáveis globais: https://dash.plotly.com/sharing-data-between-callbacks — HIGH confidence (docs oficiais)
+- `suppress_callback_exceptions` behavior e limitações: https://dash.plotly.com/advanced-callbacks — HIGH confidence (docs oficiais)
+- Circular import issue — `@callback` vs `@app.callback` em pages: https://github.com/plotly/dash/issues/519 — HIGH confidence (GitHub issue oficial)
+- AG Grid row selection callbacks: https://dash.plotly.com/dash-ag-grid/row-selection-callbacks — HIGH confidence (docs oficiais)
+- dcc.Location search params e `refresh` modes: https://dash.plotly.com/dash-core-components/location — HIGH confidence (docs oficiais)
+- dcc.Location `refresh=False` não dispara callback (bug documentado): https://github.com/plotly/dash-core-components/issues/925 — HIGH confidence (GitHub issue)
+- Multi-page app demos (referência de estrutura): https://github.com/AnnMarieW/dash-multi-page-app-demos — MEDIUM confidence (community reference)

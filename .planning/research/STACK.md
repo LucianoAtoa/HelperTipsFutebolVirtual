@@ -86,7 +86,7 @@
 | Service | Tier/Config | Monthly Cost (us-east-1) | Why |
 |---------|------------|--------------------------|-----|
 | EC2 t4g.micro | On-Demand, arm64 | ~$6.13/mês | Cheapest always-on compute outside free tier. 2 vCPUs burstable, 1 GiB RAM — sufficient for listener + dashboard + PostgreSQL running as Docker containers. $0.0084/hora. |
-| EBS gp3 | 20 GB | ~$1.60/mês | Root volume for OS + Docker images + PostgreSQL data. gp3 is $0.08/GB-mês, 20 GB cobre tudo com margem. 3,000 IOPS e 125 MB/s incluídos sem custo adicional. |
+| EBS gp3 | 20 GB | ~$1.60/mês | Root volume for OS + Docker images + PostgreSQL data. gp3 é $0.08/GB-mês, 20 GB cobre tudo com margem. 3,000 IOPS e 125 MB/s incluídos sem custo adicional. |
 | Elastic IP | 1 IP estático | Grátis quando associado | IP fixo para apontar DNS e configurar regras de firewall. Cobrado apenas se a instância estiver parada (~$0.005/hora). |
 | **Total estimado** | | **~$7.73/mês** | Listener + dashboard + PostgreSQL em um único host. Sem RDS, sem ECS, sem ALB. |
 
@@ -374,3 +374,139 @@ pip install pytest
 - Caddy vs Nginx HTTPS: [selfhostwise.com 2026](https://selfhostwise.com/posts/traefik-vs-caddy-vs-nginx-proxy-manager-which-reverse-proxy-should-you-choose-in-2026/) — MEDIUM confidence
 - Telethon StringSession: [docs.telethon.dev/sessions](https://docs.telethon.dev/en/stable/concepts/sessions.html) — HIGH confidence (official docs, acesso bloqueado por 403 mas conteúdo confirmado via múltiplas fontes secundárias)
 - GitHub Actions EC2 deploy: [dev.to — Docker deploy EC2](https://dev.to/engrmark/how-to-set-up-github-actions-to-deploy-a-simple-docker-app-on-an-ec2-server-4d0h) — MEDIUM confidence
+
+---
+
+## Milestone v1.3 — Analise Individual de Sinais: Stack Delta
+
+**Pesquisado:** 2026-04-04
+**Confidence:** HIGH (verificado em docs oficiais Plotly e forum da comunidade)
+
+### Conclusao Principal
+
+**Nenhuma nova dependencia necessaria.** O suporte a multi-page routing esta embutido no Dash 4.1.0 desde o Dash 2.5 (junho 2022). O milestone inteiro e implementavel com o stack existente sem alterar `pyproject.toml` ou `requirements.txt`.
+
+---
+
+### Novos Capabilities do Stack Existente (sem novas deps)
+
+#### 1. Dash Pages — `use_pages=True`
+
+**Disponibilidade:** Dash 2.5+, portanto disponivel no Dash 4.1.0 que ja esta instalado.
+
+**O que fornece para este milestone:**
+
+| API | O que faz | Quando usar |
+|-----|-----------|-------------|
+| `use_pages=True` no construtor | Ativa roteamento automatico de URLs via pasta `pages/` | Na inicializacao do app |
+| `dash.register_page(__name__, path_template='/sinal/<signal_id>')` | Registra pagina com URL dinamica; passa `signal_id` como kwarg para `layout()` | Em `pages/sinal.py` |
+| `dash.page_container` | Placeholder no layout principal onde o conteudo da pagina atual e renderizado | No `app.layout` |
+| `dash.page_registry` | OrderedDict com metadados de todas as paginas; util para gerar nav links | Opcional — so se precisar de navegacao dinamica |
+
+**Alternativa descartada — `dcc.Location` manual:**
+Padrao pre-Dash 2.5 que exige callback manual `pathname -> layout`. Mais codigo, sem vantagem. Use Pages.
+
+#### 2. `dcc.Location` para navegacao programatica
+
+**Ja disponivel no Dash core, sem nova dep.** Usado para navegar da tabela AG Grid para a pagina de detalhe ao clicar em uma linha — o callback do click atualiza `dcc.Location.href` com `/sinal/123`.
+
+---
+
+### Mudancas de Codigo Necessarias
+
+**Apenas duas mudancas no `dashboard.py` existente:**
+
+**1. Inicializacao do app:**
+```python
+# ANTES
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.DARKLY],
+    title="HelperTips — Futebol Virtual",
+)
+
+# DEPOIS
+app = dash.Dash(
+    __name__,                               # obrigatorio — gunicorn usa para resolver pages/
+    use_pages=True,                         # ativa roteamento Pages
+    suppress_callback_exceptions=True,      # obrigatorio — callbacks de outras paginas sao dinamicos
+    external_stylesheets=[dbc.themes.DARKLY],
+    title="HelperTips — Futebol Virtual",
+)
+```
+
+**2. Layout principal:**
+```python
+# ANTES: app.layout = html.Div([... todo o conteudo atual ...])
+
+# DEPOIS: layout vira container + page_container
+app.layout = dbc.Container([
+    dcc.Location(id="url"),   # para navegacao programatica via callback
+    dash.page_container,      # Pages injeta aqui o layout da pagina ativa
+], fluid=True)
+```
+
+O layout completo atual de `dashboard.py` vai para `pages/home.py` com `dash.register_page(__name__, path='/')` no topo.
+
+---
+
+### Estrutura de Arquivos Resultante
+
+```
+helpertips/
+    dashboard.py           # app principal (inicializacao + layout container)
+    pages/                 # NOVA pasta — convencao do Dash Pages
+        home.py            # conteudo atual de dashboard.py (layout + callbacks)
+        sinal.py           # pagina de detalhe do sinal (nova)
+    queries.py             # sem mudanca — queries existentes reutilizadas
+    db.py                  # sem mudanca
+```
+
+A pasta `pages/` fica dentro de `helpertips/` (mesmo diretorio de `dashboard.py`) para que o gunicorn resolva o path corretamente via `__name__`.
+
+---
+
+### O Que NAO Adicionar
+
+| Evitar | Por que | Alternativa |
+|--------|---------|-------------|
+| `flask-login` ou auth por pagina | Auth ja e feita pelo nginx HTTP Basic Auth | Manter nginx Basic Auth |
+| `dash-router` (pacote terceiros) | Pages nativo do Dash 4.x e mais maduro | `use_pages=True` |
+| `dcc.Tabs` para a pagina de detalhe | URL nao seria bookmarkavel, estado acoplado ao layout pai | Pages com path template |
+| Pandas | Queries PostgreSQL com psycopg2 ja retornam listas de dicts | SQL direto via queries.py existente |
+| Flask Blueprint separado | Dois processos, duas portas, complexidade desnecessaria | Tudo no mesmo app Dash |
+
+---
+
+### Pitfall Critico: gunicorn + pages/ folder resolution
+
+**Problema:** Gunicorn em Linux resolve `pages/` a partir de `__main__`, que pode diferir do diretorio real. Resulta em `A folder called pages does not exist` em producao mesmo que funcione local.
+
+**Status neste projeto:** O `dashboard.py` ja passa `__name__` como primeiro argumento ao `dash.Dash()` — essa e exatamente a correcao necessaria. A adicao de `use_pages=True` nao quebra isso, desde que `__name__` permaneca o primeiro argumento positional.
+
+**Verificacao:** A pasta `pages/` deve ficar em `helpertips/pages/` (ao lado de `dashboard.py`), nao na raiz do projeto.
+
+**Fonte:** [Plotly Community Forum — pages folder undiscoverable by gunicorn](https://community.plotly.com/t/multi-page-app-pages-folder-undiscoverable-by-gunicorn-on-linux/67788) — MEDIUM confidence
+
+---
+
+### Compatibilidade de Versoes — Confirmada
+
+| Componente | Versao atual | `use_pages` disponivel? |
+|------------|-------------|------------------------|
+| dash `>=4.1,<5` | 4.1.0 | Sim — disponivel desde 2.5 (junho 2022) |
+| dash-bootstrap-components `>=2.0` | 2.0.x | Sem mudanca de API necessaria |
+| dash-ag-grid `>=31.0` | 31.x | Sem mudanca de API necessaria |
+| gunicorn `>=25.0` | 25.x | Sem nova config necessaria |
+| Python 3.12+ | 3.12 | Sem restricao nova |
+
+**`pyproject.toml` — sem alteracoes necessarias.**
+
+---
+
+### Sources (Milestone v1.3)
+
+- [Dash Multi-Page Apps — documentacao oficial](https://dash.plotly.com/urls) — HIGH confidence (Plotly oficial, verificado via WebFetch)
+- [Dash Installation — versao atual 4.1.0](https://dash.plotly.com/installation) — HIGH confidence (Plotly oficial, verificado via WebFetch)
+- [Plotly Community: gunicorn + pages folder fix](https://community.plotly.com/t/multi-page-app-pages-folder-undiscoverable-by-gunicorn-on-linux/67788) — MEDIUM confidence (forum com solucao reproduzida pela comunidade)
+- [AnnMarieW dash-multi-page-app-demos](https://github.com/AnnMarieW/dash-multi-page-app-demos) — MEDIUM confidence (repositorio de exemplos da comunidade Dash)

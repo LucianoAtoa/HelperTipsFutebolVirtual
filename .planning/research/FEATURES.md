@@ -1,145 +1,134 @@
-# Feature Research — v1.1 Cloud Deploy
+# Feature Research
 
-**Domain:** Cloud deployment + security hardening + GitHub publication for a personal Python tool (Telegram listener + Plotly Dash dashboard)
-**Researched:** 2026-04-03
-**Confidence:** HIGH for security (official docs + well-established patterns), HIGH for deployment patterns (AWS EC2 + systemd widely documented), MEDIUM for "minimal personal tool" tradeoffs (community consensus, not one official source)
+**Domain:** Signal detail page — sports betting analytics dashboard (futebol virtual)
+**Researched:** 2026-04-04
+**Confidence:** HIGH (for table stakes from domain patterns) / MEDIUM (for differentiators)
 
----
+## Context
 
-## Context: What is Being Deployed
+This milestone adds a dedicated signal detail page to the existing HelperTips dashboard. The
+existing dashboard already has an AG Grid with signal history (data/hora, liga, mercado,
+resultado, tentativa, placar, lucro_total). The detail page is reached by clicking a row in that
+grid.
 
-Two long-running Python processes on a single server:
-
-1. **listener.py** — Telethon asyncio loop, never terminates, reconnects automatically, writes to PostgreSQL
-2. **dashboard.py** — Plotly Dash web server (gunicorn in production), serves HTTP on port 8050, reads-only from PostgreSQL
-
-Both need to be:
-- Running 24/7 on an AWS EC2 instance
-- Managed by the OS (auto-start on boot, auto-restart on crash)
-- Protected against secrets leaking to GitHub
-- Secured before exposing the dashboard to the internet
+The "competitors" here are general-purpose bet tracker tools (Bet-Analytix, BettorEdge, OddsJam
+Bet Tracker, Bettin.gs) since no direct equivalent for Telegram signal groups with complementary
+market systems exists. Patterns from these tools define what feels complete.
 
 ---
 
-## Table Stakes
+## Feature Landscape
 
-Features the deployment MUST have. Missing any of these = broken or insecure in production.
+### Table Stakes (Users Expect These)
 
-| Feature | Why Required | Complexity | Notes |
+Features that feel obviously missing if absent. The user is accustomed to bet trackers and knows
+what a "bet detail" should show.
+
+| Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| `debug=False` in production dashboard | `debug=True` exposes a Python REPL accessible via browser — critical security hole. Currently `dashboard.py` runs `app.run(debug=True, host="0.0.0.0", port=8050)` | LOW | Toggle via `DEBUG` env var; never hardcode True in production |
-| gunicorn as WSGI server | Dash's built-in Flask dev server is single-threaded, not production-grade; gunicorn handles concurrent requests, worker management, and graceful restarts | LOW | `gunicorn helpertips.dashboard:server -w 2 -b 0.0.0.0:8050`; expose `server = app.server` in dashboard.py |
-| systemd unit for listener | Without systemd, the Telethon listener dies on terminal close or crash and never restarts; signals are lost permanently | LOW | Two unit files: `helpertips-listener.service` and `helpertips-dashboard.service`, both `Restart=always` |
-| systemd unit for dashboard | Same rationale as listener; gunicorn must restart on crash | LOW | `After=helpertips-listener.service` ordering is optional but clean |
-| EC2 Security Group: restrict Dash port | Port 8050 open to `0.0.0.0/0` means anyone on the internet can access the dashboard; restrict to user's home IP CIDR | LOW | AWS Console > Security Group > Custom TCP 8050 > My IP. Update when IP changes. |
-| EC2 Security Group: SSH only from known IPs | Default `0.0.0.0/0` on port 22 is a brute-force magnet | LOW | Restrict inbound SSH (22) to user's IP /32 |
-| `.session` files in .gitignore | Telethon `.session` file contains complete Telegram account auth state — leaking it grants full account access to the attacker. Already in .gitignore but must be verified before first public push | LOW | Verify `.gitignore` contains `*.session` and `*.session-journal` before `git push` |
-| `.env` in .gitignore | Telegram API_ID, API_HASH, DB_PASSWORD, etc. Already in .gitignore; must be confirmed clean before public push | LOW | Already present in current .gitignore |
-| `.env.example` committed | Documents all required env vars without values; onboarding without leaking credentials. Already exists. | LOW | Verify it has no real values; keep in sync when new vars are added |
-| Audit git history for secrets before first public push | Even if current tree is clean, secrets may exist in old commits; scan history before making repo public | MEDIUM | Use `git log -p | grep -E "API_ID|API_HASH|password"` or `gitleaks detect --source . --log-opts="HEAD"` |
-| RDS or local PostgreSQL reachable from EC2 | The app reads/writes PostgreSQL; must be accessible from the EC2 instance. Simplest: run PostgreSQL on the same EC2 instance (t3.small has enough RAM) | MEDIUM | Option A: PostgreSQL on same EC2 (simple, lowest cost). Option B: RDS t3.micro (managed, +$15-25/mo). For personal tool, same-instance is fine. |
-| Environment variables injected at runtime on EC2 | `.env` must NOT be committed or SCP'd to server with credentials embedded; use `systemd` `EnvironmentFile=` pointing to a file created manually on the server | LOW | Create `/etc/helpertips/secrets.env` on EC2 manually; `EnvironmentFile=/etc/helpertips/secrets.env` in unit file |
+| Identificacao do sinal (liga, mercado, data/hora, tentativa) | Todo tracker mostra o que foi apostado antes do resultado | LOW | Ja existe em `get_signal_history` — id, liga, entrada, horario, tentativa, received_at |
+| Resultado principal com badge GREEN/RED | Ponto focal de qualquer detalhe de aposta | LOW | Campo `resultado` ja no banco |
+| Placar final da partida | Context critico para futebol virtual — valida complementares | LOW | Campo `placar` ja no banco |
+| Odd de referencia do principal | Usuario precisa saber o preco da aposta | LOW | Disponivel em `get_mercado_config` via mercado_slug |
+| Stake do principal (com progressao Gale se tentativa > 1) | Quanto foi apostado no principal | LOW | Calculado por `calculate_pl_por_entrada` — investido_principal |
+| Retorno e lucro/prejuizo do principal | P&L explicitamente separado do principal | LOW | Ja calculado: retorno_principal, lucro_principal |
+| Lista de cada entrada complementar com resultado individual | Sistema de complementares e o diferencial do produto — usuario precisa ver cada um | MEDIUM | validar_complementar ja existe; complementares_config ja no banco |
+| Odd, stake e resultado de cada complementar | Mesma logica do principal, por linha de complementar | MEDIUM | Requer iterar complementares_por_mercado com placar do sinal especifico |
+| Totais consolidados (investido total, lucro total) | Visao financeira completa do sinal como unidade | LOW | Ja em `calculate_pl_por_entrada`: investido_total, lucro_total |
+| Botao/link para voltar ao historico | Navegacao basica — sem isso a pagina e um beco sem saida | LOW | dcc.Link para '/' ou fechar modal |
 
----
+### Differentiators (Competitive Advantage)
 
-## Differentiators
-
-Features that improve operational quality and maintainability beyond "it just runs".
+Features que vao alem do esperado dado o sistema especifico de sinais com Gale e complementares.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| nginx reverse proxy in front of Dash | Terminates port 80/443, handles static file caching, adds HTTP Basic Auth layer, enables HTTPS later via Certbot — professional production pattern | MEDIUM | `proxy_pass http://127.0.0.1:8050;` — Dash needs `requests_pathname_prefix` or `routes_pathname_prefix` if serving from a subpath |
-| HTTP Basic Auth via nginx htpasswd | Single-user password gate on the dashboard — protects against anyone stumbling onto the IP | LOW | `htpasswd -c /etc/nginx/.htpasswd user` — weak but sufficient for a personal tool at a known IP |
-| GitHub Actions CI: run pytest on push | Catches regressions before they reach production; 132 tests already exist — just wire them up | MEDIUM | Use `services: postgres:` container in workflow; inject DB credentials from GitHub Secrets |
-| Dependabot alerts enabled | GitHub automatically flags CVEs in requirements.txt dependencies | LOW | Enable via Settings > Security & Analysis > Dependabot alerts — one click |
-| Structured README for GitHub publication | Documents what the project is, how to configure, how to run — makes the repo usable by someone else (or future self) | LOW | Sections: Overview, Architecture, Setup, Configuration, Running, Tests |
-| `.env.example` with all vars documented | Already exists; ensure it has descriptions of what each var is | LOW | Add inline comments to `.env.example` |
+| Decomposicao visual: principal vs complementares | Mostra claramente como o lucro e composto — algo que nenhum tracker generico faz pois nao conhece esse modelo | MEDIUM | dbc.Progress ou go.Bar dividido por componente |
+| Badge de Gale com progressao acumulada | Tentativa 3 significa 7x stake acumulado — exibir "T3 = R$400 atual / R$700 acumulado total" da contexto que a lista nao da | LOW | Calculo ja em `calculate_pl_por_entrada` com gale_on=True |
+| Destaque visual de complementar com odd alta que converteu | Ex: "Over 5+ converteu @ 10.46x — lucro R$+XX.XX" em destaque — raridade vale atencao | LOW | Condicional em resultado_comp == GREEN para comp com odd_ref > 10.0 |
+| Timestamp horario_sinal vs received_at | Mostra quando o sinal foi emitido pelo grupo (horario) vs quando chegou no banco (received_at) — util para auditoria de latencia do listener | LOW | Ambos campos ja no banco |
+| Link direto por URL com signal_id | Permite bookmarkar ou compartilhar um sinal especifico via /sinal/123 | MEDIUM | Requer Dash Pages ou dcc.Location com pathname parsing |
 
----
+### Anti-Features (Commonly Requested, Often Problematic)
 
-## Anti-Features
-
-Commonly suggested, but wrong for this context.
-
-| Anti-Feature | Why Requested | Why Wrong for This Tool | Alternative |
-|--------------|---------------|-------------------------|-------------|
-| Full OAuth / login system on dashboard | "Production apps need auth" | This is a personal tool for one user; OAuth adds complexity (client secrets, callback URLs, token refresh) that far exceeds value of a password prompt | nginx HTTP Basic Auth is sufficient — one htpasswd file, done |
-| Docker / docker-compose on EC2 | Perceived as "industry standard" | Adds a layer of abstraction for no benefit on a single-service personal tool; systemd does the same job natively with less overhead and simpler debugging | Two systemd unit files — OS manages processes natively |
-| AWS Elastic Beanstalk or ECS | "Managed deployment platforms" | Massive overkill — these platforms add billing complexity, configuration overhead, and vendor abstraction for what is essentially `python listener.py` | Bare EC2 + systemd is simpler, cheaper, and fully under user control |
-| Kubernetes | "Container orchestration" | A personal tool with 2 processes has zero need for orchestration, scheduling, or service mesh. K8s complexity would dwarf the project itself | Two systemd services on one EC2 instance |
-| AWS Secrets Manager / HashiCorp Vault | "Secrets management platforms" | Secure but introduces IAM policy complexity and costs for what is a single-developer tool | `EnvironmentFile=` in systemd pointing to a file with restricted Unix permissions (`chmod 600`) |
-| HTTPS / Let's Encrypt Certbot | "Every public web app needs HTTPS" | This dashboard is only accessible from the user's home IP (Security Group restriction). HTTPS is needed if you expose it publicly, which is explicitly out of scope. | If the IP restriction is removed, add Certbot then — but not now. |
-| Multi-worker gunicorn (4+ workers) | "Production best practices" | Two gunicorn workers is plenty for one user — more workers means more RAM usage on a t3.small (2 GiB) | `--workers 2` is the right default; listener + DB also compete for RAM |
-| Automated deploy pipeline (GitHub Actions → EC2) | "CI/CD is table stakes" | The deploy frequency is extremely low (days/weeks between deploys); an automated pipeline adds GitHub OIDC or SSH key secrets complexity for near-zero benefit | Manual `git pull && systemctl restart` on EC2 is fine for this cadence |
-| gitleaks as pre-commit hook | "Prevent secrets in commits" | The project already has a clean .gitignore + .env.example pattern; pre-commit hooks fail silently on bypasses anyway. The real risk is the initial git history audit before going public. | One-time `git log -p` grep before making the repo public; then trust .gitignore |
-| CloudWatch / DataDog monitoring | "Production needs observability" | A personal betting analysis tool that breaks is noticed in seconds by the user; structured monitoring is overkill | `systemctl status helpertips-listener` and `journalctl -u helpertips-listener -f` cover 100% of the need |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Edicao de resultado/placar inline na pagina de detalhe | Usuario quer corrigir erros do parser | Abre inconsistencia com fonte de verdade (Telegram); logica de reconciliacao complexa; fora de escopo do produto pessoal | Exibir o message_id do Telegram para referencia manual se necessario |
+| Grafico de equity curve "com e sem este sinal" | Curiosidade natural — e se eu nao tivesse apostado aqui? | Requer recalcular curva inteira sem o sinal — JOIN e calculo pesado para beneficio cosmetico | Mostrar posicao do sinal na equity curve global ja existente no dashboard principal |
+| Copiar bet slip formatado para clipboard | Util para compartilhar resultados | Complexidade JS inject no Dash; edge case de formatacao; nao e uso primario desta ferramenta pessoal | N/A — nao implementar |
+| Historico de edicoes (audit trail) | Curiosidade sobre quantas vezes o parser editou o sinal | Requer tabela de auditoria separada; nao existe hoje | O message_id unico ja garante rastreabilidade no Telegram |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Security Review (secrets audit)
-  └─ must complete before → GitHub publication (repo goes public)
-       └─ enables → README + badges visible to public
+[Pagina de detalhe acessivel via click]
+    └──requires──> [dcc.Store com signal_id OU dcc.Location com pathname]
+                       └──requires──> [AG Grid selectionChanged callback]
 
-systemd unit files
-  └─ require → EC2 instance provisioned (Ubuntu 22.04+)
-       └─ require → Python 3.12 + dependencies installed on EC2
+[Lista de complementares com resultado individual]
+    └──requires──> [Placar do sinal disponivel na pagina de detalhe]
+                       └──requires──> [Query por signal_id retornando placar + mercado_slug]
 
-gunicorn installed (add to requirements.txt)
-  └─ enables → systemd dashboard unit (ExecStart uses gunicorn)
+[Totais consolidados]
+    └──requires──> [Calculos de P&L por entrada complementar]
+                       └──requires──> [get_complementares_config(mercado_slug)]
 
-EC2 Security Group (IP restriction)
-  └─ must configure before → starting gunicorn / exposing port 8050
+[Badge de Gale com acumulado]
+    └──requires──> [Tentativa do sinal]
+                       └──requires──> [Query por signal_id]
 
-PostgreSQL on EC2 (or RDS)
-  └─ must be reachable before → listener and dashboard can start
+[Decomposicao visual principal vs complementares]
+    └──requires──> [Lista de complementares com resultado individual]
 
-EnvironmentFile on EC2 (manual secrets)
-  └─ must exist before → systemd units can start (units will fail without it)
-
-nginx (optional, Differentiator tier)
-  └─ requires → gunicorn running on 127.0.0.1:8050
-       └─ enables → HTTP Basic Auth password gate
-       └─ enables → HTTPS via Certbot (future, not now)
-
-GitHub Actions CI (optional, Differentiator tier)
-  └─ requires → repo published on GitHub
-       └─ requires → PostgreSQL service container in workflow
-       └─ requires → GitHub Secrets: DB_USER, DB_PASSWORD, DB_NAME
+[Botao voltar]
+    (nenhuma dependencia tecnica — dcc.Link ou fechar modal)
 ```
+
+### Dependency Notes
+
+- **Pagina de detalhe requires AG Grid row click:** O componente `dag.AgGrid` ja tem
+  `selectionChanged` como property observavel via callback. O signal_id pode ser passado via
+  `dcc.Store` para um modal, sem necessidade de URL routing.
+
+- **Lista de complementares requires placar:** `validar_complementar` ja existe em `queries.py`
+  e aceita `(regra_validacao, placar, resultado)`. Precisa apenas do sinal completo por ID.
+
+- **get_complementares_config requires mercado_slug:** ja disponivel via JOIN na query de sinais
+  (`mercado_slug` retornado por `get_signals_com_placar`). Uma nova query `get_signal_by_id`
+  precisa ser criada em `queries.py`.
 
 ---
 
 ## MVP Definition
 
-### Ship with v1.1 (Table Stakes — required for a secure public deployment)
+### Launch With (v1 — Milestone v1.3)
 
-- [ ] `debug=False` in production — set via `DEBUG` env var, default to False
-- [ ] `server = app.server` exposed in `dashboard.py` — enables gunicorn
-- [ ] `gunicorn` added to `requirements.txt`
-- [ ] `helpertips-listener.service` systemd unit — `Restart=always`, `EnvironmentFile=`
-- [ ] `helpertips-dashboard.service` systemd unit — gunicorn invocation, `Restart=always`
-- [ ] EC2 Security Group: port 8050 and 22 restricted to user's IP
-- [ ] One-time git history audit for secrets before `git push --public`
-- [ ] README.md: overview, architecture diagram (text), setup, config, run, tests
-- [ ] Verify `.gitignore` covers `*.session`, `.env`, `__pycache__`, `.egg-info`
-- [ ] PostgreSQL running and accessible on EC2 (same instance, port 5432 localhost-only)
-- [ ] `EnvironmentFile` created manually on EC2 with real credentials (chmod 600)
+Minimo que torna a pagina util e justifica a navegacao a partir do AG Grid.
 
-### Add after deployment is stable (Differentiator tier)
+- [ ] Header do sinal: liga, mercado, data/hora, tentativa, placar, badge GREEN/RED
+- [ ] Card principal: odd, stake (com Gale), retorno, lucro — com coloracao verde/vermelho
+- [ ] Lista de complementares: nome, odd, stake, resultado (GREEN/RED/N/A), lucro por linha
+- [ ] Totais consolidados: investido total, retorno total, lucro liquido
+- [ ] Botao voltar ao historico (ou fechar modal)
 
-- [ ] nginx reverse proxy + HTTP Basic Auth — adds a password gate for the dashboard
-- [ ] GitHub Actions CI — pytest on push using postgres service container
-- [ ] Dependabot alerts — one-click in GitHub Settings
+### Add After Validation (v1.x)
 
-### Defer indefinitely (Not in scope per PROJECT.md)
+Features a adicionar se o MVP for validado como util no uso diario.
 
-- [ ] HTTPS / Certbot — only relevant if dashboard moves to a public domain
-- [ ] OAuth / proper auth system — personal tool, IP restriction + basic auth is sufficient
-- [ ] Automated deploy pipeline — deploy cadence too low to justify
-- [ ] AWS RDS — same-instance PostgreSQL is simpler and ~$15-25/mo cheaper
+- [ ] Badge Gale com acumulado explicado ("T3: atual R$400 / acumulado R$700") — trigger: usuario
+  confundir stake atual com acumulado ao revisar uma tentativa 3 ou 4
+- [ ] Decomposicao visual principal vs complementares (stacked bar) — trigger: usuario querer
+  entender visualmente a distribuicao do lucro
+- [ ] Destaque de complementar de odd alta que converteu — trigger: ocorrer na pratica e usuario
+  notar valor em ter destaque
+
+### Future Consideration (v2+)
+
+- [ ] Deep-link URL por signal_id (/sinal/123) — defer pois requer refatoracao para Dash Pages
+- [ ] Navegacao entre sinais (anterior/proximo) — conveniencia de browse sequencial
+- [ ] Timestamp de latencia (horario_sinal vs received_at) — valor baixo, dado analitico tecnico
 
 ---
 
@@ -147,55 +136,80 @@ GitHub Actions CI (optional, Differentiator tier)
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| debug=False in production | HIGH (security) | LOW | P1 |
-| gunicorn as WSGI server | HIGH (stability) | LOW | P1 |
-| systemd unit files (both processes) | HIGH (24/7 uptime) | LOW | P1 |
-| EC2 Security Group IP restriction | HIGH (security) | LOW | P1 |
-| Git history secrets audit | HIGH (security, one-time) | LOW | P1 |
-| README for GitHub publication | HIGH (usability) | LOW | P1 |
-| PostgreSQL on EC2 | HIGH (data layer) | MEDIUM | P1 |
-| EnvironmentFile on EC2 | HIGH (secrets management) | LOW | P1 |
-| nginx + HTTP Basic Auth | MEDIUM (additional security layer) | MEDIUM | P2 |
-| GitHub Actions CI | MEDIUM (regression safety) | MEDIUM | P2 |
-| Dependabot alerts | LOW (passive, automatic) | LOW | P2 |
-| HTTPS / Certbot | LOW (not publicly exposed) | MEDIUM | P3 |
-| Automated deploy pipeline | LOW (low deploy frequency) | HIGH | P3 |
+| Header do sinal (liga, mercado, data, tentativa, placar, resultado) | HIGH | LOW | P1 |
+| Card principal com financeiro (odd, stake, retorno, lucro) | HIGH | LOW | P1 |
+| Lista complementares com resultado por linha | HIGH | MEDIUM | P1 |
+| Totais consolidados | HIGH | LOW | P1 |
+| Botao voltar / fechar | HIGH | LOW | P1 |
+| Badge Gale com acumulado explicado | MEDIUM | LOW | P2 |
+| Decomposicao visual principal vs complementares | MEDIUM | MEDIUM | P2 |
+| Destaque complementar odd alta que converteu | LOW | LOW | P2 |
+| Deep-link URL por signal_id | LOW | MEDIUM | P3 |
+| Navegacao anterior/proximo entre sinais | LOW | MEDIUM | P3 |
 
 **Priority key:**
-- P1: Must have for v1.1 — without this, deployment is insecure or broken
-- P2: Should have — improves operational quality significantly
-- P3: Nice to have — defer, conditions for inclusion not yet met
+- P1: Must have para o milestone v1.3
+- P2: Should have, adicionar na mesma milestone se couber no escopo
+- P3: Deferir para milestone futura
 
 ---
 
-## Phase-Specific Warnings (feeds PITFALLS.md)
+## Competitor Feature Analysis
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| First `git push` to public repo | `.session` file or `.env` in git history from early commits | Audit with `git log --all -- "*.session" ".env"` before push; use BFG if found |
-| EC2 instance sizing | t3.micro (1 GiB RAM) may OOM with listener + dashboard + PostgreSQL all running | Use t3.small (2 GiB) — $15/mo vs $7/mo; the headroom is worth the cost |
-| systemd EnvironmentFile path | Unit file silently ignores missing EnvironmentFile in some systemd versions | Use `EnvironmentFile=-/etc/helpertips/secrets.env` (dash prefix = optional); check `systemctl status` after start |
-| gunicorn + Dash callback state | Multiple gunicorn workers do NOT share in-memory state; if dashboard uses `dcc.Store` with server-side data, workers produce inconsistent results | Set `--workers 2` (not 4+); confirm dashboard uses PostgreSQL (not in-memory) as truth source |
-| Telethon session on server vs local | If the same session file is used on two machines simultaneously, Telegram may invalidate the session | Generate a NEW session on the EC2 instance via first-run auth; never copy the local `.session` to the server |
-| debug=True with host="0.0.0.0" | Current code has this — exposes Python debugger to the network | Fix before any EC2 deployment, not just before adding nginx |
+| Feature | Bet-Analytix / BettorEdge | OddsJam Bet Tracker | Nossa Abordagem |
+|---------|---------------------------|---------------------|-----------------|
+| Identificacao da aposta | Sport, league, bet type, date | Sport, market, date | Liga, mercado, data/hora, tentativa |
+| Resultado e P&L | WIN/LOSS + profit/loss | WIN/LOSS + profit | GREEN/RED + lucro em R$ |
+| Breakdown por componente | Nao (trackers genericos nao tem complementares) | Nao | Sim — principal + cada complementar individualmente |
+| Odds e stake | Sim | Sim | Sim — com progressao Gale quando tentativa > 1 |
+| Placar da partida | Nao (trackers de odds nao rastreiam placar) | Nao | Sim — critico para validacao de complementares |
+| Closing Line Value (CLV) | Sim (diferencial de trackers profissionais) | Sim | Fora de escopo — futebol virtual tem odds fixas |
+| Deep-link / URL persistente | Sim | Sim | P3 — MVP usa modal sem URL routing |
+
+---
+
+## Implementation Approach for Dash
+
+Duas opcoes identificadas para abrir a pagina de detalhe a partir do AG Grid:
+
+### Option A: Modal — recomendado para MVP
+
+Ao clicar em uma linha do AG Grid, um `dbc.Modal` se abre com o conteudo do detalhe do sinal.
+O signal_id fica em `dcc.Store`. Zero mudancas no layout de multi-page.
+
+```
+AG Grid selectionChanged → dcc.Store(signal_id) → dbc.Modal opens → callback popula modal
+```
+
+**Pro:** Implementacao mais simples, sem tocar em routing. Consistente com o restante do app.
+Zero refatoracao do callback master existente.
+**Con:** URL nao muda — sem deep-link. Modal menor que uma pagina full.
+
+### Option B: Dash Pages com /sinal/<signal_id>
+
+Migrar `dashboard.py` para Dash Pages: `pages/home.py` + `pages/sinal.py`.
+
+```
+AG Grid row click → dcc.Location.href = f"/sinal/{signal_id}" → pages/sinal.py renderiza
+```
+
+**Pro:** URL persistente, back/forward do browser funciona, estrutura extensivel para futuras paginas.
+**Con:** Refatoracao significativa de `dashboard.py`; callback master precisa ser dividido.
+
+**Recomendacao para v1.3:** Option A (modal). Routing completo deferido para quando deep-link
+for explicitamente necessario.
 
 ---
 
 ## Sources
 
-- Plotly Dash official deployment docs: https://dash.plotly.com/deployment — HIGH confidence
-- Dash + gunicorn community pattern: https://community.plotly.com/t/deploying-dash-app-to-aws-server-using-gunicorn/81009 — MEDIUM confidence
-- AWS EC2 t3.micro vs t3.small pricing: https://instances.vantage.sh/aws/ec2/t3.micro — HIGH confidence (AWS-sourced data)
-- AWS Security Groups — restrict by IP: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html — HIGH confidence (official docs)
-- Telethon session file security risk: https://github.com/LonamiWebs/Telethon/issues/3753 — HIGH confidence (official Telethon issue tracker)
-- Telethon .gitignore recommendation: https://docs.telethon.dev/en/stable/quick-references/faq.html — HIGH confidence (official docs)
-- nginx HTTP Basic Auth setup: https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/ — HIGH confidence (official nginx docs)
-- GitHub secrets management best practices: https://docs.github.com/code-security/secret-scanning/about-secret-scanning — HIGH confidence (official GitHub docs)
-- detect-secrets (Yelp) for git history scanning: https://github.com/Yelp/detect-secrets — MEDIUM confidence (widely used OSS)
-- systemd service management for multiple Python processes: https://saturncloud.io/blog/getting-started-with-ec2-1604-systemd-supervisord-and-python-a-comprehensive-guide-for-data-scientists/ — MEDIUM confidence
-- GitHub Actions + PostgreSQL service container: https://til.simonwillison.net/github-actions/postgresq-service-container — MEDIUM confidence (well-regarded source)
+- Bet-Analytix feature set: [bet-analytix.com](https://www.bet-analytix.com/) — MEDIUM confidence (marketing page)
+- BettorEdge ROI breakdown: [bettoredge.com/post/top-bet-tracking-apps](https://www.bettoredge.com/post/top-bet-tracking-apps) — MEDIUM confidence
+- Dash multi-page apps e URL routing: [dash.plotly.com/urls](https://dash.plotly.com/urls) — HIGH confidence (official docs)
+- Dash AG Grid row selection: [dash.plotly.com/dash-ag-grid/row-selection](https://dash.plotly.com/dash-ag-grid/row-selection) — HIGH confidence (official docs)
+- Dash Pages path_template: [dash.plotly.com/urls](https://dash.plotly.com/urls) — HIGH confidence (official docs)
+- Codebase existente: `helpertips/queries.py`, `helpertips/dashboard.py` — HIGH confidence (fonte de verdade)
 
 ---
-
-*Feature research for: v1.1 Cloud Deploy — deployment, security, GitHub publication*
-*Researched: 2026-04-03*
+*Feature research for: Signal detail page — HelperTips Futebol Virtual*
+*Researched: 2026-04-04*
