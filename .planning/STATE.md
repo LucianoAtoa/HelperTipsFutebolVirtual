@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Multi-Market Analytics
-status: executing
-stopped_at: Completed 10-01-PLAN.md — Queries Financeiras
-last_updated: "2026-04-04T14:19:10.589Z"
+status: verifying
+stopped_at: Completed 10-02-PLAN.md — P&L por Entrada e Equity Curve Breakdown
+last_updated: "2026-04-04T14:25:02.489Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 Phase: 10 (Lógica Financeira) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -57,6 +57,8 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 - [Phase 09]: Handler registrado via add_event_handler (nao decorator) para permitir registro apos filtragem dinamica de group_ids invalidos
 - [Phase 09]: Fallback TELEGRAM_GROUP_ID mantido para compatibilidade retroativa sem breaking change (D-14)
 - [Phase 10-l-gica-financeira]: _build_where mercado_id=None para zero breaking change; LEFT JOIN mercados em get_signals_com_placar para nao excluir sinais historicos sem mercado_id; ORDER BY ASC em get_signals_com_placar para calculo cronologico de P&L
+- [Phase 10-l-gica-financeira]: calculate_equity_curve_breakdown implementada junto com calculate_pl_por_entrada para desbloquear imports TDD no arquivo de testes
+- [Phase 10-l-gica-financeira]: Funcoes puras sem DB: complementares_por_mercado e odd_por_mercado recebidos como dict — chamador busca do banco via get_complementares_config e get_mercado_config
 
 ### Pending Todos
 
@@ -70,6 +72,6 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 
 ## Session Continuity
 
-Last session: 2026-04-04T14:19:10.587Z
-Stopped at: Completed 10-01-PLAN.md — Queries Financeiras
+Last session: 2026-04-04T14:25:02.487Z
+Stopped at: Completed 10-02-PLAN.md — P&L por Entrada e Equity Curve Breakdown
 Resume file: None

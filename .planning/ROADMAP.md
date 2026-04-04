@@ -32,7 +32,7 @@
 ### v1.2 Multi-Market Analytics (Phases 9-13)
 
 - [x] **Phase 9: Listener Multi-Grupo** — Listener escuta Over 2.5 e Ambas Marcam simultaneamente (completed 2026-04-04)
-- [ ] **Phase 10: Lógica Financeira** — Cálculo P&L com complementares diferenciados por mercado e Martingale 4 tentativas
+- [x] **Phase 10: Lógica Financeira** — Cálculo P&L com complementares diferenciados por mercado e Martingale 4 tentativas (completed 2026-04-04)
 - [ ] **Phase 11: Dashboard Fundação** — Filtros globais e KPIs com P&L que sustentam todo o redesign
 - [ ] **Phase 12: Dashboard Mercados e Performance** — Config de mercados read-only e tabela P&L por entrada
 - [ ] **Phase 13: Dashboard Análises Visuais** — Análise por liga, equity curve e análise de gale
@@ -66,7 +66,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 10-01-PLAN.md — Extensao de _build_where com mercado_id, get_signals_com_placar e get_mercado_config
-- [ ] 10-02-PLAN.md — calculate_pl_por_entrada e calculate_equity_curve_breakdown com testes completos
+- [x] 10-02-PLAN.md — calculate_pl_por_entrada e calculate_equity_curve_breakdown com testes completos
 
 ### Phase 11: Dashboard Fundação
 **Goal**: Usuário acessa o dashboard com filtros globais operacionais e KPIs refletindo P&L real
@@ -129,7 +129,7 @@ Plans:
 | 7. Listener Deployment | v1.1 | 1/1 | Complete | 2026-04-04 |
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
 | 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
-| 10. Lógica Financeira | v1.2 | 1/2 | In Progress|  |
+| 10. Lógica Financeira | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 11. Dashboard Fundação | v1.2 | 0/? | Not started | - |
 | 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
 | 13. Dashboard Análises Visuais | v1.2 | 0/? | Not started | - |
