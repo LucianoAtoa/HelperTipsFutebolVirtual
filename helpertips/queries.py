@@ -761,6 +761,207 @@ def calculate_pl_por_entrada(
 
 
 # ---------------------------------------------------------------------------
+# Fase 4: Pagina de Detalhe do Sinal — funcoes de dados individuais (SIG-02..06)
+# ---------------------------------------------------------------------------
+
+
+def get_sinal_detalhado(conn, signal_id: int) -> dict | None:
+    """
+    Busca sinal completo por ID com JOIN em mercados.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    signal_id : int
+        ID do sinal a buscar.
+
+    Retorna
+    -------
+    dict com keys [id, liga, entrada, resultado, placar, tentativa, received_at,
+    mercado_id, mercado_slug] ou None se nao encontrado.
+    """
+    sql = """
+        SELECT s.id, s.liga, s.entrada, s.resultado, s.placar,
+               s.tentativa, s.received_at, s.mercado_id,
+               m.slug AS mercado_slug
+        FROM signals s
+        LEFT JOIN mercados m ON s.mercado_id = m.id
+        WHERE s.id = %s
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, (signal_id,))
+        row = cur.fetchone()
+    if row is None:
+        return None
+    columns = [
+        "id", "liga", "entrada", "resultado", "placar",
+        "tentativa", "received_at", "mercado_id", "mercado_slug",
+    ]
+    return dict(zip(columns, row))
+
+
+def calculate_pl_detalhado_por_sinal(
+    sinal: dict,
+    complementares_config: list[dict],
+    stake: float,
+    odd_principal: float,
+    gale_on: bool,
+) -> dict:
+    """
+    Calcula P&L com breakdown individual por complementar para um unico sinal.
+
+    Parametros
+    ----------
+    sinal : dict
+        Sinal com keys: resultado, placar, tentativa, mercado_slug.
+    complementares_config : list[dict]
+        Lista de configs de complementares (nome_display, percentual, odd_ref, regra_validacao).
+    stake : float
+        Stake base do principal.
+    odd_principal : float
+        Odd de referencia do mercado principal.
+    gale_on : bool
+        Se True, aplica Gale progressivo (1x, 2x, 4x, 8x).
+
+    Retorna
+    -------
+    dict com:
+        principal  : dict com keys [investido, retorno, lucro, resultado, stake_efetiva]
+        complementares : list[dict] cada um com keys [nome, odd, stake, resultado, lucro, investido, retorno]
+        totais     : dict com keys [investido, retorno, lucro]
+    """
+    resultado = sinal.get("resultado")
+    tentativa = sinal.get("tentativa") or 1
+    placar = sinal.get("placar")
+
+    # --- Principal ---
+    if gale_on:
+        accumulated_stake = stake * (2 ** tentativa - 1)
+        winning_stake = stake * (2 ** (tentativa - 1))
+        investido_principal = accumulated_stake
+        stake_efetiva = winning_stake
+
+        if resultado == "GREEN":
+            retorno_principal = winning_stake * odd_principal
+            lucro_principal = winning_stake * (odd_principal - 1) - (accumulated_stake - winning_stake)
+        else:
+            retorno_principal = 0.0
+            lucro_principal = -accumulated_stake
+    else:
+        investido_principal = stake
+        stake_efetiva = stake
+        if resultado == "GREEN":
+            retorno_principal = stake * odd_principal
+            lucro_principal = stake * (odd_principal - 1)
+        else:
+            retorno_principal = 0.0
+            lucro_principal = -stake
+
+    principal = {
+        "investido": round(investido_principal, 2),
+        "retorno": round(retorno_principal, 2),
+        "lucro": round(lucro_principal, 2),
+        "resultado": resultado,
+        "stake_efetiva": round(stake_efetiva, 2),
+    }
+
+    # --- Complementares ---
+    complementares = []
+    placar_disponivel = placar is not None
+
+    for comp in complementares_config:
+        percentual = float(comp["percentual"])
+        odd_ref = float(comp["odd_ref"])
+        nome = comp["nome_display"]
+
+        if not placar_disponivel:
+            # Placar ausente — complementar nao pode ser validado
+            complementares.append({
+                "nome": nome,
+                "odd": odd_ref,
+                "stake": round(stake * percentual, 2),
+                "resultado": "N/A",
+                "lucro": 0.0,
+                "investido": 0.0,
+                "retorno": 0.0,
+            })
+            continue
+
+        resultado_comp = validar_complementar(
+            comp["regra_validacao"],
+            placar,
+            resultado,
+        )
+
+        if resultado_comp is None:
+            # Principal pendente — complementar pendente
+            complementares.append({
+                "nome": nome,
+                "odd": odd_ref,
+                "stake": round(stake * percentual, 2),
+                "resultado": "N/A",
+                "lucro": 0.0,
+                "investido": 0.0,
+                "retorno": 0.0,
+            })
+            continue
+
+        if gale_on:
+            acc_comp = stake * (2 ** tentativa - 1) * percentual
+            win_comp = stake * (2 ** (tentativa - 1)) * percentual
+            invested_comp = acc_comp
+
+            if resultado_comp == "GREEN":
+                ret_comp = win_comp * odd_ref
+                net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
+            else:
+                ret_comp = 0.0
+                net_comp = -acc_comp
+        else:
+            stake_comp = stake * percentual
+            invested_comp = stake_comp
+
+            if resultado_comp == "GREEN":
+                ret_comp = stake_comp * odd_ref
+                net_comp = stake_comp * (odd_ref - 1)
+            else:
+                ret_comp = 0.0
+                net_comp = -stake_comp
+
+        complementares.append({
+            "nome": nome,
+            "odd": odd_ref,
+            "stake": round(stake * percentual, 2),
+            "resultado": resultado_comp,
+            "lucro": round(net_comp, 2),
+            "investido": round(invested_comp, 2),
+            "retorno": round(ret_comp, 2),
+        })
+
+    # --- Totais ---
+    total_investido = round(
+        principal["investido"] + sum(c["investido"] for c in complementares), 2
+    )
+    total_retorno = round(
+        principal["retorno"] + sum(c["retorno"] for c in complementares), 2
+    )
+    total_lucro = round(
+        principal["lucro"] + sum(c["lucro"] for c in complementares), 2
+    )
+
+    return {
+        "principal": principal,
+        "complementares": complementares,
+        "totais": {
+            "investido": total_investido,
+            "retorno": total_retorno,
+            "lucro": total_lucro,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # Fase 3: Analytics Depth — novas funcoes de dados temporais e equity/streaks
 # ---------------------------------------------------------------------------
 
