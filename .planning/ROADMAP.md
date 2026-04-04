@@ -178,7 +178,9 @@ Plans:
   2. Tab ativa fica destacada visualmente indicando a página atual
   3. Tabela `mercados` tem colunas `stake_base`, `fator_progressao` e `max_tentativas` sem perda de dados existentes
   4. Migração idempotente: rodar duas vezes não gera erro
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 16-01-PLAN.md — Navegacao tabs (Dashboard/Config) + migration colunas config em mercados + pagina placeholder /config
 **UI hint**: yes
 
 ### Phase 17: Página de Configurações
@@ -238,7 +240,7 @@ Plans:
 | 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 14. Migração Multi-Page | v1.3 | 1/1 | Complete | 2026-04-04 |
 | 15. Página de Detalhe do Sinal | v1.3 | 2/2 | Complete | 2026-04-04 |
-| 16. Navegação + Schema DB | v1.4 | 0/? | Not started | - |
+| 16. Navegação + Schema DB | v1.4 | 0/1 | Not started | - |
 | 17. Página de Configurações | v1.4 | 0/? | Not started | - |
 | 18. Listener Config-Aware | v1.4 | 0/? | Not started | - |
 | 19. Dashboard Ajustes | v1.4 | 0/? | Not started | - |
