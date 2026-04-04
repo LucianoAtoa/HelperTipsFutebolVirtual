@@ -131,5 +131,5 @@ Plans:
 | 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
 | 11. Dashboard Fundação | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete   | 2026-04-04 |
+| 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete    | 2026-04-04 |
 | 13. Dashboard Análises Visuais | v1.2 | 0/? | Not started | - |
