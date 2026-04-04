@@ -65,8 +65,8 @@ Plans:
   5. RED em qualquer tentativa registra prejuízo; GREEN registra lucro com a odd de referência correta
 **Plans**: 2 plans
 Plans:
-- [x] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
-- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
+- [ ] 10-01-PLAN.md — Extensao de _build_where com mercado_id, get_signals_com_placar e get_mercado_config
+- [ ] 10-02-PLAN.md — calculate_pl_por_entrada e calculate_equity_curve_breakdown com testes completos
 
 ### Phase 11: Dashboard Fundação
 **Goal**: Usuário acessa o dashboard com filtros globais operacionais e KPIs refletindo P&L real
@@ -129,7 +129,7 @@ Plans:
 | 7. Listener Deployment | v1.1 | 1/1 | Complete | 2026-04-04 |
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
 | 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
-| 10. Lógica Financeira | v1.2 | 0/? | Not started | - |
+| 10. Lógica Financeira | v1.2 | 0/2 | Not started | - |
 | 11. Dashboard Fundação | v1.2 | 0/? | Not started | - |
 | 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
 | 13. Dashboard Análises Visuais | v1.2 | 0/? | Not started | - |
