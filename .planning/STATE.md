@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: Configurações de Mercado + Dashboard Ajustes
 status: verifying
 stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-04-04T22:28:08.093Z"
+last_updated: "2026-04-04T22:31:12.476Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 11
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 ## Current Position
 
-Phase: 16 (navega-o-schema-db) — EXECUTING
-Plan: 1 of 1
+Phase: 17
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
