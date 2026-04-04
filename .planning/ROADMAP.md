@@ -33,7 +33,7 @@
 
 - [x] **Phase 9: Listener Multi-Grupo** — Listener escuta Over 2.5 e Ambas Marcam simultaneamente (completed 2026-04-04)
 - [x] **Phase 10: Lógica Financeira** — Cálculo P&L com complementares diferenciados por mercado e Martingale 4 tentativas (completed 2026-04-04)
-- [ ] **Phase 11: Dashboard Fundação** — Filtros globais e KPIs com P&L que sustentam todo o redesign
+- [x] **Phase 11: Dashboard Fundação** — Filtros globais e KPIs com P&L que sustentam todo o redesign (completed 2026-04-04)
 - [ ] **Phase 12: Dashboard Mercados e Performance** — Config de mercados read-only e tabela P&L por entrada
 - [ ] **Phase 13: Dashboard Análises Visuais** — Análise por liga, equity curve e análise de gale
 
@@ -81,7 +81,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 11-01-PLAN.md — Testes v1.2 + CSS override DARKLY (Wave 1)
-- [ ] 11-02-PLAN.md — Reescrita dashboard.py layout + callbacks + verificacao visual (Wave 2)
+- [x] 11-02-PLAN.md — Reescrita dashboard.py layout + callbacks + verificacao visual (Wave 2)
 **UI hint**: yes
 
 ### Phase 12: Dashboard Mercados e Performance
@@ -130,6 +130,6 @@ Plans:
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
 | 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 11. Dashboard Fundação | v1.2 | 1/2 | In Progress|  |
+| 11. Dashboard Fundação | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
 | 13. Dashboard Análises Visuais | v1.2 | 0/? | Not started | - |

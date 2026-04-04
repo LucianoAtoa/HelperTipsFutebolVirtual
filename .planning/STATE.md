@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Multi-Market Analytics
-status: executing
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-04-04T14:59:22.926Z"
+status: verifying
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-04-04T15:03:45.931Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 Phase: 11 (Dashboard Fundação) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -61,6 +61,8 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 - [Phase 10-l-gica-financeira]: Funcoes puras sem DB: complementares_por_mercado e odd_por_mercado recebidos como dict — chamador busca do banco via get_complementares_config e get_mercado_config
 - [Phase 11-dashboard-funda-o]: try/except ImportError para _resolve_periodo: testes coletam sem erro ate implementacao no Plan 02
 - [Phase 11-dashboard-funda-o]: CSS em helpertips/assets/: carregado automaticamente pelo Dash, zero configuracao adicional
+- [Phase 11-dashboard-funda-o]: P&L total on-the-fly no callback master: principal + complementares somados. Complementares apenas quando mercado especifico selecionado.
+- [Phase 11-dashboard-funda-o]: entrada como string passada diretamente para queries (nao mercado_id) — evita Pitfall 2 do RESEARCH
 
 ### Pending Todos
 
@@ -74,6 +76,6 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 
 ## Session Continuity
 
-Last session: 2026-04-04T14:59:22.924Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-04-04T15:03:45.929Z
+Stopped at: Completed 11-02-PLAN.md
 Resume file: None
