@@ -31,7 +31,7 @@
 
 ### v1.2 Multi-Market Analytics (Phases 9-13)
 
-- [ ] **Phase 9: Listener Multi-Grupo** — Listener escuta Over 2.5 e Ambas Marcam simultaneamente
+- [x] **Phase 9: Listener Multi-Grupo** — Listener escuta Over 2.5 e Ambas Marcam simultaneamente (completed 2026-04-04)
 - [ ] **Phase 10: Lógica Financeira** — Cálculo P&L com complementares diferenciados por mercado e Martingale 4 tentativas
 - [ ] **Phase 11: Dashboard Fundação** — Filtros globais e KPIs com P&L que sustentam todo o redesign
 - [ ] **Phase 12: Dashboard Mercados e Performance** — Config de mercados read-only e tabela P&L por entrada
@@ -51,7 +51,7 @@
 **Plans**: 2 plans
 Plans:
 - [x] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
-- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
+- [x] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 
 ### Phase 10: Lógica Financeira
 **Goal**: Cada sinal gera entradas complementares com P&L calculado corretamente por mercado e tentativa
@@ -65,7 +65,7 @@ Plans:
   5. RED em qualquer tentativa registra prejuízo; GREEN registra lucro com a odd de referência correta
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
+- [x] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
 - [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 
 ### Phase 11: Dashboard Fundação
@@ -128,7 +128,7 @@ Plans:
 | 6. AWS Infrastructure | v1.1 | 3/3 | Complete | 2026-04-04 |
 | 7. Listener Deployment | v1.1 | 1/1 | Complete | 2026-04-04 |
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
-| 9. Listener Multi-Grupo | v1.2 | 0/2 | Planned | - |
+| 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 10. Lógica Financeira | v1.2 | 0/? | Not started | - |
 | 11. Dashboard Fundação | v1.2 | 0/? | Not started | - |
 | 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
