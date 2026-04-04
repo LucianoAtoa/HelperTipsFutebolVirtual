@@ -48,7 +48,10 @@
   2. Configurar grupos via `TELEGRAM_GROUP_IDS=id1,id2` no .env sem alterar código
   3. Listener único roda como um único processo/service cobrindo ambos os grupos
   4. Parser identifica o mercado principal corretamente pela "Entrada recomendada" da mensagem
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
+- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 
 ### Phase 10: Lógica Financeira
 **Goal**: Cada sinal gera entradas complementares com P&L calculado corretamente por mercado e tentativa
@@ -60,7 +63,10 @@
   3. Tentativa 2 aplica fator 2x, tentativa 3 fator 4x, tentativa 4 fator 8x na stake base
   4. P&L de cada entrada é calculado corretamente: investido vs retorno (odd * stake) vs lucro líquido
   5. RED em qualquer tentativa registra prejuízo; GREEN registra lucro com a odd de referência correta
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
+- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 
 ### Phase 11: Dashboard Fundação
 **Goal**: Usuário acessa o dashboard com filtros globais operacionais e KPIs refletindo P&L real
@@ -72,7 +78,10 @@
   3. Filtros de mercado (Todos / Over 2.5 / Ambas Marcam) e liga isolam dados corretamente
   4. KPI card P&L Total mostra valor em R$ somando principal e complementares do período filtrado
   5. KPI cards de streak (melhor green, pior red) refletem o período e mercado selecionados
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
+- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 **UI hint**: yes
 
 ### Phase 12: Dashboard Mercados e Performance
@@ -84,7 +93,10 @@
   2. Toggle Percentual / Quantidade / P&L (R$) muda a apresentação visual da tabela de performance
   3. Tabela de performance exibe greens, reds, taxa, investido, retorno, P&L e ROI para cada entrada
   4. Visão "Por mercado" filtra para Over 2.5 ou Ambas Marcam mostrando principal + cada complementar separadamente
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
+- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 **UI hint**: yes
 
 ### Phase 13: Dashboard Análises Visuais
@@ -97,7 +109,10 @@
   3. Equity curve exibe 3 linhas sobrepostas (principal, complementar, total) com períodos controlados pelo filtro global
   4. Donut chart mostra distribuição percentual de greens por tentativa (1ª a 4ª) com cores distintas
   5. Tabela de gale exibe quantidade, percentual e lucro médio por green para cada tentativa
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
+- [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 **UI hint**: yes
 
 ## Progress
@@ -113,7 +128,7 @@
 | 6. AWS Infrastructure | v1.1 | 3/3 | Complete | 2026-04-04 |
 | 7. Listener Deployment | v1.1 | 1/1 | Complete | 2026-04-04 |
 | 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |
-| 9. Listener Multi-Grupo | v1.2 | 0/? | Not started | - |
+| 9. Listener Multi-Grupo | v1.2 | 0/2 | Planned | - |
 | 10. Lógica Financeira | v1.2 | 0/? | Not started | - |
 | 11. Dashboard Fundação | v1.2 | 0/? | Not started | - |
 | 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
