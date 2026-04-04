@@ -111,7 +111,7 @@ Plans:
   5. Tabela de gale exibe quantidade, percentual e lucro médio por green para cada tentativa
 **Plans**: 2 plans
 Plans:
-- [ ] 13-01-PLAN.md — TDD testes + funcoes de agregacao (queries.py) + builders Plotly (dashboard.py)
+- [x] 13-01-PLAN.md — TDD testes + funcoes de agregacao (queries.py) + builders Plotly (dashboard.py)
 - [ ] 13-02-PLAN.md — Integracao callback master + _build_phase13_section + verificacao visual
 **UI hint**: yes
 
@@ -132,4 +132,4 @@ Plans:
 | 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
 | 11. Dashboard Fundação | v1.2 | 2/2 | Complete    | 2026-04-04 |
 | 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 13. Dashboard Análises Visuais | v1.2 | 0/2 | Not started | - |
+| 13. Dashboard Análises Visuais | v1.2 | 1/2 | In Progress|  |

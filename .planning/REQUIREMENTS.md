@@ -24,9 +24,9 @@ Requirements para multi-mercado, cálculo financeiro e redesign do dashboard.
 - [x] **DASH-02**: KPI cards: total sinais, taxa green (%), P&L total (R$) principal+complementar, ROI (%), melhor streak green, pior streak red
 - [x] **DASH-03**: Seção configuração de mercados: painel read-only com principal (odd, stake, progressão) e tabela complementares (mercado, %, odd ref, stakes T1-T4)
 - [x] **DASH-04**: Seção performance das entradas: tabela P&L por mercado (greens, reds, taxa, investido, retorno, P&L, ROI) com toggle percentual/quantidade/R$ e visão geral vs por mercado
-- [ ] **DASH-05**: Seção análise por liga: gráfico de barras empilhadas (P&L principal vs complementar) + tabela com taxa, P&L principal, P&L complementar, P&L total por liga
-- [ ] **DASH-06**: Seção evolução temporal: equity curve com 3 linhas sobrepostas (principal, complementar, total) controlado pelo filtro global de período
-- [ ] **DASH-07**: Seção análise de gale: donut chart de distribuição por tentativa (1ª-4ª) + tabela com quantidade, percentual e lucro médio por green
+- [x] **DASH-05**: Seção análise por liga: gráfico de barras empilhadas (P&L principal vs complementar) + tabela com taxa, P&L principal, P&L complementar, P&L total por liga
+- [x] **DASH-06**: Seção evolução temporal: equity curve com 3 linhas sobrepostas (principal, complementar, total) controlado pelo filtro global de período
+- [x] **DASH-07**: Seção análise de gale: donut chart de distribuição por tentativa (1ª-4ª) + tabela com quantidade, percentual e lucro médio por green
 
 ## Future Requirements
 
@@ -74,6 +74,6 @@ Deferred to future release.
 | DASH-02 | Phase 11 | Complete |
 | DASH-03 | Phase 12 | Complete |
 | DASH-04 | Phase 12 | Complete |
-| DASH-05 | Phase 13 | Pending |
-| DASH-06 | Phase 13 | Pending |
-| DASH-07 | Phase 13 | Pending |
+| DASH-05 | Phase 13 | Complete |
+| DASH-06 | Phase 13 | Complete |
+| DASH-07 | Phase 13 | Complete |
