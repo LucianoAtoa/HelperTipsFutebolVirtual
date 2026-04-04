@@ -26,6 +26,11 @@ Requirements para página de configurações editável, listener config-aware e 
 - [ ] **DASH-09**: KPI "Total Investido" no topo mostra soma de todas as stakes (principal + complementares) no período filtrado
 - [ ] **DASH-10**: Seção "Performance Individual por Mercado" exibe cards com greens, reds, taxa, investido, retorno, P&L e ROI por mercado (principal + cada complementar)
 
+### Histórico de Sinais
+
+- [ ] **HIST-01**: Sinais sem resultado exibem "Pendente" na coluna Resultado do AG Grid (em vez de célula vazia)
+- [ ] **HIST-02**: Sinais pendentes exibem tempo decorrido desde a captura (ex: "15 min", "2h 30min") para identificar possíveis problemas no bot
+
 ### Navegação
 
 - [ ] **NAV-01**: Menu/tabs no topo permite alternar entre Dashboard (`/`) e Configurações (`/config`)
@@ -74,13 +79,15 @@ Deferred to future release.
 | CFG-05 | Phase 17 | Pending |
 | LIS-01 | Phase 18 | Pending |
 | LIS-02 | Phase 18 | Pending |
+| HIST-01 | Phase 19 | Pending |
+| HIST-02 | Phase 19 | Pending |
 | DASH-08 | Phase 19 | Pending |
 | DASH-09 | Phase 19 | Pending |
 | DASH-10 | Phase 19 | Pending |
 
 **Coverage:**
-- v1.4 requirements: 11 total
-- Mapped to phases: 11
+- v1.4 requirements: 13 total
+- Mapped to phases: 13
 - Unmapped: 0 ✓
 
 ---

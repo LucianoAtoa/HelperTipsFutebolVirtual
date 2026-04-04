@@ -57,7 +57,7 @@
 - [ ] **Phase 16: Navegação + Schema DB** — Menu entre Dashboard e Configurações + colunas de config no banco
 - [ ] **Phase 17: Página de Configurações** — Formulário `/config` com preview em tempo real e persistência no banco
 - [ ] **Phase 18: Listener Config-Aware** — Listener lê config ativa ao processar sinais, sem retroatividade
-- [ ] **Phase 19: Dashboard Ajustes** — Remoção de seções obsoletas e adição de KPI Total Investido + Performance por Mercado
+- [ ] **Phase 19: Dashboard Ajustes** — Sinais pendentes com timer, remoção de seções obsoletas, KPI Total Investido e Performance por Mercado
 
 ## Phase Details
 
@@ -205,14 +205,16 @@ Plans:
 **Plans**: TBD
 
 ### Phase 19: Dashboard Ajustes
-**Goal**: Dashboard remove seções obsoletas e adiciona KPI Total Investido e Performance Individual por Mercado
+**Goal**: Dashboard remove seções obsoletas, adiciona KPI Total Investido, Performance por Mercado, e melhora exibição de sinais pendentes no histórico
 **Depends on**: Phase 16 (navegação pronta; ajustes independentes de config e listener)
-**Requirements**: DASH-08, DASH-09, DASH-10
+**Requirements**: HIST-01, HIST-02, DASH-08, DASH-09, DASH-10
 **Success Criteria** (o que deve ser VERDADEIRO):
-  1. Seções "Configuração de Mercados" e inputs de simulação ROI não aparecem mais no dashboard
-  2. KPI card "Total Investido" no topo mostra soma das stakes (principal + complementares) do período filtrado, reagindo ao filtro de período/mercado
-  3. Seção "Performance Individual por Mercado" exibe um card por mercado (Over 2.5, Ambas Marcam, cada complementar) com greens, reds, taxa, investido, retorno, P&L e ROI
-  4. Cards de performance reagem ao filtro de período selecionado
+  1. Sinais sem resultado exibem "Pendente" em amarelo na coluna Resultado do AG Grid
+  2. Sinais pendentes exibem tempo decorrido desde a captura (ex: "15 min", "2h 30min") ao lado do status
+  3. Seções "Configuração de Mercados" e inputs de simulação ROI não aparecem mais no dashboard
+  4. KPI card "Total Investido" no topo mostra soma das stakes (principal + complementares) do período filtrado, reagindo ao filtro de período/mercado
+  5. Seção "Performance Individual por Mercado" exibe um card por mercado (Over 2.5, Ambas Marcam, cada complementar) com greens, reds, taxa, investido, retorno, P&L e ROI
+  6. Cards de performance reagem ao filtro de período selecionado
 **Plans**: TBD
 **UI hint**: yes
 
