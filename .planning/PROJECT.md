@@ -11,8 +11,8 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 ## Current State
 
 **Shipped:** v1.3 Análise Individual de Sinais (2026-04-04)
-**Codebase:** ~17k LOC Python | 224 testes | ~205 commits
-**Phase 15 complete:** Página de Detalhe do Sinal — breakdown P&L por entrada com navegação AG Grid
+**Codebase:** ~17k LOC Python | 230+ testes | ~210 commits
+**Phase 16 complete:** Navegação por tabs (Dashboard/Configurações) + schema DB com colunas de config editável em mercados
 **Stack:** Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dash-bootstrap-components 2.0, gunicorn 25.x, nginx
 
 **O que funciona (produção na EC2):**
@@ -65,7 +65,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - Listener usa config ativa do banco ao gravar sinais — v1.4
 - KPI Total Investido no dashboard — v1.4
 - Performance Individual por Mercado no dashboard — v1.4
-- Navegação entre Dashboard e Configurações — v1.4
+- ✓ Navegação entre Dashboard e Configurações — v1.4 Phase 16
 
 ### Validated (v1.3)
 
