@@ -1500,3 +1500,91 @@ def test_pl_pendente_ignorado():
     sinais = [_make_sinal(None, tentativa=1, placar=None)]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# calculate_equity_curve_breakdown — testes puros (sem DB) — Task 2
+# ---------------------------------------------------------------------------
+
+
+def test_equity_curve_breakdown_retorna_chaves():
+    """Retorno contem as chaves x, y_principal, y_complementar, y_total, colors."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=1, placar="3-0")]
+    result = calculate_equity_curve_breakdown(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert isinstance(result, dict)
+    assert set(result.keys()) >= {"x", "y_principal", "y_complementar", "y_total", "colors"}
+
+
+def test_equity_curve_breakdown_total_soma():
+    """y_total[i] == y_principal[i] + y_complementar[i] para todo i."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [
+        _make_sinal("GREEN", tentativa=1, placar="4-0"),
+        _make_sinal("RED", tentativa=2, placar=None),
+        _make_sinal("GREEN", tentativa=1, placar="2-1"),
+    ]
+    result = calculate_equity_curve_breakdown(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    for i in range(len(result["x"])):
+        assert result["y_total"][i] == pytest.approx(
+            result["y_principal"][i] + result["y_complementar"][i], abs=0.01
+        ), f"y_total[{i}] diferente de y_principal + y_complementar"
+
+
+def test_equity_curve_breakdown_green_t1():
+    """Primeiro sinal GREEN T1 odd=2.30 stake=100: y_principal[0]=130, y_complementar[0]>0."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0")]
+    result = calculate_equity_curve_breakdown(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert result["y_principal"][0] == pytest.approx(130.0, abs=0.01)
+    assert result["y_complementar"][0] > 0
+
+
+def test_equity_curve_breakdown_red_acumula():
+    """Sinal RED diminui equity principal e complementar."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [_make_sinal("RED", tentativa=1, placar=None)]
+    result = calculate_equity_curve_breakdown(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert result["y_principal"][0] < 0
+    assert result["y_complementar"][0] < 0
+
+
+def test_equity_curve_breakdown_lista_vazia():
+    """Sinais vazio -> todas as listas vazias."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    result = calculate_equity_curve_breakdown([], COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert result["x"] == []
+    assert result["y_principal"] == []
+    assert result["y_complementar"] == []
+    assert result["y_total"] == []
+    assert result["colors"] == []
+
+
+def test_equity_curve_breakdown_colors():
+    """GREEN -> '#28a745', RED -> '#dc3545'."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [
+        _make_sinal("GREEN", tentativa=1, placar="3-0"),
+        _make_sinal("RED", tentativa=1, placar=None),
+    ]
+    result = calculate_equity_curve_breakdown(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert result["colors"][0] == "#28a745"
+    assert result["colors"][1] == "#dc3545"
+
+
+def test_equity_curve_breakdown_pendentes_ignorados():
+    """Sinais pendentes (resultado=None) sao ignorados na curva."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    sinais = [
+        _make_sinal(None, tentativa=1, placar=None),
+        _make_sinal("GREEN", tentativa=1, placar="3-0"),
+    ]
+    result = calculate_equity_curve_breakdown(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
+    assert len(result["x"]) == 1
