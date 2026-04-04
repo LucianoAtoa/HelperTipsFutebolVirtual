@@ -22,6 +22,9 @@ dev = [
     "pytest>=7.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["helpertips*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
