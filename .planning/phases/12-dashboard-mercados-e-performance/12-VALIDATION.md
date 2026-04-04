@@ -2,8 +2,8 @@
 phase: 12
 slug: dashboard-mercados-e-performance
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-04
 ---
 
@@ -38,10 +38,10 @@ created: 2026-04-04
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 12-01-01 | 01 | 1 | DASH-03 | unit | `python -m pytest tests/test_dashboard.py -k config -v` | ❌ W0 | ⬜ pending |
-| 12-01-02 | 01 | 1 | DASH-03 | unit | `python -m pytest tests/test_dashboard.py -k config -v` | ❌ W0 | ⬜ pending |
-| 12-02-01 | 02 | 1 | DASH-04 | unit | `python -m pytest tests/test_dashboard.py -k performance -v` | ❌ W0 | ⬜ pending |
-| 12-02-02 | 02 | 1 | DASH-04 | unit | `python -m pytest tests/test_dashboard.py -k toggle -v` | ❌ W0 | ⬜ pending |
+| 12-01-01 | 01 | 1 | DASH-03, DASH-04 | unit | `python -m pytest tests/test_dashboard.py -k "config_stakes or agregar" -v` | ✅ | ⬜ pending |
+| 12-01-02 | 01 | 1 | DASH-03, DASH-04 | unit | `python -m pytest tests/test_dashboard.py -k "colunas or toggle" -v` | ✅ | ⬜ pending |
+| 12-02-01 | 02 | 2 | DASH-03, DASH-04 | unit+integration | `python -m pytest tests/test_dashboard.py -k "config_card or performance" -v` | ✅ | ⬜ pending |
+| 12-02-02 | 02 | 2 | DASH-04 | manual | Visual checkpoint: config cards + performance table | N/A | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -49,10 +49,7 @@ created: 2026-04-04
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_dashboard_config.py` — stubs for DASH-03 (config mercados cards)
-- [ ] `tests/test_dashboard_performance.py` — stubs for DASH-04 (tabela performance, toggle)
-
-*Existing test infrastructure covers framework and fixtures.*
+*Existing infrastructure covers all phase requirements — tests written in `tests/test_dashboard.py` (Plan 01, Task 1 creates TDD stubs: `test_config_stakes_calculo`, `test_agregar_por_entrada_visao_geral`, `test_agregar_por_entrada_vazio`, `test_performance_toggle_colunas`).*
 
 ---
 
