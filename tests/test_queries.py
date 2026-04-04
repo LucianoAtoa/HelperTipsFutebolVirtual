@@ -1842,3 +1842,127 @@ def test_calculate_pl_detalhado_complementar_individual():
     required_keys = {"nome", "odd", "stake", "resultado", "lucro", "investido", "retorno"}
     for comp in result["complementares"]:
         assert required_keys.issubset(comp.keys()), f"Faltam keys em complementar: {comp.keys()}"
+
+# ---------------------------------------------------------------------------
+# Task 17-01: get_mercado_config + funcoes puras de preview
+# ---------------------------------------------------------------------------
+
+
+def test_get_mercado_config_returns_config_columns():
+    """get_mercado_config retorna dict com 8 chaves incluindo colunas de config."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
+
+    from unittest.mock import MagicMock
+
+    # Monta row com 8 colunas na ordem do SELECT atualizado
+    row = (1, "over_2_5", "Over 2.5", 2.30, True, 10.00, 2.00, 4)
+
+    mock_cursor = MagicMock()
+    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_cursor.__exit__ = MagicMock(return_value=False)
+    mock_cursor.fetchone.return_value = row
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    result = get_mercado_config(mock_conn, "over_2_5")
+
+    assert result is not None
+    assert result["id"] == 1
+    assert result["slug"] == "over_2_5"
+    assert result["nome_display"] == "Over 2.5"
+    assert result["odd_ref"] == 2.30
+    assert result["ativo"] is True
+    assert result["stake_base"] == 10.00
+    assert result["fator_progressao"] == 2.00
+    assert result["max_tentativas"] == 4
+
+
+def test_calculate_preview_stakes_basic():
+    """calculate_preview_stakes calcula stakes T1-T4 para cada complementar."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
+
+    from helpertips.queries import calculate_preview_stakes
+
+    complementares = [
+        {"percentual": 0.20, "nome_display": "Over 3.5"},
+        {"percentual": 0.01, "nome_display": "Empate"},
+    ]
+    result = calculate_preview_stakes(
+        stake_base=10.0,
+        fator_progressao=2.0,
+        max_tentativas=4,
+        complementares=complementares,
+    )
+
+    assert len(result) == 2
+
+    over35 = result[0]
+    assert over35["nome_display"] == "Over 3.5"
+    assert over35["T1"] == pytest.approx(2.0)
+    assert over35["T2"] == pytest.approx(4.0)
+    assert over35["T3"] == pytest.approx(8.0)
+    assert over35["T4"] == pytest.approx(16.0)
+
+    empate = result[1]
+    assert empate["nome_display"] == "Empate"
+    assert empate["T1"] == pytest.approx(0.1)
+    assert empate["T2"] == pytest.approx(0.2)
+    assert empate["T3"] == pytest.approx(0.4)
+    assert empate["T4"] == pytest.approx(0.8)
+
+
+def test_calculate_preview_stakes_max_2():
+    """calculate_preview_stakes com max_tentativas=2 retorna apenas T1 e T2."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
+
+    from helpertips.queries import calculate_preview_stakes
+
+    complementares = [{"percentual": 0.20, "nome_display": "Over 3.5"}]
+    result = calculate_preview_stakes(
+        stake_base=10.0,
+        fator_progressao=2.0,
+        max_tentativas=2,
+        complementares=complementares,
+    )
+
+    assert len(result) == 1
+    item = result[0]
+    assert "T1" in item
+    assert "T2" in item
+    assert "T3" not in item
+    assert "T4" not in item
+
+
+def test_calculate_total_risco_basic():
+    """calculate_total_risco retorna lista de dicts por tentativa com principal, complementares, total."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
+
+    from helpertips.queries import calculate_total_risco
+
+    complementares = [{"percentual": 0.20, "odd_ref": 4.0}]
+    result = calculate_total_risco(
+        stake_base=10.0,
+        fator_progressao=2.0,
+        max_tentativas=4,
+        odd_principal=2.30,
+        complementares=complementares,
+    )
+
+    assert len(result) == 4
+
+    t1 = result[0]
+    assert t1["tentativa"] == "T1"
+    assert t1["principal"] == pytest.approx(10.0)
+    assert t1["complementares"] == pytest.approx(2.0)
+    assert t1["total"] == pytest.approx(12.0)
+
+    t2 = result[1]
+    assert t2["tentativa"] == "T2"
+    assert t2["principal"] == pytest.approx(20.0)
+    assert t2["complementares"] == pytest.approx(4.0)
+    assert t2["total"] == pytest.approx(24.0)

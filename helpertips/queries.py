@@ -432,7 +432,8 @@ def get_mercado_config(conn, mercado_slug: str) -> dict | None:
         None se o mercado nao existir ou estiver inativo.
     """
     sql = """
-        SELECT id, slug, nome_display, odd_ref, ativo
+        SELECT id, slug, nome_display, odd_ref, ativo,
+               stake_base, fator_progressao, max_tentativas
         FROM mercados
         WHERE slug = %s AND ativo = TRUE
     """
@@ -441,7 +442,10 @@ def get_mercado_config(conn, mercado_slug: str) -> dict | None:
         row = cur.fetchone()
     if row is None:
         return None
-    columns = ["id", "slug", "nome_display", "odd_ref", "ativo"]
+    columns = [
+        "id", "slug", "nome_display", "odd_ref", "ativo",
+        "stake_base", "fator_progressao", "max_tentativas",
+    ]
     return dict(zip(columns, row))
 
 
@@ -1546,6 +1550,100 @@ def aggregate_pl_por_liga(pl_lista: list[dict]) -> list[dict]:
             "taxa_green": round(taxa, 1),
         })
     result.sort(key=lambda r: r["pl_total"], reverse=True)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Funcoes puras para preview de stakes (sem acesso ao banco)
+# ---------------------------------------------------------------------------
+
+
+def calculate_preview_stakes(
+    stake_base: float,
+    fator_progressao: float,
+    max_tentativas: int,
+    complementares: list[dict],
+) -> list[dict]:
+    """
+    Calcula stakes T1-TN para cada complementar sem acesso ao banco.
+
+    Funcao PURA — sem efeitos colaterais, sem I/O.
+
+    Parametros
+    ----------
+    stake_base : float
+        Stake base do mercado principal (ex: 10.0).
+    fator_progressao : float
+        Fator multiplicador por tentativa (ex: 2.0 para dobrar).
+    max_tentativas : int
+        Numero de tentativas configuradas (determina quantas chaves Tn existem).
+    complementares : list[dict]
+        Lista de dicts com chaves "percentual" (float) e "nome_display" (str).
+
+    Retorna
+    -------
+    list[dict]
+        Lista de dicts, um por complementar. Cada dict tem:
+        "nome_display" + "T1", "T2", ..., "T{max_tentativas}".
+    """
+    result = []
+    for comp in complementares:
+        percentual = float(comp["percentual"])
+        stake_comp_base = stake_base * percentual
+        item: dict = {"nome_display": comp["nome_display"]}
+        for t in range(1, max_tentativas + 1):
+            stake_t = stake_comp_base * (fator_progressao ** (t - 1))
+            item[f"T{t}"] = round(stake_t, 4)
+        result.append(item)
+    return result
+
+
+def calculate_total_risco(
+    stake_base: float,
+    fator_progressao: float,
+    max_tentativas: int,
+    odd_principal: float,
+    complementares: list[dict],
+) -> list[dict]:
+    """
+    Calcula total em risco por tentativa (principal + complementares) sem acesso ao banco.
+
+    Funcao PURA — sem efeitos colaterais, sem I/O.
+
+    Parametros
+    ----------
+    stake_base : float
+        Stake base do mercado principal.
+    fator_progressao : float
+        Fator multiplicador por tentativa.
+    max_tentativas : int
+        Numero de tentativas configuradas.
+    odd_principal : float
+        Odd de referencia do mercado principal (informativo, nao usada no calculo de risco).
+    complementares : list[dict]
+        Lista de dicts com chaves "percentual" (float) e "odd_ref" (float).
+
+    Retorna
+    -------
+    list[dict]
+        Lista de dicts por tentativa com chaves:
+        "tentativa" (str, ex: "T1"), "principal" (float), "complementares" (float), "total" (float).
+    """
+    result = []
+    for t in range(1, max_tentativas + 1):
+        fator_t = fator_progressao ** (t - 1)
+        principal = stake_base * fator_t
+        comp_total = sum(
+            stake_base * float(c["percentual"]) * fator_t
+            for c in complementares
+        )
+        total = principal + comp_total
+        result.append({
+            "tentativa": f"T{t}",
+            "principal": round(principal, 4),
+            "complementares": round(comp_total, 4),
+            "total": round(total, 4),
+        })
     return result
 
 
