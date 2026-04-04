@@ -1,62 +1,38 @@
-# Requirements: HelperTips — v1.3 Análise Individual de Sinais
+# Requirements: HelperTips — v1.4 Configurações de Mercado + Dashboard Ajustes
 
 **Defined:** 2026-04-04
 **Core Value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
 
-## v1.3 Requirements
+## v1.4 Requirements
 
-Requirements para página dedicada de análise individual de sinais com breakdown de entradas.
+Requirements para página de configurações editável, listener config-aware e melhorias no dashboard.
 
-### Estrutura Multi-Page
+### Configuração de Mercado
 
-- [x] **MPA-01**: Dashboard migrado para Dash Pages (`use_pages=True`) com layout principal + `dash.page_container`
-- [x] **MPA-02**: Página home (`pages/home.py`) renderiza o dashboard atual sem regressões visuais ou funcionais
+- [ ] **CFG-01**: Usuário pode editar stake base, fator de progressão e máximo de tentativas na página `/config`
+- [ ] **CFG-02**: Usuário pode editar percentual (%) e odd de referência de cada complementar por mercado principal (Over 2.5 / Ambas Marcam)
+- [ ] **CFG-03**: Página exibe preview de stakes por tentativa (T1–T4) e total em risco, recalculando em tempo real ao editar
+- [ ] **CFG-04**: Ao salvar, configuração persiste no banco e fica ativa para próximos sinais capturados
+- [ ] **CFG-05**: Página carrega com valores padrão (odds atualizadas) se não houver config salva
 
-### Página de Detalhe do Sinal
+### Listener Config-Aware
 
-- [x] **SIG-01**: Usuário pode clicar em um sinal no histórico (AG Grid) e navegar para a página de detalhe
-- [x] **SIG-02**: Página exibe card da entrada principal com mercado, odd, stake, resultado (GREEN/RED), horário e lucro/prejuízo
-- [x] **SIG-03**: Página exibe lista de cada entrada complementar com nome, odd, stake, resultado validado pelo placar (GREEN/RED), horário e lucro/prejuízo
-- [x] **SIG-04**: Página exibe totais consolidados: investido total, retorno total, lucro líquido
-- [x] **SIG-05**: Página tem botão para voltar ao dashboard
-- [x] **SIG-06**: Página trata sinais inexistentes/inválidos com mensagem amigável
+- [ ] **LIS-01**: Listener lê config ativa do banco ao processar cada sinal e calcula stakes com base nesses valores
+- [ ] **LIS-02**: Sinais já gravados mantêm valores do momento da captura (não retroativo)
 
-## v1.2 Requirements (Complete)
+### Dashboard Ajustes
 
-### Listener Multi-Grupo
+- [ ] **DASH-08**: Seções "Configuração de Mercados" e inputs de simulação de ROI (stake/odd/gale) removidas do dashboard
+- [ ] **DASH-09**: KPI "Total Investido" no topo mostra soma de todas as stakes (principal + complementares) no período filtrado
+- [ ] **DASH-10**: Seção "Performance Individual por Mercado" exibe cards com greens, reds, taxa, investido, retorno, P&L e ROI por mercado (principal + cada complementar)
 
-- [x] **LIST-01**: Listener escuta grupos Over 2.5 e Ambas Marcam simultaneamente via lista de group IDs no .env (TELEGRAM_GROUP_IDS=id1,id2)
-- [x] **LIST-02**: Parser identifica mercado principal pelo conteúdo da "Entrada recomendada" na mensagem — campo `entrada` armazena "Over 2.5" ou "Ambas Marcam"
+### Navegação
 
-### Cálculo Financeiro
-
-- [x] **FIN-01**: Cada sinal gera entradas complementares com stake proporcional (% da principal) e odds de referência configuráveis por mercado
-- [x] **FIN-02**: Cálculo de P&L por entrada (investido, retorno, lucro/prejuízo líquido) com Martingale progressivo de 4 tentativas (1x, 2x, 4x, 8x)
-- [x] **FIN-03**: Complementares têm configuração diferenciada por mercado — Over 2.5 (7 complementares com % específicos) vs Ambas Marcam (7 complementares com % distintos)
-
-### Dashboard Redesign
-
-- [x] **DASH-01**: Filtros globais fixos no topo (período: Hoje/Semana/Mês/Mês Passado/Personalizado/Toda a Vida, mercado: Todos/Over 2.5/Ambas Marcam, liga: Todas/Copa do Mundo/Euro Cup/Sul-Americana/Premier League) afetam todos os cards e gráficos
-- [x] **DASH-02**: KPI cards: total sinais, taxa green (%), P&L total (R$) principal+complementar, ROI (%), melhor streak green, pior streak red
-- [x] **DASH-03**: Seção configuração de mercados: painel read-only com principal (odd, stake, progressão) e tabela complementares (mercado, %, odd ref, stakes T1-T4)
-- [x] **DASH-04**: Seção performance das entradas: tabela P&L por mercado (greens, reds, taxa, investido, retorno, P&L, ROI) com toggle percentual/quantidade/R$ e visão geral vs por mercado
-- [x] **DASH-05**: Seção análise por liga: gráfico de barras empilhadas (P&L principal vs complementar) + tabela com taxa, P&L principal, P&L complementar, P&L total por liga
-- [x] **DASH-06**: Seção evolução temporal: equity curve com 3 linhas sobrepostas (principal, complementar, total) controlado pelo filtro global de período
-- [x] **DASH-07**: Seção análise de gale: donut chart de distribuição por tentativa (1ª-4ª) + tabela com quantidade, percentual e lucro médio por green
+- [ ] **NAV-01**: Menu/tabs no topo permite alternar entre Dashboard (`/`) e Configurações (`/config`)
 
 ## Future Requirements
 
 Deferred to future release.
-
-### Navegação Avançada
-
-- **NAV-01**: Deep-link por sinal (URL bookmarkável `/sinal/<id>`) — v1.4
-
-### Resiliência
-
-- **RESIL-01**: Utilitário de backfill para gaps de mensagens perdidas durante offline
-- **RESIL-02**: Connection pool com limite configurável
-- **RESIL-03**: Tratamento de FloodWaitError do Telegram
 
 ### Automação
 
@@ -70,39 +46,43 @@ Deferred to future release.
 - **INFRA-02**: Monitoramento com CloudWatch ou similar
 - **INFRA-03**: Deploy automático via GitHub Actions SSH
 
+### Resiliência
+
+- **RESIL-01**: Utilitário de backfill para gaps de mensagens perdidas durante offline
+- **RESIL-02**: Connection pool com limite configurável
+- **RESIL-03**: Tratamento de FloodWaitError do Telegram
+
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Modal/popup em vez de página separada | Decisão do usuário por extensibilidade futura |
-| Edição de sinais pela página de detalhe | Fora do escopo — dashboard é read-only |
-| Docker / ECS / Kubernetes | Over-engineering para ferramenta pessoal; systemd é suficiente |
-| RDS managed database | +$15-25/mês sem benefício real para uso pessoal |
-| OAuth / autenticação avançada | HTTP Basic Auth é suficiente para 1 usuário |
-| Edição de complementares via dashboard | Config via banco/código, dashboard é read-only |
-| Odds em tempo real da Bet365 | Odds de referência estáticas baseadas em amostra |
+| Configuração retroativa (recalcular sinais antigos) | Complexidade alta, sinais gravados refletem config do momento da captura |
+| Edição de nomes dos complementares via UI | Nomes vêm do schema do banco, alteração rara |
+| Múltiplos perfis de configuração | Ferramenta pessoal, 1 config ativa é suficiente |
+| Docker / ECS / Kubernetes | Over-engineering para ferramenta pessoal |
+| OAuth / autenticação avançada | HTTP Basic Auth suficiente para 1 usuário |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIST-01 | Phase 9 | Complete |
-| LIST-02 | Phase 9 | Complete |
-| FIN-01 | Phase 10 | Complete |
-| FIN-02 | Phase 10 | Complete |
-| FIN-03 | Phase 10 | Complete |
-| DASH-01 | Phase 11 | Complete |
-| DASH-02 | Phase 11 | Complete |
-| DASH-03 | Phase 12 | Complete |
-| DASH-04 | Phase 12 | Complete |
-| DASH-05 | Phase 13 | Complete |
-| DASH-06 | Phase 13 | Complete |
-| DASH-07 | Phase 13 | Complete |
-| MPA-01 | Phase 14 | Complete |
-| MPA-02 | Phase 14 | Complete |
-| SIG-01 | Phase 15 | Complete |
-| SIG-02 | Phase 15 | Complete |
-| SIG-03 | Phase 15 | Complete |
-| SIG-04 | Phase 15 | Complete |
-| SIG-05 | Phase 15 | Complete |
-| SIG-06 | Phase 15 | Complete |
+| CFG-01 | — | Pending |
+| CFG-02 | — | Pending |
+| CFG-03 | — | Pending |
+| CFG-04 | — | Pending |
+| CFG-05 | — | Pending |
+| LIS-01 | — | Pending |
+| LIS-02 | — | Pending |
+| DASH-08 | — | Pending |
+| DASH-09 | — | Pending |
+| DASH-10 | — | Pending |
+| NAV-01 | — | Pending |
+
+**Coverage:**
+- v1.4 requirements: 11 total
+- Mapped to phases: 0
+- Unmapped: 11 ⚠️
+
+---
+*Requirements defined: 2026-04-04*
+*Last updated: 2026-04-04 after initial definition*
