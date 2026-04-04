@@ -629,6 +629,138 @@ def calculate_roi_complementares(
 
 
 # ---------------------------------------------------------------------------
+# P&L por entrada — puro Python, sem DB (FIN-02)
+# ---------------------------------------------------------------------------
+
+
+def calculate_pl_por_entrada(
+    signals: list[dict],
+    complementares_por_mercado: dict[str, list[dict]],
+    stake: float,
+    odd_por_mercado: dict[str, float],
+    gale_on: bool,
+) -> list[dict]:
+    """
+    Calcula P&L detalhado por sinal individual.
+
+    Parametros
+    ----------
+    signals : list[dict]
+        Sinais de get_signals_com_placar(). Cada dict: resultado, placar, tentativa, mercado_slug.
+    complementares_por_mercado : dict[str, list[dict]]
+        Mapa mercado_slug -> list[dict config complementar] (de get_complementares_config).
+    stake : float
+        Stake base do principal.
+    odd_por_mercado : dict[str, float]
+        Mapa mercado_slug -> odd de referencia do principal (ex: {"over_2_5": 2.30}).
+    gale_on : bool
+        Se True, aplica Gale progressivo (1x, 2x, 4x, 8x).
+
+    Retorna
+    -------
+    list[dict] com uma linha por sinal resolvido:
+        mercado_slug, resultado, tentativa, placar, liga, entrada,
+        investido_principal, retorno_principal, lucro_principal,
+        investido_comp, retorno_comp, lucro_comp,
+        investido_total, lucro_total
+    """
+    resultado_lista = []
+
+    for signal in signals:
+        resultado = signal.get("resultado")
+
+        # Ignorar sinais pendentes
+        if resultado is None:
+            continue
+
+        tentativa = signal.get("tentativa") or 1
+        mercado_slug = signal.get("mercado_slug") or "over_2_5"
+        odd = odd_por_mercado.get(mercado_slug, 2.30)
+
+        # Calculo principal (replicando formula exata de calculate_roi)
+        if gale_on:
+            accumulated_stake = stake * (2 ** tentativa - 1)
+            winning_stake = stake * (2 ** (tentativa - 1))
+            investido_principal = accumulated_stake
+
+            if resultado == "GREEN":
+                retorno_principal = winning_stake * odd
+                lucro_principal = winning_stake * (odd - 1) - (accumulated_stake - winning_stake)
+            else:
+                retorno_principal = 0.0
+                lucro_principal = -accumulated_stake
+        else:
+            investido_principal = stake
+            if resultado == "GREEN":
+                retorno_principal = stake * odd
+                lucro_principal = stake * (odd - 1)
+            else:
+                retorno_principal = 0.0
+                lucro_principal = -stake
+
+        # Calculo complementares (replicando logica de calculate_roi_complementares)
+        comps = complementares_por_mercado.get(mercado_slug, [])
+        investido_comp = 0.0
+        retorno_comp = 0.0
+        lucro_comp = 0.0
+
+        for comp in comps:
+            percentual = float(comp["percentual"])
+            odd_ref = float(comp["odd_ref"])
+
+            resultado_comp = validar_complementar(
+                comp["regra_validacao"],
+                signal.get("placar"),
+                signal.get("resultado"),
+            )
+
+            if gale_on:
+                acc_comp = stake * (2 ** tentativa - 1) * percentual
+                win_comp = stake * (2 ** (tentativa - 1)) * percentual
+                invested_comp = acc_comp
+
+                if resultado_comp == "GREEN":
+                    ret_comp = win_comp * odd_ref
+                    net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
+                else:
+                    ret_comp = 0.0
+                    net_comp = -acc_comp
+            else:
+                stake_comp = stake * percentual
+                invested_comp = stake_comp
+
+                if resultado_comp == "GREEN":
+                    ret_comp = stake_comp * odd_ref
+                    net_comp = stake_comp * (odd_ref - 1)
+                else:
+                    ret_comp = 0.0
+                    net_comp = -stake_comp
+
+            investido_comp += invested_comp
+            retorno_comp += ret_comp
+            lucro_comp += net_comp
+
+        resultado_lista.append({
+            "mercado_slug": mercado_slug,
+            "resultado": resultado,
+            "tentativa": tentativa,
+            "placar": signal.get("placar"),
+            "liga": signal.get("liga"),
+            "entrada": signal.get("entrada"),
+            "investido_principal": round(investido_principal, 2),
+            "retorno_principal": round(retorno_principal, 2),
+            "lucro_principal": round(lucro_principal, 2),
+            "investido_comp": round(investido_comp, 2),
+            "retorno_comp": round(retorno_comp, 2),
+            "lucro_comp": round(lucro_comp, 2),
+            "investido_total": round(investido_principal + investido_comp, 2),
+            "lucro_total": round(lucro_principal + lucro_comp, 2),
+        })
+
+    return resultado_lista
+
+
+# ---------------------------------------------------------------------------
 # Fase 3: Analytics Depth — novas funcoes de dados temporais e equity/streaks
 # ---------------------------------------------------------------------------
 
@@ -822,6 +954,114 @@ def calculate_equity_curve(signals_desc: list, stake: float, odd: float) -> dict
         })
 
     return {"x": xs, "y_fixa": y_fixa, "y_gale": y_gale, "colors": colors, "annotations": annotations}
+
+
+def calculate_equity_curve_breakdown(
+    signals: list[dict],
+    complementares_por_mercado: dict[str, list[dict]],
+    stake: float,
+    odd_por_mercado: dict[str, float],
+    gale_on: bool,
+) -> dict:
+    """
+    Equity curve com breakdown principal / complementar / total (per D-02).
+
+    Recebe sinais em ordem ASC (saida de get_signals_com_placar).
+
+    Parametros
+    ----------
+    signals : list[dict]
+        Sinais resolvidos em ordem ASC. Cada dict: resultado, placar, tentativa, mercado_slug.
+    complementares_por_mercado : dict[str, list[dict]]
+        Mapa mercado_slug -> config complementares.
+    stake : float
+        Stake base.
+    odd_por_mercado : dict[str, float]
+        Mapa mercado_slug -> odd referencia principal.
+    gale_on : bool
+        Aplica Gale progressivo.
+
+    Retorna
+    -------
+    dict com chaves:
+        x              — indices cronologicos [1, 2, ...]
+        y_principal    — equity acumulado do principal
+        y_complementar — equity acumulado dos complementares
+        y_total        — y_principal + y_complementar
+        colors         — "#28a745" (GREEN) ou "#dc3545" (RED) por sinal
+    """
+    resolved = [s for s in signals if s.get("resultado") in ("GREEN", "RED")]
+
+    if not resolved:
+        return {"x": [], "y_principal": [], "y_complementar": [], "y_total": [], "colors": []}
+
+    xs, y_principal, y_complementar, y_total, colors = [], [], [], [], []
+    bk_principal = bk_comp = 0.0
+
+    for i, signal in enumerate(resolved, 1):
+        resultado = signal["resultado"]
+        tentativa = signal.get("tentativa") or 1
+        mercado_slug = signal.get("mercado_slug") or "over_2_5"
+        odd = odd_por_mercado.get(mercado_slug, 2.30)
+
+        # Net principal (formula exata de calculate_roi)
+        if gale_on:
+            accumulated = stake * (2 ** tentativa - 1)
+            winning = stake * (2 ** (tentativa - 1))
+            if resultado == "GREEN":
+                net_principal = winning * (odd - 1) - (accumulated - winning)
+            else:
+                net_principal = -accumulated
+        else:
+            if resultado == "GREEN":
+                net_principal = stake * (odd - 1)
+            else:
+                net_principal = -stake
+
+        # Net complementares (formula de calculate_roi_complementares)
+        comps = complementares_por_mercado.get(mercado_slug, [])
+        net_comp = 0.0
+
+        for comp in comps:
+            percentual = float(comp["percentual"])
+            odd_ref = float(comp["odd_ref"])
+
+            resultado_comp = validar_complementar(
+                comp["regra_validacao"],
+                signal.get("placar"),
+                signal.get("resultado"),
+            )
+
+            if gale_on:
+                acc_comp = stake * (2 ** tentativa - 1) * percentual
+                win_comp = stake * (2 ** (tentativa - 1)) * percentual
+                if resultado_comp == "GREEN":
+                    net_comp += win_comp * (odd_ref - 1) - (acc_comp - win_comp)
+                else:
+                    net_comp -= acc_comp
+            else:
+                stake_comp = stake * percentual
+                if resultado_comp == "GREEN":
+                    net_comp += stake_comp * (odd_ref - 1)
+                else:
+                    net_comp -= stake_comp
+
+        bk_principal += net_principal
+        bk_comp += net_comp
+
+        xs.append(i)
+        y_principal.append(round(bk_principal, 2))
+        y_complementar.append(round(bk_comp, 2))
+        y_total.append(round(bk_principal + bk_comp, 2))
+        colors.append("#28a745" if resultado == "GREEN" else "#dc3545")
+
+    return {
+        "x": xs,
+        "y_principal": y_principal,
+        "y_complementar": y_complementar,
+        "y_total": y_total,
+        "colors": colors,
+    }
 
 
 def calculate_streaks(signals_desc: list) -> dict:
