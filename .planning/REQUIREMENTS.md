@@ -65,15 +65,15 @@ Deferred to future release.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIST-01 | TBD | Pending |
-| LIST-02 | TBD | Pending |
-| FIN-01 | TBD | Pending |
-| FIN-02 | TBD | Pending |
-| FIN-03 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| DASH-04 | TBD | Pending |
-| DASH-05 | TBD | Pending |
-| DASH-06 | TBD | Pending |
-| DASH-07 | TBD | Pending |
+| LIST-01 | Phase 9 | Pending |
+| LIST-02 | Phase 9 | Pending |
+| FIN-01 | Phase 10 | Pending |
+| FIN-02 | Phase 10 | Pending |
+| FIN-03 | Phase 10 | Pending |
+| DASH-01 | Phase 11 | Pending |
+| DASH-02 | Phase 11 | Pending |
+| DASH-03 | Phase 12 | Pending |
+| DASH-04 | Phase 12 | Pending |
+| DASH-05 | Phase 13 | Pending |
+| DASH-06 | Phase 13 | Pending |
+| DASH-07 | Phase 13 | Pending |
