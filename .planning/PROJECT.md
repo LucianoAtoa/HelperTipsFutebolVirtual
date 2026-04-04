@@ -50,7 +50,6 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-- Publicação no GitHub com repositório limpo e README
 - Deploy na AWS com custo mínimo (listener + dashboard 24/7)
 
 ### Validated (v1.1)
@@ -59,6 +58,9 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Dashboard debug mode controlado por variável de ambiente (`DASH_DEBUG`) — Phase 4
 - ✓ `.env.example` completo com todas as variáveis necessárias (Telegram, DB, AWS) — Phase 4
 - ✓ README.md com setup local, deploy e aviso de segurança sobre `.session` — Phase 4
+- ✓ Repo público no GitHub com CI automatizado (ruff lint + pytest) — Phase 5
+- ✓ `.gitignore` bloqueando `*.session`, `.env`, `__pycache__`, `*.pyc` — Phase 5
+- ✓ GitHub Actions CI passa verde a cada push para main — Phase 5
 
 ### Out of Scope
 
@@ -118,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-03 after Phase 4 (Security Audit) complete*
+*Last updated: 2026-04-04 after Phase 5 (GitHub Publication) complete*
