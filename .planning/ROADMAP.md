@@ -95,8 +95,8 @@ Plans:
   4. Visão "Por mercado" filtra para Over 2.5 ou Ambas Marcam mostrando principal + cada complementar separadamente
 **Plans**: 2 plans
 Plans:
-- [ ] 12-01-PLAN.md — [To be planned]
-- [ ] 12-02-PLAN.md — [To be planned]
+- [ ] 12-01-PLAN.md — Testes TDD + helpers puros (stakes T1-T4, agregacao P&L, toggle colunas) + placeholders layout
+- [ ] 12-02-PLAN.md — Builder functions + callback master estendido + verificacao visual
 **UI hint**: yes
 
 ### Phase 13: Dashboard Análises Visuais
@@ -131,5 +131,5 @@ Plans:
 | 9. Listener Multi-Grupo | v1.2 | 2/2 | Complete   | 2026-04-04 |
 | 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
 | 11. Dashboard Fundação | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 12. Dashboard Mercados e Performance | v1.2 | 0/? | Not started | - |
+| 12. Dashboard Mercados e Performance | v1.2 | 0/2 | Planned | - |
 | 13. Dashboard Análises Visuais | v1.2 | 0/? | Not started | - |
