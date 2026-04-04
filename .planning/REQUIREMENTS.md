@@ -15,11 +15,11 @@ Requirements para página dedicada de análise individual de sinais com breakdow
 ### Página de Detalhe do Sinal
 
 - [ ] **SIG-01**: Usuário pode clicar em um sinal no histórico (AG Grid) e navegar para a página de detalhe
-- [ ] **SIG-02**: Página exibe card da entrada principal com mercado, odd, stake, resultado (GREEN/RED), horário e lucro/prejuízo
-- [ ] **SIG-03**: Página exibe lista de cada entrada complementar com nome, odd, stake, resultado validado pelo placar (GREEN/RED), horário e lucro/prejuízo
-- [ ] **SIG-04**: Página exibe totais consolidados: investido total, retorno total, lucro líquido
+- [x] **SIG-02**: Página exibe card da entrada principal com mercado, odd, stake, resultado (GREEN/RED), horário e lucro/prejuízo
+- [x] **SIG-03**: Página exibe lista de cada entrada complementar com nome, odd, stake, resultado validado pelo placar (GREEN/RED), horário e lucro/prejuízo
+- [x] **SIG-04**: Página exibe totais consolidados: investido total, retorno total, lucro líquido
 - [ ] **SIG-05**: Página tem botão para voltar ao dashboard
-- [ ] **SIG-06**: Página trata sinais inexistentes/inválidos com mensagem amigável
+- [x] **SIG-06**: Página trata sinais inexistentes/inválidos com mensagem amigável
 
 ## v1.2 Requirements (Complete)
 
@@ -101,8 +101,8 @@ Deferred to future release.
 | MPA-01 | Phase 14 | Complete |
 | MPA-02 | Phase 14 | Complete |
 | SIG-01 | Phase 15 | Pending |
-| SIG-02 | Phase 15 | Pending |
-| SIG-03 | Phase 15 | Pending |
-| SIG-04 | Phase 15 | Pending |
+| SIG-02 | Phase 15 | Complete |
+| SIG-03 | Phase 15 | Complete |
+| SIG-04 | Phase 15 | Complete |
 | SIG-05 | Phase 15 | Pending |
-| SIG-06 | Phase 15 | Pending |
+| SIG-06 | Phase 15 | Complete |

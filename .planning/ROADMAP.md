@@ -175,4 +175,4 @@ Plans:
 | 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 14. Migração Multi-Page | v1.3 | 1/1 | Complete    | 2026-04-04 |
-| 15. Página de Detalhe do Sinal | v1.3 | 2/2 | Complete   | 2026-04-04 |
+| 15. Página de Detalhe do Sinal | v1.3 | 2/2 | Complete    | 2026-04-04 |
