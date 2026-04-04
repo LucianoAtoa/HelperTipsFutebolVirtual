@@ -14,9 +14,9 @@ Requirements para multi-mercado, cálculo financeiro e redesign do dashboard.
 
 ### Cálculo Financeiro
 
-- [ ] **FIN-01**: Cada sinal gera entradas complementares com stake proporcional (% da principal) e odds de referência configuráveis por mercado
+- [x] **FIN-01**: Cada sinal gera entradas complementares com stake proporcional (% da principal) e odds de referência configuráveis por mercado
 - [ ] **FIN-02**: Cálculo de P&L por entrada (investido, retorno, lucro/prejuízo líquido) com Martingale progressivo de 4 tentativas (1x, 2x, 4x, 8x)
-- [ ] **FIN-03**: Complementares têm configuração diferenciada por mercado — Over 2.5 (7 complementares com % específicos) vs Ambas Marcam (7 complementares com % distintos)
+- [x] **FIN-03**: Complementares têm configuração diferenciada por mercado — Over 2.5 (7 complementares com % específicos) vs Ambas Marcam (7 complementares com % distintos)
 
 ### Dashboard Redesign
 
@@ -67,9 +67,9 @@ Deferred to future release.
 |-------------|-------|--------|
 | LIST-01 | Phase 9 | Complete |
 | LIST-02 | Phase 9 | Complete |
-| FIN-01 | Phase 10 | Pending |
+| FIN-01 | Phase 10 | Complete |
 | FIN-02 | Phase 10 | Pending |
-| FIN-03 | Phase 10 | Pending |
+| FIN-03 | Phase 10 | Complete |
 | DASH-01 | Phase 11 | Pending |
 | DASH-02 | Phase 11 | Pending |
 | DASH-03 | Phase 12 | Pending |
