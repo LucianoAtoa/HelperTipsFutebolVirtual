@@ -1,38 +1,57 @@
 """
-test_dashboard.py — Structural and formatting tests for helpertips/dashboard.py.
+test_dashboard.py — Testes estruturais e de formatacao para helpertips/dashboard.py.
 
-Tests that DO NOT require a running Dash server or database connection.
-All tests are pure unit tests:
-  - test_app_layout_renders: app.layout is not None and title is correct (DASH-01)
-  - test_layout_has_required_component_ids: all required IDs present in component tree (DASH-01, DASH-02)
-  - test_kpi_formatting_winrate_with_results: win rate formatting logic (DASH-02)
-  - test_kpi_formatting_winrate_no_results: em dash when no resolved signals (DASH-02)
-  - test_kpi_formatting_roi_strings: ROI profit/pct string formatting with sign
-  - test_gale_accumulated_cost_model: Gale uses accumulated stake not simple doubling (Pitfall 5)
-  - test_coverage_badge_thresholds: badge color logic por threshold (OPER-01)
-  - test_format_streak: helper _format_streak output format (ANAL-06)
+Testes que NAO requerem um servidor Dash em execucao ou conexao com banco de dados.
+Todos os testes sao unitarios puros:
+  - test_app_layout_renders: app.layout nao eh None e titulo correto (DASH-01)
+  - test_layout_has_required_component_ids: todos IDs obrigatorios presentes na arvore (DASH-01, DASH-02)
+  - test_datepicker_collapse_initial_closed: collapse-datepicker fechado por padrao (D-05)
+  - test_resolve_periodo_hoje: _resolve_periodo("hoje") retorna (hoje, hoje)
+  - test_resolve_periodo_semana: _resolve_periodo("semana") retorna (segunda, hoje)
+  - test_resolve_periodo_mes: _resolve_periodo("mes") retorna (primeiro dia mes, hoje)
+  - test_resolve_periodo_mes_passado: _resolve_periodo("mes_passado") retorna (primeiro, ultimo) do mes anterior
+  - test_resolve_periodo_toda_vida: _resolve_periodo("toda_vida") retorna (None, None)
+  - test_resolve_periodo_personalizado: _resolve_periodo("personalizado", start, end) retorna (start, end)
+  - test_kpi_pl_formatting: formatacao "R$ +X.XX" e classes CSS text-success/text-danger
+  - test_kpi_streak_formatting: "Nx" para count > 0, em-dash para count == 0
+  - test_kpi_formatting_winrate_with_results: formatacao de winrate (DASH-02)
+  - test_kpi_formatting_winrate_no_results: em dash quando sem sinais resolvidos (DASH-02)
+  - test_kpi_formatting_roi_strings: formatacao de strings ROI com sinal
+  - test_gale_accumulated_cost_model: Gale usa stake acumulado, nao simples dobro (Pitfall 5)
+  - test_debug_mode_off_by_default: DASH_DEBUG ausente resulta em debug=False
+  - test_debug_mode_on_with_env: DASH_DEBUG=true resulta em debug=True
 
-No database connection or live server required. All imports are safe to run in CI.
+Sem conexao com banco de dados ou servidor em execucao. Todos os imports sao seguros para CI.
 """
 
 import os
+from datetime import date, timedelta
 
-from helpertips.dashboard import _format_streak, app
+from helpertips.dashboard import app
 from helpertips.queries import calculate_roi
 
+# _resolve_periodo sera importado quando existir (Plan 02).
+# Por enquanto, os testes de _resolve_periodo falham com ImportError (RED intencional).
+try:
+    from helpertips.dashboard import _resolve_periodo
+    _HAS_RESOLVE_PERIODO = True
+except ImportError:
+    _resolve_periodo = None
+    _HAS_RESOLVE_PERIODO = False
+
 # ---------------------------------------------------------------------------
-# Helper: collect all component IDs from the layout tree
+# Helper: coleta todos os IDs de componentes na arvore do layout
 # ---------------------------------------------------------------------------
 
 
 def collect_ids(component) -> set:
     """
-    Recursively walk the Dash component tree and collect all `id` attribute values.
+    Percorre recursivamente a arvore de componentes Dash e coleta todos os valores `id`.
 
-    Handles:
-    - Components with a string `id`
-    - Children as list, tuple, or single component
-    - Leaf nodes with no children
+    Trata:
+    - Componentes com `id` string
+    - children como lista, tupla ou componente unico
+    - Nos folha sem children
     """
     ids: set = set()
 
@@ -54,200 +73,282 @@ def collect_ids(component) -> set:
 
 
 # ---------------------------------------------------------------------------
-# Layout structural tests
+# Testes estruturais do layout
 # ---------------------------------------------------------------------------
 
 
 def test_app_layout_renders():
-    """DASH-01: App initializes, has a layout, and has the correct title."""
-    assert app.layout is not None, "app.layout should not be None"
+    """DASH-01: App inicializa, tem layout e titulo correto."""
+    assert app.layout is not None, "app.layout nao deve ser None"
     assert app.title == "HelperTips \u2014 Futebol Virtual", (
         f"Expected title 'HelperTips \u2014 Futebol Virtual', got '{app.title}'"
     )
 
 
 def test_layout_has_required_component_ids():
-    """DASH-01, DASH-02: All required component IDs must exist in the layout tree."""
+    """DASH-01, DASH-02: Todos os IDs obrigatorios devem existir na arvore do layout."""
     required_ids = {
-        # KPI cards
+        # KPI cards (D-09)
         "kpi-total",
-        "kpi-greens",
-        "kpi-reds",
-        "kpi-pending",
         "kpi-winrate",
-        # Filters
+        "kpi-pl-total",
+        "kpi-roi",
+        "kpi-streak-green",
+        "kpi-streak-red",
+        # Filtros globais (D-04 a D-07)
+        "periodo-selector",
+        "filter-mercado",
         "filter-liga",
-        "filter-entrada",
-        "filter-date",
-        "btn-reset",
-        # ROI inputs
+        "collapse-datepicker",
+        "filter-date-custom",
+        # Simulacao (D-13, D-14)
         "stake-input",
         "odd-input",
         "gale-toggle",
-        # ROI outputs
-        "roi-profit",
-        "roi-pct",
-        "roi-invested",
-        # Charts
-        "bar-chart",
-        "winrate-chart",
-        # History table
+        # Tabela historico
         "history-table",
-        # Auto-refresh
+        # Infra
         "interval-refresh",
-        # Phase 3 — Analytics Depth
-        "tabs-analytics",
-        "badge-coverage",
+        # Modal
         "modal-parse-failures",
-        "graph-heatmap",
-        "graph-equity",
-        "graph-dow",
-        "graph-gale",
-        "graph-volume",
-        "kpi-streak-current",
-        "kpi-streak-max-green",
-        "kpi-streak-max-red",
-        "table-cross-dimensional",
-        "table-periodo",
     }
 
     found_ids = collect_ids(app.layout)
     missing = required_ids - found_ids
     assert not missing, (
-        f"Missing required component IDs: {sorted(missing)}\n"
-        f"Found IDs: {sorted(found_ids)}"
+        f"IDs obrigatorios ausentes: {sorted(missing)}\n"
+        f"IDs encontrados: {sorted(found_ids)}"
+    )
+
+
+def test_datepicker_collapse_initial_closed():
+    """DASH-01 D-05: DatePickerRange oculto por padrao."""
+    def find_collapse(component, target_id):
+        if hasattr(component, 'id') and component.id == target_id:
+            return component
+        children = getattr(component, 'children', None)
+        if children is None:
+            return None
+        if isinstance(children, (list, tuple)):
+            for child in children:
+                result = find_collapse(child, target_id)
+                if result:
+                    return result
+        elif hasattr(children, 'children') or hasattr(children, 'id'):
+            return find_collapse(children, target_id)
+        return None
+
+    collapse = find_collapse(app.layout, "collapse-datepicker")
+    assert collapse is not None, "collapse-datepicker nao encontrado no layout"
+    assert collapse.is_open is False, "collapse-datepicker deve iniciar fechado (is_open=False)"
+
+
+# ---------------------------------------------------------------------------
+# Testes de _resolve_periodo — falham (RED) ate Plan 02 implementar a funcao
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_periodo_hoje():
+    """_resolve_periodo('hoje') deve retornar (str(date.today()), str(date.today()))."""
+    assert _HAS_RESOLVE_PERIODO, "_resolve_periodo nao encontrado em helpertips.dashboard (sera implementado no Plan 02)"
+    today_str = str(date.today())
+    result = _resolve_periodo("hoje")
+    assert result == (today_str, today_str), (
+        f"Esperado ({today_str}, {today_str}), obtido {result}"
+    )
+
+
+def test_resolve_periodo_semana():
+    """_resolve_periodo('semana') deve retornar (segunda-feira da semana, hoje)."""
+    assert _HAS_RESOLVE_PERIODO, "_resolve_periodo nao encontrado em helpertips.dashboard (sera implementado no Plan 02)"
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    result = _resolve_periodo("semana")
+    assert result == (str(monday), str(today)), (
+        f"Esperado ({monday}, {today}), obtido {result}"
+    )
+
+
+def test_resolve_periodo_mes():
+    """_resolve_periodo('mes') deve retornar (primeiro dia do mes, hoje)."""
+    assert _HAS_RESOLVE_PERIODO, "_resolve_periodo nao encontrado em helpertips.dashboard (sera implementado no Plan 02)"
+    today = date.today()
+    first_day = today.replace(day=1)
+    result = _resolve_periodo("mes")
+    assert result == (str(first_day), str(today)), (
+        f"Esperado ({first_day}, {today}), obtido {result}"
+    )
+
+
+def test_resolve_periodo_mes_passado():
+    """_resolve_periodo('mes_passado') deve retornar (primeiro, ultimo) do mes anterior."""
+    assert _HAS_RESOLVE_PERIODO, "_resolve_periodo nao encontrado em helpertips.dashboard (sera implementado no Plan 02)"
+    today = date.today()
+    last_day_prev = today.replace(day=1) - timedelta(days=1)
+    first_day_prev = last_day_prev.replace(day=1)
+    result = _resolve_periodo("mes_passado")
+    assert result == (str(first_day_prev), str(last_day_prev)), (
+        f"Esperado ({first_day_prev}, {last_day_prev}), obtido {result}"
+    )
+
+
+def test_resolve_periodo_toda_vida():
+    """_resolve_periodo('toda_vida') deve retornar (None, None)."""
+    assert _HAS_RESOLVE_PERIODO, "_resolve_periodo nao encontrado em helpertips.dashboard (sera implementado no Plan 02)"
+    result = _resolve_periodo("toda_vida")
+    assert result == (None, None), (
+        f"Esperado (None, None), obtido {result}"
+    )
+
+
+def test_resolve_periodo_personalizado():
+    """_resolve_periodo('personalizado', start, end) deve retornar (start, end) sem alteracao."""
+    assert _HAS_RESOLVE_PERIODO, "_resolve_periodo nao encontrado em helpertips.dashboard (sera implementado no Plan 02)"
+    result = _resolve_periodo("personalizado", "2025-01-01", "2025-01-31")
+    assert result == ("2025-01-01", "2025-01-31"), (
+        f"Esperado ('2025-01-01', '2025-01-31'), obtido {result}"
     )
 
 
 # ---------------------------------------------------------------------------
-# KPI formatting tests — pure Python, no Dash server
+# Testes de formatacao de KPI — Python puro, sem servidor Dash
 # ---------------------------------------------------------------------------
 
 
 def _winrate(greens: int, reds: int) -> str:
-    """Replicate the win rate formatting formula from update_dashboard callback."""
+    """Replica a formula de formatacao de winrate do callback update_dashboard."""
     if (greens + reds) > 0:
         return f"{(greens / (greens + reds) * 100):.1f}%"
-    return "\u2014"  # em dash — matches the callback's Unicode literal
+    return "\u2014"  # em dash — corresponde ao literal Unicode do callback
+
+
+def test_kpi_pl_formatting():
+    """Formatacao de P&L: 'R$ +X.XX' para positivo, 'R$ -X.XX' para negativo, classes CSS corretas."""
+    # Valores positivos
+    assert f"R$ {123.45:+.2f}" == "R$ +123.45", "P&L positivo deve ter prefixo +"
+    # Valores negativos
+    assert f"R$ {-50.0:+.2f}" == "R$ -50.00", "P&L negativo deve ter prefixo -"
+    # Zero
+    assert f"R$ {0.0:+.2f}" == "R$ +0.00", "P&L zero deve ser 'R$ +0.00'"
+    # Classes CSS
+    pl_positivo = 10.0
+    pl_negativo = -5.0
+    pl_zero = 0.0
+    css_positivo = "card-text fw-bold text-success" if pl_positivo > 0 else (
+        "card-text fw-bold text-danger" if pl_positivo < 0 else "card-text fw-bold text-muted"
+    )
+    css_negativo = "card-text fw-bold text-success" if pl_negativo > 0 else (
+        "card-text fw-bold text-danger" if pl_negativo < 0 else "card-text fw-bold text-muted"
+    )
+    css_zero = "card-text fw-bold text-success" if pl_zero > 0 else (
+        "card-text fw-bold text-danger" if pl_zero < 0 else "card-text fw-bold text-muted"
+    )
+    assert css_positivo == "card-text fw-bold text-success", f"P&L positivo deve ter text-success, obtido: {css_positivo}"
+    assert css_negativo == "card-text fw-bold text-danger", f"P&L negativo deve ter text-danger, obtido: {css_negativo}"
+    assert css_zero == "card-text fw-bold text-muted", f"P&L zero deve ter text-muted, obtido: {css_zero}"
+
+
+def test_kpi_streak_formatting():
+    """Formatacao de streaks: 'Nx' para count > 0, em-dash U+2014 para count == 0."""
+    # Streak positiva
+    assert f"{12}x" == "12x", "Streak de 12 deve ser '12x'"
+    assert f"{1}x" == "1x", "Streak de 1 deve ser '1x'"
+    # Streak zero — usar em-dash
+    count_zero = 0
+    streak_zero = f"{count_zero}x" if count_zero > 0 else "\u2014"
+    assert streak_zero == "\u2014", f"Streak zero deve ser em-dash, obtido: {streak_zero!r}"
+    # Verificar que em-dash nao eh hifen
+    assert streak_zero != "-", "Streak zero nao deve ser hifen simples"
 
 
 def test_kpi_formatting_winrate_with_results():
-    """DASH-02: Win rate percentage formats correctly for various green/red combinations."""
-    assert _winrate(6, 4) == "60.0%", "6 greens, 4 reds should be 60.0%"
-    assert _winrate(10, 0) == "100.0%", "10 greens, 0 reds should be 100.0%"
-    assert _winrate(0, 5) == "0.0%", "0 greens, 5 reds should be 0.0%"
+    """DASH-02: Formatacao de winrate percentual para diversas combinacoes green/red."""
+    assert _winrate(6, 4) == "60.0%", "6 greens, 4 reds deve ser 60.0%"
+    assert _winrate(10, 0) == "100.0%", "10 greens, 0 reds deve ser 100.0%"
+    assert _winrate(0, 5) == "0.0%", "0 greens, 5 reds deve ser 0.0%"
 
 
 def test_kpi_formatting_winrate_no_results():
-    """DASH-02: When no resolved signals, win rate should be em dash (—), not hyphen."""
+    """DASH-02: Sem sinais resolvidos, winrate deve ser em dash (—), nao hifen."""
     result = _winrate(0, 0)
     assert result == "\u2014", (
-        f"Expected em dash '—' when no results, got '{result}'"
+        f"Esperado em dash '—' sem resultados, obtido '{result}'"
     )
-    assert result != "-", "Result must be em dash, not a plain hyphen"
+    assert result != "-", "Resultado deve ser em dash, nao hifen simples"
 
 
 def test_kpi_formatting_roi_strings():
-    """ROI text formatting: signed decimal with R$ prefix for money, signed pct for rate."""
-    # Positive profit
+    """Formatacao de texto ROI: decimal com sinal e prefixo R$ para dinheiro, pct com sinal para taxa."""
+    # Lucro positivo
     assert f"R$ {12.5:+.2f}" == "R$ +12.50"
-    # Negative profit
+    # Lucro negativo
     assert f"R$ {-5.0:+.2f}" == "R$ -5.00"
-    # Zero profit
+    # Lucro zero
     assert f"R$ {0.0:+.2f}" == "R$ +0.00"
-    # ROI percentage
+    # ROI percentual
     assert f"{33.3:+.1f}%" == "+33.3%"
     assert f"{-20.0:+.1f}%" == "-20.0%"
 
 
 # ---------------------------------------------------------------------------
-# Gale accumulated cost model — tests calculate_roi from queries.py
+# Modelo de custo acumulado Gale — testa calculate_roi de queries.py
 # ---------------------------------------------------------------------------
 
 
 def _make_sig(resultado: str, tentativa: int) -> dict:
-    """Build a minimal signal dict for ROI calculation."""
+    """Constroi um dict de sinal minimo para calculo de ROI."""
     return {"resultado": resultado, "tentativa": tentativa}
 
 
 def test_gale_accumulated_cost_model():
     """
-    Verify Gale uses ACCUMULATED stake per tentativa, not simple effective_stake per attempt.
+    Verifica que Gale usa stake ACUMULADO por tentativa, nao simples dobro.
 
-    The Gale model: each attempt doubles the stake. Total invested for N attempts =
+    Modelo Gale: cada tentativa dobra o stake. Total investido para N tentativas =
       stake * (2^N - 1)
 
-    Examples with stake=10:
-      GREEN at tentativa=1: invested = 10 * (2^1 - 1) = 10 * 1 = 10
-      GREEN at tentativa=2: invested = 10 * (2^2 - 1) = 10 * 3 = 30 (not just 20)
-      GREEN at tentativa=3: invested = 10 * (2^3 - 1) = 10 * 7 = 70 (not just 40)
-      RED  at tentativa=4:  invested = 10 * (2^4 - 1) = 10 * 15 = 150 (not just 80)
+    Exemplos com stake=10:
+      GREEN em tentativa=1: investido = 10 * (2^1 - 1) = 10 * 1 = 10
+      GREEN em tentativa=2: investido = 10 * (2^2 - 1) = 10 * 3 = 30 (nao apenas 20)
+      GREEN em tentativa=3: investido = 10 * (2^3 - 1) = 10 * 7 = 70 (nao apenas 40)
+      RED  em tentativa=4:  investido = 10 * (2^4 - 1) = 10 * 15 = 150 (nao apenas 80)
 
-    This is the accumulated model, not per-attempt-only.
+    Este eh o modelo acumulado, nao apenas por tentativa.
     """
     stake = 10.0
-    odd = 2.0  # Use even odds to simplify profit calculation
+    odd = 2.0  # Odds pares simplificam calculo de lucro
 
-    # GREEN at tentativa=1: invested = stake * 1 = stake
+    # GREEN em tentativa=1: investido = stake * 1 = stake
     result = calculate_roi([_make_sig("GREEN", 1)], stake, odd, gale_on=True)
     assert result["total_invested"] == 10.0, (
-        f"GREEN tentativa=1: expected invested=10.0, got {result['total_invested']}"
+        f"GREEN tentativa=1: esperado invested=10.0, obtido {result['total_invested']}"
     )
 
-    # GREEN at tentativa=2: invested = stake * (2^2 - 1) = stake * 3 = 30
+    # GREEN em tentativa=2: investido = stake * (2^2 - 1) = stake * 3 = 30
     result = calculate_roi([_make_sig("GREEN", 2)], stake, odd, gale_on=True)
     assert result["total_invested"] == 30.0, (
-        f"GREEN tentativa=2: expected invested=30.0 (accumulated), got {result['total_invested']}"
+        f"GREEN tentativa=2: esperado invested=30.0 (acumulado), obtido {result['total_invested']}"
     )
 
-    # GREEN at tentativa=3: invested = stake * (2^3 - 1) = stake * 7 = 70
+    # GREEN em tentativa=3: investido = stake * (2^3 - 1) = stake * 7 = 70
     result = calculate_roi([_make_sig("GREEN", 3)], stake, odd, gale_on=True)
     assert result["total_invested"] == 70.0, (
-        f"GREEN tentativa=3: expected invested=70.0 (7 * stake), got {result['total_invested']}"
+        f"GREEN tentativa=3: esperado invested=70.0 (7 * stake), obtido {result['total_invested']}"
     )
 
-    # RED at tentativa=4: invested = stake * (2^4 - 1) = stake * 15 = 150
+    # RED em tentativa=4: investido = stake * (2^4 - 1) = stake * 15 = 150
     result = calculate_roi([_make_sig("RED", 4)], stake, odd, gale_on=True)
     assert result["total_invested"] == 150.0, (
-        f"RED tentativa=4: expected invested=150.0 (15 * stake), got {result['total_invested']}"
+        f"RED tentativa=4: esperado invested=150.0 (15 * stake), obtido {result['total_invested']}"
     )
 
-    # Sanity check: Gale accumulated is always > simple single-attempt effective stake
-    # For tentativa=3, simple effective stake would be 10 * 2^2 = 40, but accumulated = 70
+    # Sanidade: Gale acumulado eh sempre > stake efetivo de tentativa unica
+    # Para tentativa=3, stake efetivo simples seria 10 * 2^2 = 40, mas acumulado = 70
     result3 = calculate_roi([_make_sig("GREEN", 3)], stake, odd, gale_on=True)
     simple_effective = stake * (2 ** (3 - 1))  # = 40
     assert result3["total_invested"] > simple_effective, (
-        "Accumulated Gale cost must be greater than single-attempt effective stake"
+        "Custo Gale acumulado deve ser maior que stake efetivo de tentativa unica"
     )
-
-
-# ---------------------------------------------------------------------------
-# Phase 3 — Badge and streak helper tests
-# ---------------------------------------------------------------------------
-
-
-def test_coverage_badge_thresholds():
-    """Badge color: success >= 95%, warning >= 90%, danger < 90% (OPER-01)."""
-    test_cases = [
-        (100.0, "success"),
-        (95.0, "success"),
-        (94.9, "warning"),
-        (90.0, "warning"),
-        (89.9, "danger"),
-        (50.0, "danger"),
-        (0.0, "danger"),
-    ]
-    for coverage, expected_color in test_cases:
-        color = "success" if coverage >= 95 else ("warning" if coverage >= 90 else "danger")
-        assert color == expected_color, f"coverage={coverage}: expected {expected_color}, got {color}"
-
-
-def test_format_streak():
-    """_format_streak retorna formato correto para wins, losses e sem dados (ANAL-06)."""
-    assert _format_streak(5, "GREEN") == "5 wins"
-    assert _format_streak(3, "RED") == "3 losses"
-    assert _format_streak(0, None) == "Sem dados"
-    assert _format_streak(0, "GREEN") == "Sem dados"
 
 
 # ---------------------------------------------------------------------------
