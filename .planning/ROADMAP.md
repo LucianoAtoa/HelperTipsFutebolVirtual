@@ -99,7 +99,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — Expor WSGI callable, adicionar gunicorn, criar script systemd + logrotate (DEP-02)
-- [ ] 08-02-PLAN.md — Configurar nginx como reverse proxy com HTTP Basic Auth (DEP-03, DEP-04)
+- [x] 08-02-PLAN.md — Configurar nginx como reverse proxy com HTTP Basic Auth (DEP-03, DEP-04)
 
 ## Progress
 

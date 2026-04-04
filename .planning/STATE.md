@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
-status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-04-04T04:38:52.819Z"
+status: verifying
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-04-04T05:15:56.156Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 Phase: 08 (dashboard-proxy) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-aws-infrastructure P03 | 1 | 1 tasks | 2 files |
 | Phase 07 P01 | 189 | 2 tasks | 4 files |
 | Phase 08-dashboard-proxy P01 | 2 | 2 tasks | 3 files |
+| Phase 08-dashboard-proxy P02 | 2 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 - [Phase 08-dashboard-proxy]: server = app.server em dashboard.py — gunicorn importa WSGI callable sem precisar alterar o bloco __main__
 - [Phase 08-dashboard-proxy]: Logrotate compartilhado listener + dashboard substitui configuracao anterior em /etc/logrotate.d/helpertips
 - [Phase 08-dashboard-proxy]: postrotate USR1 para gunicorn — graceful log reopen sem matar workers (zero downtime)
+- [Phase 08-dashboard-proxy]: htpasswd -cbB com bcrypt — seguranca maior sem custo adicional; owner root:www-data em .htpasswd (grupo nginx correto Ubuntu 24.04)
+- [Phase 08-dashboard-proxy]: proxy_read_timeout 120s igual timeout gunicorn — evita 504 em callbacks Dash lentos; porta 8050 documentada como passo manual
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-04T04:38:52.816Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-04-04T05:15:56.154Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
