@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-3 + 2.1 (shipped 2026-04-03) — [archive](milestones/v1.0-ROADMAP.md)
-- 🚧 **v1.1 Cloud Deploy** — Phases 4-8 (in progress)
+- ✅ **v1.1 Cloud Deploy** — Phases 4-8 (shipped 2026-04-04) — [archive](milestones/v1.1-ROADMAP.md)
 
 ## Phases
 
@@ -17,89 +17,16 @@
 
 </details>
 
-### 🚧 v1.1 Cloud Deploy (In Progress)
+<details>
+<summary>✅ v1.1 Cloud Deploy (Phases 4-8) — SHIPPED 2026-04-04</summary>
 
-**Milestone Goal:** Subir o HelperTips para a AWS com custo mínimo, garantindo segurança antes de expor na nuvem, e publicar o repositório no GitHub.
+- [x] Phase 4: Security Audit (2/2 plans) — Repositório limpo de secrets, debug=False, documentação de segurança (completed 2026-04-03)
+- [x] Phase 5: GitHub Publication (2/2 plans) — Repositório público com CI/CD automatizado via GitHub Actions (completed 2026-04-03)
+- [x] Phase 6: AWS Infrastructure (3/3 plans) — EC2 t3.micro com PostgreSQL, billing alert, backup S3 (completed 2026-04-04)
+- [x] Phase 7: Listener Deployment (1/1 plan) — Listener 24/7 via systemd com sessão Telethon autenticada (completed 2026-04-04)
+- [x] Phase 8: Dashboard & Proxy (2/2 plans) — Dashboard via gunicorn + nginx com HTTP Basic Auth (completed 2026-04-04)
 
-- [x] **Phase 4: Security Audit** - Repositório limpo de secrets, debug=False, documentação de segurança (completed 2026-04-03)
-- [x] **Phase 5: GitHub Publication** - Repositório público com CI/CD automatizado via GitHub Actions (completed 2026-04-03)
-- [ ] **Phase 6: AWS Infrastructure** - EC2 t3.micro provisionada com PostgreSQL, billing alert e credenciais seguras
-- [x] **Phase 7: Listener Deployment** - Listener rodando 24/7 via systemd com sessão Telethon autenticada (completed 2026-04-04)
-- [ ] **Phase 8: Dashboard & Proxy** - Dashboard acessível via nginx com HTTP Basic Auth
-
-## Phase Details
-
-### Phase 4: Security Audit
-**Goal**: Repositório está limpo de secrets e pronto para ser publicado publicamente
-**Depends on**: Phase 3 (v1.0 shipped)
-**Requirements**: SEC-01, SEC-02, SEC-03, SEC-04
-**Success Criteria** (what must be TRUE):
-  1. `git log --all --full-diff -p -- .env '*.session'` retorna zero resultados — nenhum secret no histórico
-  2. Dashboard abre sem expor o Flask debugger — `debug=False` ou controlado por variável de ambiente em produção
-  3. `.env.example` lista todas as variáveis necessárias (Telegram, DB, AWS) sem valores reais
-  4. README.md tem seção de setup local, seção de deploy e aviso explícito de segurança para o arquivo .session
-**Plans**: 2 plans
-
-Plans:
-- [x] 04-01-PLAN.md — Auditoria git, correcao debug mode, .env.example e testes (SEC-01, SEC-02, SEC-03)
-- [x] 04-02-PLAN.md — Criacao do README.md completo (SEC-04)
-
-### Phase 5: GitHub Publication
-**Goal**: Código publicado no GitHub com CI automatizado validando qualidade a cada push
-**Depends on**: Phase 4
-**Requirements**: GH-01, GH-02
-**Success Criteria** (what must be TRUE):
-  1. Repositório público no GitHub com `.gitignore` bloqueando `*.session`, `.env`, `__pycache__` e `*.pyc`
-  2. Push para `main` dispara GitHub Actions que roda lint e testes — badge de status visível no README
-**Plans**: 2 plans
-
-Plans:
-- [x] 05-01-PLAN.md — Configurar ruff lint, corrigir codigo existente, criar CI workflow e badge (GH-02)
-- [x] 05-02-PLAN.md — Publicar repositorio no GitHub, verificar CI verde (GH-01, GH-02)
-
-### Phase 6: AWS Infrastructure
-**Goal**: Instância EC2 provisionada e funcional com banco de dados, billing controlado e credenciais seguras
-**Depends on**: Phase 5
-**Requirements**: AWS-01, AWS-02, AWS-03, AWS-04, AWS-05
-**Success Criteria** (what must be TRUE):
-  1. EC2 t3.micro acessível via SSH com Elastic IP fixo e Security Group restrito a SSH + HTTP/HTTPS
-  2. PostgreSQL rodando na instância com schema migrado — `SELECT COUNT(*) FROM sinais` executa sem erro
-  3. Budget alert ativo no AWS Console — email enviado ao atingir $15/mês
-  4. Credenciais (Telegram API, DB password) acessíveis para os processos mas ausentes de arquivos no repositório
-  5. Arquivo `.session` com backup automático ou armazenado em volume persistente — survives reboot
-**Plans**: 3 plans
-
-Plans:
-- [x] 06-01-PLAN.md — Script bootstrap EC2 + guia provisionamento AWS Console (AWS-01)
-- [x] 06-02-PLAN.md — Setup PostgreSQL 16 + migracao schema + budget alert $15/mes (AWS-02, AWS-03)
-- [ ] 06-03-PLAN.md — Backup diario pg_dump + .session para S3 via IAM instance profile (AWS-04, AWS-05)
-
-### Phase 7: Listener Deployment
-**Goal**: Listener capturando sinais do Telegram 24/7 na EC2, sobrevivendo a crashes e reboots
-**Depends on**: Phase 6
-**Requirements**: DEP-05, DEP-01
-**Success Criteria** (what must be TRUE):
-  1. Autenticação Telethon interativa completada via SSH — arquivo `.session` gerado na EC2
-  2. `systemctl status helpertips-listener` mostra `active (running)` após reboot do servidor
-  3. Sinal capturado localmente aparece no banco na EC2 — listener está processando mensagens reais
-**Plans**: 1 plan
-
-Plans:
-- [x] 07-01-PLAN.md — Logging condicional, script systemd, autenticacao interativa SSH (DEP-05, DEP-01)
-
-### Phase 8: Dashboard & Proxy
-**Goal**: Dashboard acessível publicamente via HTTP com proteção por senha, servido por stack de produção
-**Depends on**: Phase 7
-**Requirements**: DEP-02, DEP-03, DEP-04
-**Success Criteria** (what must be TRUE):
-  1. Acessar `http://<EC2-IP>` no browser pede usuário e senha antes de mostrar qualquer conteúdo
-  2. Dashboard carrega com dados reais do banco — KPI cards com contagens corretas
-  3. Reiniciar o servidor sobe dashboard automaticamente — `systemctl status helpertips-dashboard` mostra `active`
-**Plans**: 2 plans
-
-Plans:
-- [x] 08-01-PLAN.md — Expor WSGI callable, adicionar gunicorn, criar script systemd + logrotate (DEP-02)
-- [x] 08-02-PLAN.md — Configurar nginx como reverse proxy com HTTP Basic Auth (DEP-03, DEP-04)
+</details>
 
 ## Progress
 
@@ -109,8 +36,8 @@ Plans:
 | 2. Core Dashboard | v1.0 | 3/3 | Complete | 2026-04-03 |
 | 2.1 Market Config | v1.0 | 4/4 | Complete | 2026-04-03 |
 | 3. Analytics Depth | v1.0 | 4/4 | Complete | 2026-04-03 |
-| 4. Security Audit | v1.1 | 2/2 | Complete   | 2026-04-03 |
-| 5. GitHub Publication | v1.1 | 2/2 | Complete   | 2026-04-03 |
-| 6. AWS Infrastructure | v1.1 | 2/3 | In Progress|  |
-| 7. Listener Deployment | v1.1 | 1/1 | Complete   | 2026-04-04 |
-| 8. Dashboard & Proxy | v1.1 | 1/2 | In Progress|  |
+| 4. Security Audit | v1.1 | 2/2 | Complete | 2026-04-03 |
+| 5. GitHub Publication | v1.1 | 2/2 | Complete | 2026-04-03 |
+| 6. AWS Infrastructure | v1.1 | 3/3 | Complete | 2026-04-04 |
+| 7. Listener Deployment | v1.1 | 1/1 | Complete | 2026-04-04 |
+| 8. Dashboard & Proxy | v1.1 | 2/2 | Complete | 2026-04-04 |

@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.1 Cloud Deploy (Shipped: 2026-04-04)
+
+**Phases completed:** 5 phases, 10 plans, 17 tasks
+
+**Key accomplishments:**
+
+- Auditoria git confirma historico limpo, dashboard passa a usar DASH_DEBUG env var (off por padrao), e .env.example documenta 12 variaveis incluindo AWS para Phase 6
+- README.md com 160 linhas criado do zero: setup local em 9 passos, stack completa, deploy AWS placeholder e aviso explícito de segurança sobre o arquivo .session do Telethon
+- One-liner:
+- Repositório LucianoAtoa/HelperTipsFutebolVirtual tornado público com CI verde (lint + 132 testes) em primeiro push
+- Script bash idempotente de bootstrap EC2 (swap 1GB, usuario helpertips, pacotes base) + guia de 6 passos para provisionamento via AWS Console com Security Group restrito e Elastic IP
+- Scripts bash para instalar PostgreSQL 16 via PGDG, configurar role/banco/auth com scram-sha-256, ajustar shared_buffers para 64MB e criar budget alert de $15/mes no AWS Budgets
+- Script de backup diario pg_dump + .session para S3 via IAM instance profile sem access keys estaticos, com cron as 03:00 UTC e rotacao automatica de 30 dias
+- One-liner:
+- gunicorn configurado como WSGI server para o Dash dashboard, rodando como systemd service com 2 workers em 127.0.0.1:8050 e logrotate compartilhado com o listener
+- nginx configurado como reverse proxy com HTTP Basic Auth protegendo o dashboard gunicorn: porta 80 -> 127.0.0.1:8050 com credenciais via .htpasswd bcrypt lidas do .env
+
+---
+
 ## v1.0 MVP (Shipped: 2026-04-03)
 
 **Phases completed:** 4 phases, 18 plans, 26 tasks
@@ -15,6 +34,7 @@
 5. Badge de cobertura do parser com modal de falhas — visibilidade operacional direto no dashboard
 
 **Known Gaps (from audit):**
+
 - MKT-04, MKT-05: Gap de documentação — sem VERIFICATION.md para Phase 2.1 (implementação confirmada pelo integration checker)
 - Nyquist validation não completada (todas as fases em draft)
 
