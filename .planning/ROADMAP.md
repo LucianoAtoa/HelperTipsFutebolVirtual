@@ -6,6 +6,7 @@
 - ✅ **v1.1 Cloud Deploy** — Phases 4-8 (shipped 2026-04-04) — [archive](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Multi-Market Analytics** — Phases 9-13 (shipped 2026-04-04)
 - ✅ **v1.3 Análise Individual de Sinais** — Phases 14-15 (shipped 2026-04-04) — [archive](milestones/v1.3-ROADMAP.md)
+- 🚧 **v1.4 Configurações de Mercado + Dashboard Ajustes** — Phases 16-19 (in progress)
 
 ## Phases
 
@@ -48,6 +49,15 @@
 - [x] **Phase 15: Página de Detalhe do Sinal** — Usuário clica em sinal no histórico e visualiza breakdown completo de P&L (completed 2026-04-04)
 
 </details>
+
+### 🚧 v1.4 Configurações de Mercado + Dashboard Ajustes (In Progress)
+
+**Milestone Goal:** Página `/config` editável para odds/stakes dos mercados, listener usando config ativa do banco, e dashboard com KPI Total Investido e Performance por Mercado.
+
+- [ ] **Phase 16: Navegação + Schema DB** — Menu entre Dashboard e Configurações + colunas de config no banco
+- [ ] **Phase 17: Página de Configurações** — Formulário `/config` com preview em tempo real e persistência no banco
+- [ ] **Phase 18: Listener Config-Aware** — Listener lê config ativa ao processar sinais, sem retroatividade
+- [ ] **Phase 19: Dashboard Ajustes** — Remoção de seções obsoletas e adição de KPI Total Investido + Performance por Mercado
 
 ## Phase Details
 
@@ -159,6 +169,53 @@ Plans:
 - [x] 15-02-PLAN.md — pages/sinal.py layout + navegacao AG Grid + verificacao visual
 **UI hint**: yes
 
+### Phase 16: Navegação + Schema DB
+**Goal**: Usuário consegue navegar entre Dashboard e Configurações pelo menu, e o banco tem as colunas necessárias para persistir config editável
+**Depends on**: Phase 15 (Dash Pages com `use_pages=True` ativo)
+**Requirements**: NAV-01
+**Success Criteria** (o que deve ser VERDADEIRO):
+  1. Menu/tabs visível em todas as páginas permite alternar entre `/` (Dashboard) e `/config` (Configurações) com um clique
+  2. Tab ativa fica destacada visualmente indicando a página atual
+  3. Tabela `mercados` tem colunas `stake_base`, `fator_progressao` e `max_tentativas` sem perda de dados existentes
+  4. Migração idempotente: rodar duas vezes não gera erro
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 17: Página de Configurações
+**Goal**: Usuário edita stake base, progressão, max tentativas, percentuais e odds de todos os mercados e salva no banco
+**Depends on**: Phase 16 (schema DB com colunas de config + navegação para `/config`)
+**Requirements**: CFG-01, CFG-02, CFG-03, CFG-04, CFG-05
+**Success Criteria** (o que deve ser VERDADEIRO):
+  1. Página `/config` abre com valores atuais do banco (ou defaults se não houver config salva)
+  2. Editar stake base, fator de progressão ou max tentativas atualiza o preview de stakes T1–T4 em tempo real sem salvar
+  3. Editar percentual ou odd de qualquer complementar atualiza o total em risco no preview em tempo real
+  4. Clicar em "Salvar" persiste todos os valores no banco e exibe confirmação visual de sucesso
+  5. Recarregar a página após salvar exibe os valores recém-salvos (persistência confirmada)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 18: Listener Config-Aware
+**Goal**: Listener lê a configuração ativa do banco ao processar cada novo sinal, usando stakes e odds atualizados
+**Depends on**: Phase 17 (config persistida no banco via página `/config`)
+**Requirements**: LIS-01, LIS-02
+**Success Criteria** (o que deve ser VERDADEIRO):
+  1. Sinal capturado após salvar nova config usa a stake base e odds atualizadas (verificável via registro no banco)
+  2. Sinais capturados antes da mudança de config mantêm os valores originais (não retroativo)
+  3. Listener não quebra se config estiver ausente no banco — usa defaults hardcoded como fallback
+**Plans**: TBD
+
+### Phase 19: Dashboard Ajustes
+**Goal**: Dashboard remove seções obsoletas e adiciona KPI Total Investido e Performance Individual por Mercado
+**Depends on**: Phase 16 (navegação pronta; ajustes independentes de config e listener)
+**Requirements**: DASH-08, DASH-09, DASH-10
+**Success Criteria** (o que deve ser VERDADEIRO):
+  1. Seções "Configuração de Mercados" e inputs de simulação ROI não aparecem mais no dashboard
+  2. KPI card "Total Investido" no topo mostra soma das stakes (principal + complementares) do período filtrado, reagindo ao filtro de período/mercado
+  3. Seção "Performance Individual por Mercado" exibe um card por mercado (Over 2.5, Ambas Marcam, cada complementar) com greens, reds, taxa, investido, retorno, P&L e ROI
+  4. Cards de performance reagem ao filtro de período selecionado
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -177,5 +234,9 @@ Plans:
 | 11. Dashboard Fundação | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete | 2026-04-04 |
-| 14. Migração Multi-Page | v1.3 | 1/1 | Complete    | 2026-04-04 |
-| 15. Página de Detalhe do Sinal | v1.3 | 2/2 | Complete    | 2026-04-04 |
+| 14. Migração Multi-Page | v1.3 | 1/1 | Complete | 2026-04-04 |
+| 15. Página de Detalhe do Sinal | v1.3 | 2/2 | Complete | 2026-04-04 |
+| 16. Navegação + Schema DB | v1.4 | 0/? | Not started | - |
+| 17. Página de Configurações | v1.4 | 0/? | Not started | - |
+| 18. Listener Config-Aware | v1.4 | 0/? | Not started | - |
+| 19. Dashboard Ajustes | v1.4 | 0/? | Not started | - |

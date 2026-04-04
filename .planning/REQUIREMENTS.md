@@ -66,23 +66,23 @@ Deferred to future release.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CFG-01 | — | Pending |
-| CFG-02 | — | Pending |
-| CFG-03 | — | Pending |
-| CFG-04 | — | Pending |
-| CFG-05 | — | Pending |
-| LIS-01 | — | Pending |
-| LIS-02 | — | Pending |
-| DASH-08 | — | Pending |
-| DASH-09 | — | Pending |
-| DASH-10 | — | Pending |
-| NAV-01 | — | Pending |
+| NAV-01 | Phase 16 | Pending |
+| CFG-01 | Phase 17 | Pending |
+| CFG-02 | Phase 17 | Pending |
+| CFG-03 | Phase 17 | Pending |
+| CFG-04 | Phase 17 | Pending |
+| CFG-05 | Phase 17 | Pending |
+| LIS-01 | Phase 18 | Pending |
+| LIS-02 | Phase 18 | Pending |
+| DASH-08 | Phase 19 | Pending |
+| DASH-09 | Phase 19 | Pending |
+| DASH-10 | Phase 19 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-04*
-*Last updated: 2026-04-04 after initial definition*
+*Last updated: 2026-04-04 after roadmap creation (Phases 16-19)*
