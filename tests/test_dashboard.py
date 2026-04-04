@@ -31,10 +31,11 @@ import pytest
 from helpertips.dashboard import app
 from helpertips.queries import calculate_roi
 
-# _resolve_periodo sera importado quando existir (Plan 02).
-# Por enquanto, os testes de _resolve_periodo falham com ImportError (RED intencional).
+from helpertips.pages.home import layout as home_layout
+
+# _resolve_periodo importado de helpertips.pages.home apos migracao Phase 14.
 try:
-    from helpertips.dashboard import _resolve_periodo
+    from helpertips.pages.home import _resolve_periodo
     _HAS_RESOLVE_PERIODO = True
 except ImportError:
     _resolve_periodo = None
@@ -114,7 +115,7 @@ def test_layout_has_required_component_ids():
         "modal-parse-failures",
     }
 
-    found_ids = collect_ids(app.layout)
+    found_ids = collect_ids(home_layout)
     missing = required_ids - found_ids
     assert not missing, (
         f"IDs obrigatorios ausentes: {sorted(missing)}\n"
@@ -139,7 +140,7 @@ def test_datepicker_collapse_initial_closed():
             return find_collapse(children, target_id)
         return None
 
-    collapse = find_collapse(app.layout, "collapse-datepicker")
+    collapse = find_collapse(home_layout, "collapse-datepicker")
     assert collapse is not None, "collapse-datepicker nao encontrado no layout"
     assert collapse.is_open is False, "collapse-datepicker deve iniciar fechado (is_open=False)"
 
@@ -376,21 +377,21 @@ def test_debug_mode_on_with_env(monkeypatch):
 # ---------------------------------------------------------------------------
 
 try:
-    from helpertips.dashboard import _calcular_stakes_gale
+    from helpertips.pages.home import _calcular_stakes_gale
     _HAS_STAKES = True
 except ImportError:
     _calcular_stakes_gale = None
     _HAS_STAKES = False
 
 try:
-    from helpertips.dashboard import _agregar_por_entrada
+    from helpertips.pages.home import _agregar_por_entrada
     _HAS_AGREGAR = True
 except ImportError:
     _agregar_por_entrada = None
     _HAS_AGREGAR = False
 
 try:
-    from helpertips.dashboard import _get_colunas_visiveis
+    from helpertips.pages.home import _get_colunas_visiveis
     _HAS_COLUNAS = True
 except ImportError:
     _get_colunas_visiveis = None
@@ -516,7 +517,7 @@ def test_performance_toggle_colunas():
 
 def test_build_config_card_mercado():
     """DASH-03: Card de config mercado renderiza com header e tabela de complementares."""
-    from helpertips.dashboard import _build_config_card_mercado
+    from helpertips.pages.home import _build_config_card_mercado
     comps = [
         {"nome_display": "Resultado Final", "percentual": 0.20, "odd_ref": 1.80, "regra_validacao": "resultado_final"},
         {"nome_display": "HT/FT", "percentual": 0.10, "odd_ref": 2.50, "regra_validacao": "ht_ft"},
@@ -535,7 +536,7 @@ def test_layout_has_phase12_component_ids():
         "perf-table",
         "phase13-placeholder",
     }
-    found_ids = collect_ids(app.layout)
+    found_ids = collect_ids(home_layout)
     missing = required_phase12 - found_ids
     assert not missing, (
         f"IDs Phase 12 ausentes: {sorted(missing)}\n"
@@ -548,19 +549,19 @@ def test_layout_has_phase12_component_ids():
 # ---------------------------------------------------------------------------
 
 try:
-    from helpertips.dashboard import _build_liga_chart
+    from helpertips.pages.home import _build_liga_chart
     _HAS_LIGA_CHART = True
 except ImportError:
     _HAS_LIGA_CHART = False
 
 try:
-    from helpertips.dashboard import _build_equity_curve_chart
+    from helpertips.pages.home import _build_equity_curve_chart
     _HAS_EQUITY_CHART = True
 except ImportError:
     _HAS_EQUITY_CHART = False
 
 try:
-    from helpertips.dashboard import _build_gale_chart
+    from helpertips.pages.home import _build_gale_chart
     _HAS_GALE_CHART = True
 except ImportError:
     _HAS_GALE_CHART = False
@@ -685,7 +686,7 @@ def test_build_gale_chart_colors():
 
 def test_layout_has_phase13_component_ids():
     """Verifica que IDs dos componentes Phase 13 estao no layout."""
-    ids = collect_ids(app.layout)
+    ids = collect_ids(home_layout)
     assert "phase13-placeholder" in ids, (
         f"phase13-placeholder ausente no layout. IDs encontrados: {sorted(ids)}"
     )
@@ -695,5 +696,40 @@ def test_layout_has_phase13_component_ids():
 
 def test_build_phase13_section_exists():
     """Verifica que _build_phase13_section e importavel."""
-    from helpertips.dashboard import _build_phase13_section
+    from helpertips.pages.home import _build_phase13_section
     assert callable(_build_phase13_section)
+
+
+# ---------------------------------------------------------------------------
+# Phase 14 — MPA-01, MPA-02: Dash Pages migration
+# ---------------------------------------------------------------------------
+
+def test_app_uses_pages():
+    """MPA-01: use_pages=True e suppress_callback_exceptions=True no app."""
+    assert app.config.get("suppress_callback_exceptions") is True, (
+        "app.config.suppress_callback_exceptions deve ser True"
+    )
+    # Verificar que pages_folder esta configurado (indica use_pages=True)
+    assert app.config.get("pages_folder") is not None, (
+        "app.config.pages_folder deve estar configurado (use_pages=True)"
+    )
+    assert "pages" in app.config.get("pages_folder", ""), (
+        "pages_folder deve apontar para o diretorio pages/"
+    )
+
+
+def test_shell_has_url_nav():
+    """MPA-01: Shell layout contem dcc.Location(id='url-nav') e dash.page_container."""
+    ids = collect_ids(app.layout)
+    assert "url-nav" in ids, f"url-nav ausente no shell layout. IDs: {sorted(ids)}"
+
+
+def test_home_page_registered():
+    """MPA-02: pages/home.py registrado com path='/'."""
+    import dash
+    registry = dash.page_registry
+    home_entries = [v for v in registry.values() if v.get("path") == "/"]
+    assert len(home_entries) >= 1, (
+        f"Esperado pelo menos 1 pagina com path='/', encontrado {len(home_entries)}. "
+        f"Registry: {list(registry.keys())}"
+    )
