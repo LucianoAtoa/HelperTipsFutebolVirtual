@@ -246,29 +246,25 @@ def calculate_roi(signals: list, stake: float, odd: float, gale_on: bool) -> dic
 
         tentativa = signal.get("tentativa") or 1
 
-        if not gale_on:
-            # Stake Fixa: same stake every time
-            invested = stake
-            if resultado == "GREEN":
-                net = stake * (odd - 1)
+        if resultado == "RED":
+            # RED: all 4 attempts were made and lost
+            if not gale_on:
+                invested = stake * 4
             else:
-                net = -stake
+                invested = stake * (2 ** 4 - 1)  # 10+20+40+80 = 150
+            net = -invested
+        elif not gale_on:
+            # GREEN Stake Fixa: same stake every time
+            invested = stake
+            net = stake * (odd - 1)
         else:
-            # Gale: stake doubles on each attempt
-            # Total invested across all N attempts: stake * (2^N - 1)
-            # The Nth attempt uses stake * 2^(N-1)
+            # GREEN Gale: stake doubles on each attempt
             accumulated_stake = stake * (2 ** tentativa - 1)
             winning_stake = stake * (2 ** (tentativa - 1))
             invested = accumulated_stake
-
-            if resultado == "GREEN":
-                # Win on last attempt: profit minus all prior losses
-                win_profit = winning_stake * (odd - 1)
-                prior_losses = accumulated_stake - winning_stake
-                net = win_profit - prior_losses
-            else:
-                # RED: lost all attempts
-                net = -accumulated_stake
+            win_profit = winning_stake * (odd - 1)
+            prior_losses = accumulated_stake - winning_stake
+            net = win_profit - prior_losses
 
         total_invested += invested
         profit += net
@@ -586,32 +582,29 @@ def calculate_roi_complementares(
                 signal.get("resultado"),
             )
 
-            if not gale_on:
-                # Stake Fixa: stake_comp fixo independente da tentativa
-                stake_comp = stake * percentual
-                invested = stake_comp
+            stake_comp = stake * percentual
 
-                if resultado_comp == "GREEN":
-                    net = stake_comp * (odd_ref - 1)
-                    per_comp[slug]["greens"] += 1
+            if resultado_comp != "GREEN":
+                # RED: all 4 attempts lost
+                if not gale_on:
+                    invested = stake_comp * 4
                 else:
-                    net = -stake_comp
-                    per_comp[slug]["reds"] += 1
+                    invested = stake * (2 ** 4 - 1) * percentual
+                net = -invested
+                per_comp[slug]["reds"] += 1
+            elif not gale_on:
+                # GREEN Stake Fixa
+                invested = stake_comp
+                net = stake_comp * (odd_ref - 1)
+                per_comp[slug]["greens"] += 1
             else:
-                # Gale: stake dobra a cada tentativa
-                # Acumulado = stake * (2^N - 1) * percentual
-                # Winning = stake * 2^(N-1) * percentual
+                # GREEN Gale
                 accumulated_stake = stake * (2 ** tentativa - 1) * percentual
                 winning_stake = stake * (2 ** (tentativa - 1)) * percentual
                 invested = accumulated_stake
-
-                if resultado_comp == "GREEN":
-                    prior_losses = accumulated_stake - winning_stake
-                    net = winning_stake * (odd_ref - 1) - prior_losses
-                    per_comp[slug]["greens"] += 1
-                else:
-                    net = -accumulated_stake
-                    per_comp[slug]["reds"] += 1
+                prior_losses = accumulated_stake - winning_stake
+                net = winning_stake * (odd_ref - 1) - prior_losses
+                per_comp[slug]["greens"] += 1
 
             per_comp[slug]["lucro"] += net
             per_comp[slug]["investido"] += invested
@@ -678,25 +671,24 @@ def calculate_pl_por_entrada(
         odd = odd_por_mercado.get(mercado_slug, 2.30)
 
         # Calculo principal (replicando formula exata de calculate_roi)
-        if gale_on:
+        if resultado == "RED":
+            # RED: all 4 attempts lost
+            if gale_on:
+                investido_principal = stake * (2 ** 4 - 1)
+            else:
+                investido_principal = stake * 4
+            retorno_principal = 0.0
+            lucro_principal = -investido_principal
+        elif gale_on:
             accumulated_stake = stake * (2 ** tentativa - 1)
             winning_stake = stake * (2 ** (tentativa - 1))
             investido_principal = accumulated_stake
-
-            if resultado == "GREEN":
-                retorno_principal = winning_stake * odd
-                lucro_principal = winning_stake * (odd - 1) - (accumulated_stake - winning_stake)
-            else:
-                retorno_principal = 0.0
-                lucro_principal = -accumulated_stake
+            retorno_principal = winning_stake * odd
+            lucro_principal = winning_stake * (odd - 1) - (accumulated_stake - winning_stake)
         else:
             investido_principal = stake
-            if resultado == "GREEN":
-                retorno_principal = stake * odd
-                lucro_principal = stake * (odd - 1)
-            else:
-                retorno_principal = 0.0
-                lucro_principal = -stake
+            retorno_principal = stake * odd
+            lucro_principal = stake * (odd - 1)
 
         # Calculo complementares (replicando logica de calculate_roi_complementares)
         comps = complementares_por_mercado.get(mercado_slug, [])
@@ -714,27 +706,26 @@ def calculate_pl_por_entrada(
                 signal.get("resultado"),
             )
 
-            if gale_on:
+            stake_comp = stake * percentual
+
+            if resultado_comp != "GREEN":
+                # RED: all 4 attempts lost
+                if gale_on:
+                    invested_comp = stake * (2 ** 4 - 1) * percentual
+                else:
+                    invested_comp = stake_comp * 4
+                ret_comp = 0.0
+                net_comp = -invested_comp
+            elif gale_on:
                 acc_comp = stake * (2 ** tentativa - 1) * percentual
                 win_comp = stake * (2 ** (tentativa - 1)) * percentual
                 invested_comp = acc_comp
-
-                if resultado_comp == "GREEN":
-                    ret_comp = win_comp * odd_ref
-                    net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
-                else:
-                    ret_comp = 0.0
-                    net_comp = -acc_comp
+                ret_comp = win_comp * odd_ref
+                net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
             else:
-                stake_comp = stake * percentual
                 invested_comp = stake_comp
-
-                if resultado_comp == "GREEN":
-                    ret_comp = stake_comp * odd_ref
-                    net_comp = stake_comp * (odd_ref - 1)
-                else:
-                    ret_comp = 0.0
-                    net_comp = -stake_comp
+                ret_comp = stake_comp * odd_ref
+                net_comp = stake_comp * (odd_ref - 1)
 
             investido_comp += invested_comp
             retorno_comp += ret_comp
@@ -836,27 +827,28 @@ def calculate_pl_detalhado_por_sinal(
     placar = sinal.get("placar")
 
     # --- Principal ---
-    if gale_on:
+    if resultado == "RED":
+        # RED: all 4 attempts lost
+        if gale_on:
+            investido_principal = stake * (2 ** 4 - 1)
+            stake_efetiva = stake * (2 ** 3)
+        else:
+            investido_principal = stake * 4
+            stake_efetiva = stake
+        retorno_principal = 0.0
+        lucro_principal = -investido_principal
+    elif gale_on:
         accumulated_stake = stake * (2 ** tentativa - 1)
         winning_stake = stake * (2 ** (tentativa - 1))
         investido_principal = accumulated_stake
         stake_efetiva = winning_stake
-
-        if resultado == "GREEN":
-            retorno_principal = winning_stake * odd_principal
-            lucro_principal = winning_stake * (odd_principal - 1) - (accumulated_stake - winning_stake)
-        else:
-            retorno_principal = 0.0
-            lucro_principal = -accumulated_stake
+        retorno_principal = winning_stake * odd_principal
+        lucro_principal = winning_stake * (odd_principal - 1) - (accumulated_stake - winning_stake)
     else:
         investido_principal = stake
         stake_efetiva = stake
-        if resultado == "GREEN":
-            retorno_principal = stake * odd_principal
-            lucro_principal = stake * (odd_principal - 1)
-        else:
-            retorno_principal = 0.0
-            lucro_principal = -stake
+        retorno_principal = stake * odd_principal
+        lucro_principal = stake * (odd_principal - 1)
 
     principal = {
         "odd": round(odd_principal, 2),
@@ -908,27 +900,26 @@ def calculate_pl_detalhado_por_sinal(
             })
             continue
 
-        if gale_on:
+        stake_comp = stake * percentual
+
+        if resultado_comp != "GREEN":
+            # RED: all 4 attempts lost
+            if gale_on:
+                invested_comp = stake * (2 ** 4 - 1) * percentual
+            else:
+                invested_comp = stake_comp * 4
+            ret_comp = 0.0
+            net_comp = -invested_comp
+        elif gale_on:
             acc_comp = stake * (2 ** tentativa - 1) * percentual
             win_comp = stake * (2 ** (tentativa - 1)) * percentual
             invested_comp = acc_comp
-
-            if resultado_comp == "GREEN":
-                ret_comp = win_comp * odd_ref
-                net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
-            else:
-                ret_comp = 0.0
-                net_comp = -acc_comp
+            ret_comp = win_comp * odd_ref
+            net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
         else:
-            stake_comp = stake * percentual
             invested_comp = stake_comp
-
-            if resultado_comp == "GREEN":
-                ret_comp = stake_comp * odd_ref
-                net_comp = stake_comp * (odd_ref - 1)
-            else:
-                ret_comp = 0.0
-                net_comp = -stake_comp
+            ret_comp = stake_comp * odd_ref
+            net_comp = stake_comp * (odd_ref - 1)
 
         complementares.append({
             "nome": nome,
