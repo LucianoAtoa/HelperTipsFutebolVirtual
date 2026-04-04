@@ -12,7 +12,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 **Shipped:** v1.1 Cloud Deploy (2026-04-04)
 **Codebase:** ~16k LOC Python | 209 testes | ~195 commits
-**Phase 13 complete:** Dashboard Análises Visuais — análise por liga, equity curve 3 linhas, donut gale
+**Phase 14 complete:** Migração Multi-Page Dash Pages — use_pages=True, shell mínimo + pages/home.py
 **Stack:** Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dash-bootstrap-components 2.0, gunicorn 25.x, nginx
 
 **O que funciona (produção na EC2):**
@@ -59,7 +59,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-- (Milestone v1.3 — definindo requirements)
+- Página Dash separada para análise individual de sinais — v1.3 Phase 15
 
 ### Validated (v1.2)
 
@@ -122,6 +122,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 | IAM instance profile em vez de access keys | Sem credenciais estáticas no servidor | ✓ Good — v1.1 |
 | Handler único multi-grupo com chats=[lista] | Telethon nativo, menor mudança, mesmo parser | ✓ Good — v1.2 |
 | group_id + mercado_id no schema signals | Deduplicação correta entre grupos, FK para P&L | ✓ Good — v1.2 |
+| Dash Pages (use_pages=True) em vez de single-page | Habilita URL routing para página de detalhe do sinal | ✓ Good — v1.3 |
 
 ## Evolution
 
@@ -141,4 +142,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Milestone v1.3 started*
+*Last updated: 2026-04-04 after Phase 14 complete*
