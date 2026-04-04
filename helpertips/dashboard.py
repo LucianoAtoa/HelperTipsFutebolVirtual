@@ -20,6 +20,7 @@ process from listener.py — do NOT import Telethon here.
 """
 
 import os
+from collections import defaultdict
 from datetime import date, timedelta
 
 import dash
@@ -68,6 +69,77 @@ def _entrada_para_slug(entrada: str | None) -> str | None:
     if entrada is None:
         return None
     return _ENTRADA_SLUG_MAP.get(entrada)
+
+
+def _calcular_stakes_gale(stake_base: float, percentual: float) -> tuple[float, float, float, float]:
+    """Retorna (T1, T2, T3, T4) para um complementar dado stake base e percentual.
+
+    T1 = stake_base * percentual
+    T2 = T1 * 2  (gale nivel 2)
+    T3 = T1 * 4  (gale nivel 3)
+    T4 = T1 * 8  (gale nivel 4)
+    """
+    t1 = stake_base * percentual
+    return t1, t1 * 2, t1 * 4, t1 * 8
+
+
+def _agregar_por_entrada(pl_lista: list[dict]) -> list[dict]:
+    """Agrega P&L por entrada (visao geral — mercado 'Todos').
+
+    Recebe lista de dicts no formato de calculate_pl_por_entrada e retorna
+    uma lista de dicts agrupados por campo 'entrada', com totais de greens,
+    reds, investido, retorno, lucro, taxa_green, taxa_red e roi.
+    """
+    if not pl_lista:
+        return []
+    grupos: dict[str, dict] = defaultdict(lambda: {
+        "greens": 0, "reds": 0,
+        "investido": 0.0, "retorno": 0.0, "lucro": 0.0,
+    })
+    for row in pl_lista:
+        g = grupos[row.get("entrada") or "?"]
+        g["greens"] += 1 if row.get("resultado") == "GREEN" else 0
+        g["reds"] += 1 if row.get("resultado") == "RED" else 0
+        g["investido"] += row.get("investido_total", 0.0)
+        g["retorno"] += row.get("retorno_principal", 0.0) + row.get("retorno_comp", 0.0)
+        g["lucro"] += row.get("lucro_total", 0.0)
+    result = []
+    for entrada_nome, g in grupos.items():
+        total = g["greens"] + g["reds"]
+        taxa = g["greens"] / total * 100 if total > 0 else 0
+        roi = g["lucro"] / g["investido"] * 100 if g["investido"] > 0 else 0
+        result.append({
+            "entrada": entrada_nome,
+            "greens": g["greens"],
+            "reds": g["reds"],
+            "total": total,
+            "investido": round(g["investido"], 2),
+            "retorno": round(g["retorno"], 2),
+            "lucro": round(g["lucro"], 2),
+            "taxa_green": round(taxa, 1),
+            "taxa_red": round(100 - taxa, 1) if total > 0 else 0,
+            "roi": round(roi, 1),
+        })
+    return result
+
+
+# Conjuntos de colunas para toggle de visualizacao de performance (D-05)
+COLUNAS_SEMPRE = ["entrada"]
+COLUNAS_PCT = COLUNAS_SEMPRE + ["taxa_green", "taxa_red", "roi"]
+COLUNAS_QTY = COLUNAS_SEMPRE + ["greens", "reds", "total"]
+COLUNAS_PL = COLUNAS_SEMPRE + ["investido", "retorno", "lucro", "roi"]
+
+
+def _get_colunas_visiveis(modo: str) -> list[str]:
+    """Retorna lista de colunas visiveis para o modo do toggle de performance.
+
+    Modos:
+      'pct' — Percentual: taxa green (%), taxa red (%), ROI (%)
+      'qty' — Quantidade: greens (n), reds (n), total (n)
+      'pl'  — P&L (R$): investido, retorno, lucro, ROI
+    """
+    mapa = {"pct": COLUNAS_PCT, "qty": COLUNAS_QTY, "pl": COLUNAS_PL}
+    return mapa.get(modo, COLUNAS_PCT)
 
 
 def make_kpi_card(title: str, value_id: str, color_class: str = "text-light"):
@@ -212,7 +284,33 @@ app.layout = dbc.Container([
         ]),
     ]), className="mb-3"),
 
-    # AG Grid historico (D-03 — preservado)
+    # Secoes Phase 12: Config Mercados + Performance (D-08)
+    html.Div(id="config-mercados-container", className="mb-3"),
+
+    # Toggle de visualizacao + Tabela de Performance (D-04)
+    dbc.Card(dbc.CardBody([
+        html.H6("Performance das Entradas", className="card-title text-muted"),
+        dbc.RadioItems(
+            id="perf-toggle-view",
+            options=[
+                {"label": "Percentual", "value": "pct"},
+                {"label": "Quantidade", "value": "qty"},
+                {"label": "P&L (R$)", "value": "pl"},
+            ],
+            value="pct",
+            inline=True,
+            input_class_name="btn-check",
+            label_class_name="btn btn-outline-secondary btn-sm",
+            label_checked_class_name="active",
+            className="mb-3",
+        ),
+        html.Div(id="perf-table"),
+    ]), className="mb-3"),
+
+    # Placeholder para Phase 13 (D-08)
+    html.Div(id="phase13-placeholder"),
+
+    # AG Grid historico (D-09 — movido para apos as novas secoes)
     dbc.Card(dbc.CardBody([
         html.H6("Historico de Sinais", className="card-title text-muted"),
         dag.AgGrid(
@@ -237,9 +335,6 @@ app.layout = dbc.Container([
             style={"width": "100%"},
         ),
     ]), className="mb-3"),
-
-    # Placeholder para fases 12-13
-    html.Div(id="analytics-placeholder"),
 
     # Modal parse failures (mantido — redesenho futuro)
     dbc.Modal([
