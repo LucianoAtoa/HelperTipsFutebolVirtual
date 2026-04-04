@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Multi-Market Analytics
-status: verifying
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-04-04T16:28:27.742Z"
+milestone: v1.3
+milestone_name: "An\u00e1lise Individual de Sinais"
+status: defining-requirements
+stopped_at: Milestone v1.3 started
+last_updated: "2026-04-04T17:50:00.000Z"
 last_activity: 2026-04-04
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 13 — dashboard-an-lises-visuais
+**Current focus:** Milestone v1.3 — Análise Individual de Sinais
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-04
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-04 — Milestone v1.3 started
 
 Progress: [░░░░░░░░░░] 0%
 

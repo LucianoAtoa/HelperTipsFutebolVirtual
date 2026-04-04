@@ -59,7 +59,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-- (Milestone v1.2 completo — todas as fases entregues)
+- (Milestone v1.3 — definindo requirements)
 
 ### Validated (v1.2)
 
@@ -68,14 +68,17 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Dashboard mercados e performance: config read-only e tabela P&L por entrada com toggle — v1.2 Phase 12
 - ✓ Dashboard análises visuais: análise por liga, equity curve, análise de gale — v1.2 Phase 13
 
-## Current Milestone: v1.2 Multi-Market Analytics
+## Current Milestone: v1.3 Análise Individual de Sinais
 
-**Goal:** Adicionar captura do grupo Ambas Marcam, implementar cálculo financeiro P&L com complementares e Martingale, e redesenhar o Dashboard com foco em análise de lucro/prejuízo.
+**Goal:** Criar página dedicada para análise detalhada de cada sinal, exibindo todas as entradas (principal + complementares) com resultados, horários e lucro/prejuízo. Página separada para acomodar futuras expansões.
 
 **Target features:**
-- Listener multi-grupo (Over 2.5 + Ambas Marcam)
-- Entradas complementares com P&L financeiro por mercado (stake %, odds referência, Martingale 4 tentativas)
-- Redesign Dashboard: filtros globais, KPIs com P&L, config de mercados, performance por entrada, análise por liga, equity curve, análise de gale
+- Página Dash separada acessível ao clicar em um sinal no histórico
+- Exibição da entrada principal: mercado, odd, stake, resultado (GREEN/RED), horário, lucro
+- Exibição de cada entrada complementar: nome, odd, stake, resultado validado pelo placar, horário, lucro
+- Totais consolidados: investido total, retorno total, lucro líquido
+- Horário de cada entrada visível
+- Estrutura extensível para futuras informações adicionais
 
 ### Out of Scope
 
@@ -138,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 11 Dashboard Fundação completed*
+*Last updated: 2026-04-04 after Milestone v1.3 started*
