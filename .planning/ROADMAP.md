@@ -67,12 +67,12 @@ Plans:
   3. Budget alert ativo no AWS Console — email enviado ao atingir $15/mês
   4. Credenciais (Telegram API, DB password) acessíveis para os processos mas ausentes de arquivos no repositório
   5. Arquivo `.session` com backup automático ou armazenado em volume persistente — survives reboot
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: Provisionar EC2, Elastic IP, Security Group e configurar acesso SSH (AWS-01)
-- [ ] 06-02: Instalar PostgreSQL na EC2, migrar schema, configurar billing alert (AWS-02, AWS-03)
-- [ ] 06-03: Configurar credenciais seguras no servidor e backup do .session (AWS-04, AWS-05)
+- [ ] 06-01-PLAN.md — Script bootstrap EC2 + guia provisionamento AWS Console (AWS-01)
+- [ ] 06-02-PLAN.md — Setup PostgreSQL 16 + migracao schema + budget alert $15/mes (AWS-02, AWS-03)
+- [ ] 06-03-PLAN.md — Backup diario pg_dump + .session para S3 via IAM instance profile (AWS-04, AWS-05)
 
 ### Phase 7: Listener Deployment
 **Goal**: Listener capturando sinais do Telegram 24/7 na EC2, sobrevivendo a crashes e reboots
