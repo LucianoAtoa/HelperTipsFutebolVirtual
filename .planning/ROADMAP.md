@@ -43,7 +43,7 @@
 
 ### v1.3 Análise Individual de Sinais (Phases 14-15)
 
-- [ ] **Phase 14: Migração Multi-Page** — Dashboard refatorado para Dash Pages com `use_pages=True` sem regressões
+- [x] **Phase 14: Migração Multi-Page** — Dashboard refatorado para Dash Pages com `use_pages=True` sem regressões (completed 2026-04-04)
 - [ ] **Phase 15: Página de Detalhe do Sinal** — Usuário clica em sinal no histórico e visualiza breakdown completo de P&L
 
 ## Phase Details
@@ -136,7 +136,7 @@ Plans:
   5. `suppress_callback_exceptions=True` configurado no app para suportar callbacks de múltiplas páginas
 **Plans**: 1 plan
 Plans:
-- [ ] 14-01-PLAN.md — Migracao dashboard.py para shell + pages/home.py + testes atualizados
+- [x] 14-01-PLAN.md — Migracao dashboard.py para shell + pages/home.py + testes atualizados
 **UI hint**: yes
 
 ### Phase 15: Página de Detalhe do Sinal
@@ -171,5 +171,5 @@ Plans:
 | 11. Dashboard Fundação | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete | 2026-04-04 |
-| 14. Migração Multi-Page | v1.3 | 0/1 | Not started | - |
+| 14. Migração Multi-Page | v1.3 | 1/1 | Complete   | 2026-04-04 |
 | 15. Página de Detalhe do Sinal | v1.3 | 0/? | Not started | - |

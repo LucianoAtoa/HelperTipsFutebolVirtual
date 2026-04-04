@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.3
-milestone_name: "Análise Individual de Sinais"
-status: roadmap-ready
-stopped_at: Roadmap v1.3 criado — Phase 14 next
-last_updated: "2026-04-04T18:00:00.000Z"
+milestone_name: Análise Individual de Sinais
+status: verifying
+stopped_at: Completed 14-migra-o-multi-page/14-01-PLAN.md
+last_updated: "2026-04-04T18:47:23.498Z"
 last_activity: 2026-04-04
 progress:
-  total_phases: 2
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 7
+  completed_phases: 6
+  total_plans: 11
+  completed_plans: 11
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Milestone v1.3 — Análise Individual de Sinais
+**Current focus:** Phase 14 — migra-o-multi-page
 
 ## Current Position
 
-Phase: Phase 14 — Migração Multi-Page (not started)
-Plan: —
-Status: Roadmap aprovado, aguardando plan-phase 14
-Last activity: 2026-04-04 — Roadmap v1.3 criado
+Phase: 14 (migra-o-multi-page) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -75,6 +75,8 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 - [Phase 13-dashboard-an-lises-visuais]: Builders Plotly retornam go.Figure() vazio para input vazio — sem erros, padrao consistente com Phases 11-12
 - [Phase 13]: Calculo de signals_placar/comps/odds/pl_lista no nivel do callback (step 19) reutilizados por _build_phase13_section sem round-trips extras ao banco
 - [Phase 13]: Aceitar segunda chamada a get_signals_com_placar em relacao a _build_performance_section como trade-off de simplicidade (dataset pequeno, sem impacto perceptivel)
+- [Phase 14-migra-o-multi-page]: app.config em Dash 4.1.0 e dict (nao objeto): usar app.config.get() em testes MPA
+- [Phase 14-migra-o-multi-page]: dash.register_page duplo registro em testes — usar >= 1 em vez de == 1 no test_home_page_registered
 
 ### Pending Todos
 
@@ -90,6 +92,6 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 
 ## Session Continuity
 
-Last session: 2026-04-04T17:50:00.000Z
-Stopped at: Roadmap v1.3 criado
+Last session: 2026-04-04T18:47:23.495Z
+Stopped at: Completed 14-migra-o-multi-page/14-01-PLAN.md
 Resume file: None

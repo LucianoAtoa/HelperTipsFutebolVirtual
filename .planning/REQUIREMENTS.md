@@ -9,8 +9,8 @@ Requirements para página dedicada de análise individual de sinais com breakdow
 
 ### Estrutura Multi-Page
 
-- [ ] **MPA-01**: Dashboard migrado para Dash Pages (`use_pages=True`) com layout principal + `dash.page_container`
-- [ ] **MPA-02**: Página home (`pages/home.py`) renderiza o dashboard atual sem regressões visuais ou funcionais
+- [x] **MPA-01**: Dashboard migrado para Dash Pages (`use_pages=True`) com layout principal + `dash.page_container`
+- [x] **MPA-02**: Página home (`pages/home.py`) renderiza o dashboard atual sem regressões visuais ou funcionais
 
 ### Página de Detalhe do Sinal
 
@@ -98,8 +98,8 @@ Deferred to future release.
 | DASH-05 | Phase 13 | Complete |
 | DASH-06 | Phase 13 | Complete |
 | DASH-07 | Phase 13 | Complete |
-| MPA-01 | Phase 14 | Pending |
-| MPA-02 | Phase 14 | Pending |
+| MPA-01 | Phase 14 | Complete |
+| MPA-02 | Phase 14 | Complete |
 | SIG-01 | Phase 15 | Pending |
 | SIG-02 | Phase 15 | Pending |
 | SIG-03 | Phase 15 | Pending |
