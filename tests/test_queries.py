@@ -1715,3 +1715,126 @@ def test_aggregate_pl_por_tentativa_no_greens():
     result = aggregate_pl_por_tentativa(sinais)
     # Nenhum GREEN, entao tentativa 3 nao aparece (nao foi agrupada)
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 15 — Pagina de detalhe do sinal
+# get_sinal_detalhado + calculate_pl_detalhado_por_sinal
+# ---------------------------------------------------------------------------
+
+_HAS_DETALHE = False
+try:
+    from helpertips.queries import (  # noqa: E402
+        calculate_pl_detalhado_por_sinal,
+        get_sinal_detalhado,
+    )
+    _HAS_DETALHE = True
+except ImportError:
+    pass
+
+# Configuracao de complementares reutilizada nos testes puro-Python
+_COMPS_CONFIG = [
+    {
+        "nome_display": "Over 3.5",
+        "percentual": 0.20,
+        "odd_ref": 3.50,
+        "regra_validacao": "over_3_5",
+    },
+    {
+        "nome_display": "Over 4.5",
+        "percentual": 0.01,
+        "odd_ref": 7.00,
+        "regra_validacao": "over_4_5",
+    },
+]
+
+
+def test_get_sinal_detalhado_not_found(db_conn):
+    """get_sinal_detalhado com ID inexistente retorna None."""
+    if not _HAS_DETALHE:
+        pytest.skip("get_sinal_detalhado nao disponivel")
+    result = get_sinal_detalhado(db_conn, 999999)
+    assert result is None
+
+
+def test_calculate_pl_detalhado_green_t1():
+    """Sinal GREEN tentativa 1 retorna calculos corretos de principal e complementares."""
+    if not _HAS_DETALHE:
+        pytest.skip("calculate_pl_detalhado_por_sinal nao disponivel")
+    sinal = {"resultado": "GREEN", "placar": "3-1", "tentativa": 1, "mercado_slug": "over_2_5"}
+    result = calculate_pl_detalhado_por_sinal(
+        sinal, _COMPS_CONFIG, stake=10.0, odd_principal=2.30, gale_on=False
+    )
+    assert result["principal"]["investido"] == 10.0
+    assert result["principal"]["retorno"] == pytest.approx(23.0)
+    assert result["principal"]["lucro"] == pytest.approx(13.0)
+    assert result["principal"]["resultado"] == "GREEN"
+    assert len(result["complementares"]) == 2
+    assert result["complementares"][0]["nome"] == "Over 3.5"
+    # Over 3.5: placar 3-1 -> total 4 > 3.5 -> GREEN
+    assert result["complementares"][0]["resultado"] == "GREEN"
+    # Over 4.5: placar 3-1 -> total 4 > 4.5? Nao -> RED
+    assert result["complementares"][1]["resultado"] == "RED"
+    # Totais = principal + soma complementares
+    expected_investido = result["principal"]["investido"] + sum(
+        c["investido"] for c in result["complementares"]
+    )
+    assert result["totais"]["investido"] == pytest.approx(expected_investido)
+
+
+def test_calculate_pl_detalhado_red():
+    """Sinal RED tentativa 1: principal lucro=-10, complementares todos RED."""
+    if not _HAS_DETALHE:
+        pytest.skip("calculate_pl_detalhado_por_sinal nao disponivel")
+    sinal = {"resultado": "RED", "placar": "1-0", "tentativa": 1, "mercado_slug": "over_2_5"}
+    result = calculate_pl_detalhado_por_sinal(
+        sinal, _COMPS_CONFIG, stake=10.0, odd_principal=2.30, gale_on=False
+    )
+    assert result["principal"]["lucro"] == pytest.approx(-10.0)
+    assert result["principal"]["retorno"] == pytest.approx(0.0)
+    # Complementares: principal RED -> todos RED (D-08 de validar_complementar)
+    for comp in result["complementares"]:
+        assert comp["resultado"] == "RED"
+
+
+def test_calculate_pl_detalhado_green_t2_gale():
+    """Sinal GREEN tentativa 2 com gale_on=True aplica fator correto."""
+    if not _HAS_DETALHE:
+        pytest.skip("calculate_pl_detalhado_por_sinal nao disponivel")
+    sinal = {"resultado": "GREEN", "placar": "4-2", "tentativa": 2, "mercado_slug": "over_2_5"}
+    result = calculate_pl_detalhado_por_sinal(
+        sinal, _COMPS_CONFIG, stake=10.0, odd_principal=2.30, gale_on=True
+    )
+    # Gale T2: accumulated=10*(2^2-1)=30, winning=10*(2^1)=20
+    assert result["principal"]["investido"] == pytest.approx(30.0)
+    assert result["principal"]["stake_efetiva"] == pytest.approx(20.0)
+
+
+def test_calculate_pl_detalhado_sem_placar():
+    """Sinal GREEN com placar=None: principal GREEN, complementares todos N/A."""
+    if not _HAS_DETALHE:
+        pytest.skip("calculate_pl_detalhado_por_sinal nao disponivel")
+    sinal = {"resultado": "GREEN", "placar": None, "tentativa": 1, "mercado_slug": "over_2_5"}
+    result = calculate_pl_detalhado_por_sinal(
+        sinal, _COMPS_CONFIG, stake=10.0, odd_principal=2.30, gale_on=False
+    )
+    # Principal: GREEN independente de placar
+    assert result["principal"]["resultado"] == "GREEN"
+    # Complementares: placar None -> N/A
+    for comp in result["complementares"]:
+        assert comp["resultado"] == "N/A"
+        assert comp["lucro"] == 0.0
+        assert comp["investido"] == 0.0
+
+
+def test_calculate_pl_detalhado_complementar_individual():
+    """Cada complementar no retorno tem todas as keys necessarias."""
+    if not _HAS_DETALHE:
+        pytest.skip("calculate_pl_detalhado_por_sinal nao disponivel")
+    sinal = {"resultado": "GREEN", "placar": "5-2", "tentativa": 1, "mercado_slug": "over_2_5"}
+    result = calculate_pl_detalhado_por_sinal(
+        sinal, _COMPS_CONFIG, stake=10.0, odd_principal=2.30, gale_on=False
+    )
+    required_keys = {"nome", "odd", "stake", "resultado", "lucro", "investido", "retorno"}
+    for comp in result["complementares"]:
+        assert required_keys.issubset(comp.keys()), f"Faltam keys em complementar: {comp.keys()}"
