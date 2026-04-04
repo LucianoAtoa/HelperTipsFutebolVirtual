@@ -95,12 +95,11 @@ Plans:
   1. Acessar `http://<EC2-IP>` no browser pede usuário e senha antes de mostrar qualquer conteúdo
   2. Dashboard carrega com dados reais do banco — KPI cards com contagens corretas
   3. Reiniciar o servidor sobe dashboard automaticamente — `systemctl status helpertips-dashboard` mostra `active`
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: Configurar gunicorn como systemd service para o dashboard (DEP-02)
-- [ ] 08-02: Configurar nginx como reverse proxy com HTTP Basic Auth (DEP-03, DEP-04)
-**UI hint**: yes
+- [ ] 08-01-PLAN.md — Expor WSGI callable, adicionar gunicorn, criar script systemd + logrotate (DEP-02)
+- [ ] 08-02-PLAN.md — Configurar nginx como reverse proxy com HTTP Basic Auth (DEP-03, DEP-04)
 
 ## Progress
 
