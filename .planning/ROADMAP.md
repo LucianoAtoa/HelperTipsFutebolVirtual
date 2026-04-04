@@ -82,10 +82,10 @@ Plans:
   1. Autenticação Telethon interativa completada via SSH — arquivo `.session` gerado na EC2
   2. `systemctl status helpertips-listener` mostra `active (running)` após reboot do servidor
   3. Sinal capturado localmente aparece no banco na EC2 — listener está processando mensagens reais
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 07-01: Autenticação interativa Telethon via SSH e conversão para systemd service (DEP-05, DEP-01)
+- [ ] 07-01-PLAN.md — Logging condicional, script systemd, autenticacao interativa SSH (DEP-05, DEP-01)
 
 ### Phase 8: Dashboard & Proxy
 **Goal**: Dashboard acessível publicamente via HTTP com proteção por senha, servido por stack de produção
