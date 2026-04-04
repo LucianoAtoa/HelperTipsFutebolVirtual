@@ -50,7 +50,7 @@
   4. Parser identifica o mercado principal corretamente pela "Entrada recomendada" da mensagem
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
+- [x] 09-01-PLAN.md — Migration SQL (group_id, mercado_id) + store com _resolve_mercado_id e upsert atualizado
 - [ ] 09-02-PLAN.md — Listener multi-grupo com handler unico + .env.example atualizado
 
 ### Phase 10: Lógica Financeira

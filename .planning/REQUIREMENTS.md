@@ -9,8 +9,8 @@ Requirements para multi-mercado, cálculo financeiro e redesign do dashboard.
 
 ### Listener Multi-Grupo
 
-- [ ] **LIST-01**: Listener escuta grupos Over 2.5 e Ambas Marcam simultaneamente via lista de group IDs no .env (TELEGRAM_GROUP_IDS=id1,id2)
-- [ ] **LIST-02**: Parser identifica mercado principal pelo conteúdo da "Entrada recomendada" na mensagem — campo `entrada` armazena "Over 2.5" ou "Ambas Marcam"
+- [x] **LIST-01**: Listener escuta grupos Over 2.5 e Ambas Marcam simultaneamente via lista de group IDs no .env (TELEGRAM_GROUP_IDS=id1,id2)
+- [x] **LIST-02**: Parser identifica mercado principal pelo conteúdo da "Entrada recomendada" na mensagem — campo `entrada` armazena "Over 2.5" ou "Ambas Marcam"
 
 ### Cálculo Financeiro
 
@@ -65,8 +65,8 @@ Deferred to future release.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIST-01 | Phase 9 | Pending |
-| LIST-02 | Phase 9 | Pending |
+| LIST-01 | Phase 9 | Complete |
+| LIST-02 | Phase 9 | Complete |
 | FIN-01 | Phase 10 | Pending |
 | FIN-02 | Phase 10 | Pending |
 | FIN-03 | Phase 10 | Pending |
