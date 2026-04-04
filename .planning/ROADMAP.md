@@ -24,7 +24,7 @@
 - [x] **Phase 4: Security Audit** - Repositório limpo de secrets, debug=False, documentação de segurança (completed 2026-04-03)
 - [x] **Phase 5: GitHub Publication** - Repositório público com CI/CD automatizado via GitHub Actions (completed 2026-04-03)
 - [ ] **Phase 6: AWS Infrastructure** - EC2 t3.micro provisionada com PostgreSQL, billing alert e credenciais seguras
-- [ ] **Phase 7: Listener Deployment** - Listener rodando 24/7 via systemd com sessão Telethon autenticada
+- [x] **Phase 7: Listener Deployment** - Listener rodando 24/7 via systemd com sessão Telethon autenticada (completed 2026-04-04)
 - [ ] **Phase 8: Dashboard & Proxy** - Dashboard acessível via nginx com HTTP Basic Auth
 
 ## Phase Details
@@ -85,7 +85,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 07-01-PLAN.md — Logging condicional, script systemd, autenticacao interativa SSH (DEP-05, DEP-01)
+- [x] 07-01-PLAN.md — Logging condicional, script systemd, autenticacao interativa SSH (DEP-05, DEP-01)
 
 ### Phase 8: Dashboard & Proxy
 **Goal**: Dashboard acessível publicamente via HTTP com proteção por senha, servido por stack de produção
@@ -113,5 +113,5 @@ Plans:
 | 4. Security Audit | v1.1 | 2/2 | Complete   | 2026-04-03 |
 | 5. GitHub Publication | v1.1 | 2/2 | Complete   | 2026-04-03 |
 | 6. AWS Infrastructure | v1.1 | 2/3 | In Progress|  |
-| 7. Listener Deployment | v1.1 | 0/1 | Not started | - |
+| 7. Listener Deployment | v1.1 | 1/1 | Complete   | 2026-04-04 |
 | 8. Dashboard & Proxy | v1.1 | 0/2 | Not started | - |

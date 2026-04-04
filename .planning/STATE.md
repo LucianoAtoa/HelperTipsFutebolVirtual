@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
 status: verifying
-stopped_at: Phase 7 context gathered
-last_updated: "2026-04-04T03:37:28.848Z"
+stopped_at: "Completed 07-01-PLAN.md — checkpoint:human-action Task 3 pendente (autenticacao Telethon EC2)"
+last_updated: "2026-04-04T04:01:04.328Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 06 — aws-infrastructure
+**Current focus:** Phase 07 — listener-deployment
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
+Phase: 07 (listener-deployment) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-aws-infrastructure P01 | 2 | 1 tasks | 2 files |
 | Phase 06-aws-infrastructure P02 | 1 | 1 tasks | 2 files |
 | Phase 06-aws-infrastructure P03 | 1 | 1 tasks | 2 files |
+| Phase 07 P01 | 189 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,9 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 - [Phase 06-aws-infrastructure]: Budget alert a 80% ($12) em vez de 100% ($15) — antecipacao para reagir antes de ultrapassar o limite
 - [Phase 06-aws-infrastructure]: IAM instance profile em vez de access keys estaticos — credenciais temporarias via IMDS sem segredo adicional em disco
 - [Phase 06-aws-infrastructure]: pg_dump formato custom (-Fc) — comprimido automaticamente, restauravel seletivamente com pg_restore
+- [Phase 07]: configure_logging() com LOG_PATH como constante de modulo — testabilidade sem mock de path hardcoded
+- [Phase 07]: StartLimitBurst/StartLimitIntervalSec na secao [Unit] (nao [Service]) — pitfall critico que causa ignoramento silencioso
+- [Phase 07]: StandardOutput=null no unit file — logs vao para RotatingFileHandler, evita duplicacao no journald
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-04T03:37:28.845Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-listener-deployment/07-CONTEXT.md
+Last session: 2026-04-04T04:01:04.326Z
+Stopped at: Completed 07-01-PLAN.md — checkpoint:human-action Task 3 pendente (autenticacao Telethon EC2)
+Resume file: None
