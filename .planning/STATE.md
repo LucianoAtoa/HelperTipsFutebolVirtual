@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Análise Individual de Sinais
-status: verifying
-stopped_at: Completed 14-migra-o-multi-page/14-01-PLAN.md
-last_updated: "2026-04-04T18:56:27.028Z"
+status: executing
+stopped_at: Completed 15-p-gina-de-detalhe-do-sinal/15-01-PLAN.md
+last_updated: "2026-04-04T19:33:13.022Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 13
+  completed_plans: 12
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 14 — migra-o-multi-page
+**Current focus:** Phase 15 — p-gina-de-detalhe-do-sinal
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 15 (p-gina-de-detalhe-do-sinal) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -77,6 +77,8 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 - [Phase 13]: Aceitar segunda chamada a get_signals_com_placar em relacao a _build_performance_section como trade-off de simplicidade (dataset pequeno, sem impacto perceptivel)
 - [Phase 14-migra-o-multi-page]: app.config em Dash 4.1.0 e dict (nao objeto): usar app.config.get() em testes MPA
 - [Phase 14-migra-o-multi-page]: dash.register_page duplo registro em testes — usar >= 1 em vez de == 1 no test_home_page_registered
+- [Phase 15-p-gina-de-detalhe-do-sinal]: placar=None em calculate_pl_detalhado_por_sinal -> complementares N/A com lucro=0 e investido=0 (diferente de validar_complementar que retorna RED para placar=None)
+- [Phase 15-p-gina-de-detalhe-do-sinal]: stake_efetiva adicionada ao dict principal de calculate_pl_detalhado_por_sinal para expor winning_stake do Gale ao chamador
 
 ### Pending Todos
 
@@ -92,6 +94,6 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 
 ## Session Continuity
 
-Last session: 2026-04-04T18:47:23.495Z
-Stopped at: Completed 14-migra-o-multi-page/14-01-PLAN.md
+Last session: 2026-04-04T19:33:13.019Z
+Stopped at: Completed 15-p-gina-de-detalhe-do-sinal/15-01-PLAN.md
 Resume file: None
