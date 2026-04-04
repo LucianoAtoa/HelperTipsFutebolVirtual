@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Configurações de Mercado + Dashboard Ajustes
-status: verifying
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-04-04T22:31:12.476Z"
+status: executing
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-04-04T23:05:03.374Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 11
   completed_phases: 8
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 16
+  completed_plans: 15
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 16 — navega-o-schema-db
+**Current focus:** Phase 17 — p-gina-de-configura-es
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 17 (p-gina-de-configura-es) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -56,6 +56,8 @@ Decisions arquivadas em PROJECT.md Key Decisions table.
 - [Phase 15]: stake_efetiva adicionada ao dict principal para expor winning_stake do Gale ao chamador
 - [Phase 16-navega-o-schema-db]: dbc.NavLink active='exact' destaca tab ativa nativamente sem callback — funciona com Dash Pages + dbc 2.x
 - [Phase 16-navega-o-schema-db]: ADD COLUMN IF NOT EXISTS para migrations idemptentes em ensure_schema — padrao Phase 16
+- [Phase 17-p-gina-de-configura-es]: calculate_preview_stakes: chaves Tn dinamicas permitem max_tentativas variavel sem hardcode
+- [Phase 17-p-gina-de-configura-es]: Funcoes puras de preview separadas de I/O DB para callbacks Dash sem round-trip ao banco
 
 ### Pending Todos
 
@@ -69,6 +71,6 @@ Decisions arquivadas em PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-04-04T22:28:08.090Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-04-04T23:05:03.372Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None

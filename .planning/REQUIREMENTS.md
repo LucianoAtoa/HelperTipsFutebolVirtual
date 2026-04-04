@@ -9,11 +9,11 @@ Requirements para página de configurações editável, listener config-aware e 
 
 ### Configuração de Mercado
 
-- [ ] **CFG-01**: Usuário pode editar stake base, fator de progressão e máximo de tentativas na página `/config`
-- [ ] **CFG-02**: Usuário pode editar percentual (%) e odd de referência de cada complementar por mercado principal (Over 2.5 / Ambas Marcam)
-- [ ] **CFG-03**: Página exibe preview de stakes por tentativa (T1–T4) e total em risco, recalculando em tempo real ao editar
-- [ ] **CFG-04**: Ao salvar, configuração persiste no banco e fica ativa para próximos sinais capturados
-- [ ] **CFG-05**: Página carrega com valores padrão (odds atualizadas) se não houver config salva
+- [x] **CFG-01**: Usuário pode editar stake base, fator de progressão e máximo de tentativas na página `/config`
+- [x] **CFG-02**: Usuário pode editar percentual (%) e odd de referência de cada complementar por mercado principal (Over 2.5 / Ambas Marcam)
+- [x] **CFG-03**: Página exibe preview de stakes por tentativa (T1–T4) e total em risco, recalculando em tempo real ao editar
+- [x] **CFG-04**: Ao salvar, configuração persiste no banco e fica ativa para próximos sinais capturados
+- [x] **CFG-05**: Página carrega com valores padrão (odds atualizadas) se não houver config salva
 
 ### Listener Config-Aware
 
@@ -33,7 +33,7 @@ Requirements para página de configurações editável, listener config-aware e 
 
 ### Navegação
 
-- [ ] **NAV-01**: Menu/tabs no topo permite alternar entre Dashboard (`/`) e Configurações (`/config`)
+- [x] **NAV-01**: Menu/tabs no topo permite alternar entre Dashboard (`/`) e Configurações (`/config`)
 
 ## Future Requirements
 
@@ -71,12 +71,12 @@ Deferred to future release.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | Phase 16 | Pending |
-| CFG-01 | Phase 17 | Pending |
-| CFG-02 | Phase 17 | Pending |
-| CFG-03 | Phase 17 | Pending |
-| CFG-04 | Phase 17 | Pending |
-| CFG-05 | Phase 17 | Pending |
+| NAV-01 | Phase 16 | Complete |
+| CFG-01 | Phase 17 | Complete |
+| CFG-02 | Phase 17 | Complete |
+| CFG-03 | Phase 17 | Complete |
+| CFG-04 | Phase 17 | Complete |
+| CFG-05 | Phase 17 | Complete |
 | LIS-01 | Phase 18 | Pending |
 | LIS-02 | Phase 18 | Pending |
 | HIST-01 | Phase 19 | Pending |

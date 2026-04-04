@@ -195,7 +195,7 @@ Plans:
   5. Recarregar a página após salvar exibe os valores recém-salvos (persistência confirmada)
 **Plans**: 2 plans
 Plans:
-- [ ] 17-01-PLAN.md — TDD: get_mercado_config atualizado + calculate_preview_stakes + calculate_total_risco + save functions
+- [x] 17-01-PLAN.md — TDD: get_mercado_config atualizado + calculate_preview_stakes + calculate_total_risco + save functions
 - [ ] 17-02-PLAN.md — Layout completo /config com callbacks de preview e save + verificacao visual
 **UI hint**: yes
 
@@ -244,6 +244,6 @@ Plans:
 | 14. Migração Multi-Page | v1.3 | 1/1 | Complete | 2026-04-04 |
 | 15. Página de Detalhe do Sinal | v1.3 | 2/2 | Complete | 2026-04-04 |
 | 16. Navegação + Schema DB | v1.4 | 1/1 | Complete    | 2026-04-04 |
-| 17. Página de Configurações | v1.4 | 0/2 | Not started | - |
+| 17. Página de Configurações | v1.4 | 1/2 | In Progress|  |
 | 18. Listener Config-Aware | v1.4 | 0/? | Not started | - |
 | 19. Dashboard Ajustes | v1.4 | 0/? | Not started | - |
