@@ -50,7 +50,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-- Deploy na AWS com custo mínimo (listener + dashboard 24/7)
+- Dashboard deploy na AWS (Dash + nginx reverse proxy 24/7)
 
 ### Validated (v1.1)
 
@@ -66,6 +66,9 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Budget alert AWS de $15/mês ativo no AWS Budgets — Phase 6
 - ✓ Credenciais protegidas com .env chmod 600 no servidor — Phase 6
 - ✓ Backup automático diário (pg_dump + .session) para S3 via IAM instance profile — Phase 6
+- ✓ Listener Telethon rodando 24/7 como systemd service na EC2 com Restart=on-failure — Phase 7
+- ✓ Autenticação interativa Telethon completada via SSH, .session gerado na EC2 — Phase 7
+- ✓ Logging condicional TTY (Rich em dev, RotatingFileHandler em daemon) — Phase 7
 
 ### Out of Scope
 
@@ -84,7 +87,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - Stack: Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dbc 2.0
 - Listener e dashboard rodam como processos separados (listener.py + dashboard.py)
 - Parser calibrado contra formato real do grupo {VIP} ExtremeTips
-- Primeiro uso real pendente — necessário rodar listener ao vivo com credenciais Telegram
+- Listener rodando 24/7 na EC2 como systemd service, capturando sinais reais do Telegram
 
 ## Constraints
 
@@ -125,4 +128,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 6 (AWS Infrastructure) complete*
+*Last updated: 2026-04-04 after Phase 7 (Listener Deployment) complete*
