@@ -70,7 +70,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Script bootstrap EC2 + guia provisionamento AWS Console (AWS-01)
+- [x] 06-01-PLAN.md — Script bootstrap EC2 + guia provisionamento AWS Console (AWS-01)
 - [ ] 06-02-PLAN.md — Setup PostgreSQL 16 + migracao schema + budget alert $15/mes (AWS-02, AWS-03)
 - [ ] 06-03-PLAN.md — Backup diario pg_dump + .session para S3 via IAM instance profile (AWS-04, AWS-05)
 
@@ -112,6 +112,6 @@ Plans:
 | 3. Analytics Depth | v1.0 | 4/4 | Complete | 2026-04-03 |
 | 4. Security Audit | v1.1 | 2/2 | Complete   | 2026-04-03 |
 | 5. GitHub Publication | v1.1 | 2/2 | Complete   | 2026-04-03 |
-| 6. AWS Infrastructure | v1.1 | 0/3 | Not started | - |
+| 6. AWS Infrastructure | v1.1 | 1/3 | In Progress|  |
 | 7. Listener Deployment | v1.1 | 0/1 | Not started | - |
 | 8. Dashboard & Proxy | v1.1 | 0/2 | Not started | - |

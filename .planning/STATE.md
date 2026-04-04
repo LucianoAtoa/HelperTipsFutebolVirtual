@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
-status: verifying
-stopped_at: Completed 05-github-publication-02-PLAN.md
-last_updated: "2026-04-03T23:59:21.614Z"
-last_activity: 2026-04-03
+status: executing
+stopped_at: "Completed 06-aws-infrastructure-01-PLAN.md — aguardando Task 2 (checkpoint:human-action: provisionar EC2 no AWS Console)"
+last_updated: "2026-04-04T00:41:33.662Z"
+last_activity: 2026-04-04
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 7
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 05 — github-publication
+**Current focus:** Phase 06 — aws-infrastructure
 
 ## Current Position
 
-Phase: 05 (github-publication) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-04-03
+Phase: 06 (aws-infrastructure) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-security-audit P01 | 8 | 2 tasks | 3 files |
 | Phase 05-github-publication P01 | 10 | 2 tasks | 11 files |
 | Phase 05-github-publication P02 | 2 | 2 tasks | 0 files |
+| Phase 06-aws-infrastructure P01 | 2 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 - [Phase 05-github-publication]: line-length 150 em vez de 100 no ruff — codigo Dash tem linhas UI de 140+ chars semanticamente atomicas
 - [Phase 05-github-publication]: exclude .claude/ do ruff — worktrees GSD residem dentro do projeto e causariam violacoes duplicadas
 - [Phase 05-github-publication]: Repositório tornado público (GH-01) — auto-selecionado em auto-mode; gh repo edit requer --accept-visibility-change-consequences
+- [Phase 06-aws-infrastructure]: Script bootstrap EC2 idempotente com guards — permite re-execucao segura; SSH SG restrito a /32; porta 8050 aberta temporariamente ate Phase 8 nginx
 
 ### Pending Todos
 
@@ -89,6 +91,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-03T23:59:21.611Z
-Stopped at: Completed 05-github-publication-02-PLAN.md
+Last session: 2026-04-04T00:41:33.660Z
+Stopped at: Completed 06-aws-infrastructure-01-PLAN.md — aguardando Task 2 (checkpoint:human-action: provisionar EC2 no AWS Console)
 Resume file: None
