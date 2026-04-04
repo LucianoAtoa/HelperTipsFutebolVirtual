@@ -732,9 +732,15 @@ layout = dbc.Container([
                      {"condition": "params.value && params.value.includes('+')", "style": {"color": "#28a745", "fontWeight": "bold"}},
                      {"condition": "params.value && params.value.includes('-')", "style": {"color": "#dc3545", "fontWeight": "bold"}},
                  ]}},
+                {"field": "ver_link", "headerName": "", "width": 80, "sortable": False, "filter": False,
+                 "cellRenderer": "markdown"},
             ],
             defaultColDef={"resizable": True, "minWidth": 80},
-            dashGridOptions={"pagination": True, "paginationPageSize": 20, "domLayout": "autoHeight"},
+            dashGridOptions={
+                "pagination": True,
+                "paginationPageSize": 20,
+                "domLayout": "autoHeight",
+            },
             className="ag-theme-alpine-dark",
             style={"width": "100%"},
         ),
@@ -927,6 +933,7 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
                 "tentativa": sig.get("tentativa", ""),
                 "placar": sig.get("placar", ""),
                 "lucro": lucro_fmt,
+                "ver_link": f"[Ver](/sinal?id={sig.get('id')})" if sig.get("id") else "",
             })
 
         # 17. Config Mercados (DASH-03)
@@ -976,20 +983,6 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
 
 # ---------------------------------------------------------------------------
 # Phase 15 — Navegacao AG Grid para pagina de detalhe do sinal (SIG-01)
+# A coluna "ver_link" usa cellRenderer="markdown" com link /sinal?id=N.
+# Navegacao acontece via link direto, sem callback.
 # ---------------------------------------------------------------------------
-
-
-@callback(
-    Output("url-nav", "href"),
-    Input("history-table", "cellClicked"),
-    prevent_initial_call=True,
-)
-def navigate_to_sinal(cell_clicked):
-    """Navega para /sinal?id=N ao clicar em qualquer celula do AG Grid."""
-    if not cell_clicked:
-        return no_update
-    row_data = cell_clicked.get("rowData", {})
-    signal_id = row_data.get("id")
-    if signal_id is None:
-        return no_update
-    return f"/sinal?id={signal_id}"

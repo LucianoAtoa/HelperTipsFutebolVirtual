@@ -859,6 +859,7 @@ def calculate_pl_detalhado_por_sinal(
             lucro_principal = -stake
 
     principal = {
+        "odd": round(odd_principal, 2),
         "investido": round(investido_principal, 2),
         "retorno": round(retorno_principal, 2),
         "lucro": round(lucro_principal, 2),

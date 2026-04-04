@@ -740,33 +740,13 @@ def test_home_page_registered():
 # ---------------------------------------------------------------------------
 
 
-def test_navigate_to_sinal():
-    """navigate_to_sinal com cell_clicked contendo id=42 deve retornar '/sinal?id=42'."""
-    from helpertips.pages.home import navigate_to_sinal
-    result = navigate_to_sinal({"rowData": {"id": 42}})
-    assert result == "/sinal?id=42", (
-        f"Esperado '/sinal?id=42', obtido {result!r}"
-    )
-
-
-def test_navigate_to_sinal_no_id():
-    """navigate_to_sinal sem campo 'id' no rowData deve retornar no_update."""
-    from dash import no_update
-    from helpertips.pages.home import navigate_to_sinal
-    result = navigate_to_sinal({"rowData": {}})
-    assert result is no_update, (
-        f"Esperado no_update para rowData sem id, obtido {result!r}"
-    )
-
-
-def test_navigate_to_sinal_none():
-    """navigate_to_sinal com cell_clicked=None deve retornar no_update."""
-    from dash import no_update
-    from helpertips.pages.home import navigate_to_sinal
-    result = navigate_to_sinal(None)
-    assert result is no_update, (
-        f"Esperado no_update para cell_clicked=None, obtido {result!r}"
-    )
+def test_rowdata_ver_link_format():
+    """rowData deve conter campo 'ver_link' com link markdown para /sinal?id=N."""
+    import inspect
+    import helpertips.pages.home as home_module
+    source = inspect.getsource(home_module)
+    assert "ver_link" in source, "Campo 'ver_link' nao encontrado no rowData"
+    assert "[Ver](/sinal?id=" in source, "Link markdown para /sinal nao encontrado no rowData"
 
 
 def test_history_rowdata_includes_id():

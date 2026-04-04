@@ -93,6 +93,10 @@ def _build_detail_layout(sinal, pl):
                 html.P(sinal.get("entrada", "")),
             ]),
             dbc.Col([
+                html.Small("Placar", className="text-muted"),
+                html.P(sinal.get("placar") or "N/A", className="fw-bold"),
+            ]),
+            dbc.Col([
                 html.Small("Odd", className="text-muted"),
                 html.P(f"{p['odd']:.2f}"),
             ]),
@@ -114,62 +118,111 @@ def _build_detail_layout(sinal, pl):
         ]),
     ]), className="mb-3")
 
-    # 3. Tabela de complementares (SIG-03)
-    comp_rows = []
-    for c in pl["complementares"]:
+    # 3. Tabela de todas as entradas numeradas (principal + complementares)
+    comps = pl["complementares"]
+
+    def _resultado_style(resultado):
+        if resultado == "GREEN":
+            return "text-success fw-bold"
+        elif resultado == "RED":
+            return "text-danger fw-bold"
+        return "text-muted"
+
+    all_rows = []
+    # Entrada 1 = Principal
+    p_cls = _resultado_style(p["resultado"])
+    all_rows.append(html.Tr([
+        html.Td("1", className="text-center"),
+        html.Td([sinal.get("entrada", ""), html.Small(" (Principal)", className="text-muted")]),
+        html.Td(f"{p['odd']:.2f}"),
+        html.Td(f"R$ {p['investido']:.2f}"),
+        html.Td(p["resultado"], className=p_cls),
+        html.Td(f"R$ {p['lucro']:+.2f}", className=p_cls),
+    ]))
+
+    # Entradas 2+ = Complementares
+    for i, c in enumerate(comps, 2):
+        c_cls = _resultado_style(c["resultado"])
+        nome_parts = [c["nome"]]
         if c["resultado"] == "GREEN":
-            cls = "text-success"
-        elif c["resultado"] == "RED":
-            cls = "text-danger"
-        else:
-            cls = "text-muted"
-        comp_rows.append(html.Tr([
-            html.Td(c["nome"]),
+            nome_parts.append(html.Span(" ✓ GREEN", className="text-success fw-bold ms-1"))
+        all_rows.append(html.Tr([
+            html.Td(str(i), className="text-center"),
+            html.Td(nome_parts),
             html.Td(f"{c['odd']:.2f}"),
-            html.Td(f"R$ {c['stake']:.2f}"),
-            html.Td(c["resultado"], className=cls),
-            html.Td(f"R$ {c['lucro']:+.2f}", className=cls),
+            html.Td(f"R$ {c['investido']:.2f}"),
+            html.Td(c["resultado"], className=c_cls),
+            html.Td(f"R$ {c['lucro']:+.2f}", className=c_cls),
         ]))
 
-    tabela_comps = dbc.Card(dbc.CardBody([
-        html.H5("Entradas Complementares", className="card-title"),
+    # Linha de total geral
+    t = pl["totais"]
+    t_cls = "text-success" if t["lucro"] >= 0 else "text-danger"
+    all_rows.append(html.Tr([
+        html.Td("", colSpan=3, className="fw-bold"),
+        html.Td(f"R$ {t['investido']:.2f}", className="fw-bold"),
+        html.Td("TOTAL", className="fw-bold"),
+        html.Td(f"R$ {t['lucro']:+.2f}", className=f"fw-bold fs-5 {t_cls}"),
+    ], className="table-secondary"))
+
+    tabela_entradas = dbc.Card(dbc.CardBody([
+        html.H5("Detalhamento por Entrada", className="card-title"),
         dbc.Table([
             html.Thead(html.Tr([
-                html.Th("Nome"),
+                html.Th("#", style={"width": "50px"}),
+                html.Th("Entrada"),
                 html.Th("Odd"),
-                html.Th("Stake"),
+                html.Th("Apostado"),
                 html.Th("Resultado"),
                 html.Th("Lucro/Prejuizo"),
             ])),
-            html.Tbody(comp_rows),
+            html.Tbody(all_rows),
         ], bordered=True, hover=True, responsive=True, className="table-dark"),
     ]), className="mb-3")
 
-    # 4. Totais consolidados (SIG-04)
-    t = pl["totais"]
-    lucro_cls = "text-success" if t["lucro"] >= 0 else "text-danger"
-    totais_card = dbc.Card(dbc.CardBody([
-        html.H5("Totais Consolidados", className="card-title"),
-        dbc.Row([
-            dbc.Col([
-                html.Small("Investido Total", className="text-muted"),
-                html.P(f"R$ {t['investido']:.2f}", className="fs-5"),
-            ]),
-            dbc.Col([
-                html.Small("Retorno Total", className="text-muted"),
-                html.P(f"R$ {t['retorno']:.2f}", className="fs-5"),
-            ]),
-            dbc.Col([
-                html.Small("Lucro Liquido", className="text-muted"),
-                html.P(
-                    f"R$ {t['lucro']:+.2f}",
-                    className=f"fs-5 fw-bold {lucro_cls}",
-                ),
-            ]),
+    # 4. Resumo por tipo (Principal vs Complementares vs Total)
+    total_inv_comp = sum(c["investido"] for c in comps)
+    total_ret_comp = sum(c["retorno"] for c in comps)
+    total_lucro_comp = sum(c["lucro"] for c in comps)
+    lucro_p_cls = "text-success" if p["lucro"] >= 0 else "text-danger"
+    lucro_c_cls = "text-success" if total_lucro_comp >= 0 else "text-danger"
+    lucro_t_cls = "text-success" if t["lucro"] >= 0 else "text-danger"
+
+    resumo_rows = [
+        html.Tr([
+            html.Td("Principal", className="fw-bold"),
+            html.Td(f"R$ {p['investido']:.2f}"),
+            html.Td(f"R$ {p['retorno']:.2f}"),
+            html.Td(f"R$ {p['lucro']:+.2f}", className=lucro_p_cls),
         ]),
+        html.Tr([
+            html.Td("Complementares", className="fw-bold"),
+            html.Td(f"R$ {total_inv_comp:.2f}"),
+            html.Td(f"R$ {total_ret_comp:.2f}"),
+            html.Td(f"R$ {total_lucro_comp:+.2f}", className=lucro_c_cls),
+        ]),
+        html.Tr([
+            html.Td("TOTAL", className="fw-bold"),
+            html.Td(f"R$ {t['investido']:.2f}", className="fw-bold"),
+            html.Td(f"R$ {t['retorno']:.2f}", className="fw-bold"),
+            html.Td(f"R$ {t['lucro']:+.2f}", className=f"fw-bold fs-5 {lucro_t_cls}"),
+        ], className="table-secondary"),
+    ]
+
+    resumo_card = dbc.Card(dbc.CardBody([
+        html.H5("Resumo por Tipo de Entrada", className="card-title"),
+        dbc.Table([
+            html.Thead(html.Tr([
+                html.Th("Tipo"),
+                html.Th("Investido"),
+                html.Th("Retorno"),
+                html.Th("Lucro/Prejuizo"),
+            ])),
+            html.Tbody(resumo_rows),
+        ], bordered=True, responsive=True, className="table-dark"),
     ]), className="mb-3")
 
-    return dbc.Container([header, card_principal, tabela_comps, totais_card], className="mt-3")
+    return dbc.Container([header, card_principal, tabela_entradas, resumo_card], className="mt-3")
 
 
 # ---------------------------------------------------------------------------
