@@ -27,18 +27,21 @@ import dash
 import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go  # noqa: F401 — disponivel para fases futuras
-from dash import Input, Output, State, callback, ctx, dcc, html, no_update
+from dash import Input, Output, State, callback, ctx, dash_table, dcc, html, no_update
 
 from helpertips.db import get_connection
 from helpertips.queries import (
+    calculate_pl_por_entrada,
     calculate_roi,
     calculate_roi_complementares,
     calculate_streaks,
     get_complementares_config,
     get_distinct_values,
     get_filtered_stats,
+    get_mercado_config,
     get_parse_failures_detail,
     get_signal_history,
+    get_signals_com_placar,
 )
 from helpertips.store import ENTRADA_PARA_MERCADO_ID
 
@@ -140,6 +143,162 @@ def _get_colunas_visiveis(modo: str) -> list[str]:
     """
     mapa = {"pct": COLUNAS_PCT, "qty": COLUNAS_QTY, "pl": COLUNAS_PL}
     return mapa.get(modo, COLUNAS_PCT)
+
+
+MERCADOS_CONFIG = [
+    ("over_2_5", "Over 2.5"),
+    ("ambas_marcam", "Ambas Marcam"),
+]
+
+
+def _build_config_card_mercado(nome: str, odd_ref: float, stake: float, comps: list[dict]) -> dbc.Card:
+    """Constroi card read-only de config de um mercado com tabela de complementares e stakes T1-T4."""
+    header_text = f"Odd ref: {odd_ref:.2f} | Stake base: R$ {stake:.2f} | Progressao: 1x 2x 4x 8x"
+    rows = []
+    for comp in comps:
+        pct = float(comp["percentual"])
+        t1, t2, t3, t4 = _calcular_stakes_gale(stake, pct)
+        rows.append(html.Tr([
+            html.Td(comp["nome_display"]),
+            html.Td(f"{pct * 100:.0f}%"),
+            html.Td(f"{float(comp['odd_ref']):.2f}"),
+            html.Td(f"R$ {t1:.2f}"),
+            html.Td(f"R$ {t2:.2f}"),
+            html.Td(f"R$ {t3:.2f}"),
+            html.Td(f"R$ {t4:.2f}"),
+        ]))
+    thead = html.Thead(html.Tr([
+        html.Th("Complementar"), html.Th("%"), html.Th("Odd Ref"),
+        html.Th("T1"), html.Th("T2"), html.Th("T3"), html.Th("T4"),
+    ]))
+    return dbc.Card([
+        dbc.CardHeader(html.H6(nome, className="mb-0")),
+        dbc.CardBody([
+            html.P(header_text, className="text-muted small"),
+            dbc.Table([thead, html.Tbody(rows)], bordered=True, color="dark", hover=True, size="sm"),
+        ]),
+    ], className="mb-3")
+
+
+def _build_config_mercados_section(conn, stake: float) -> list:
+    """Retorna lista de dbc.Card para cada mercado ativo (per D-01)."""
+    cards = [html.H5("Configuracao dos Mercados", className="text-muted mb-3")]
+    for slug, nome in MERCADOS_CONFIG:
+        config = get_mercado_config(conn, slug)
+        if config is None:
+            continue
+        comps = get_complementares_config(conn, slug)
+        cards.append(_build_config_card_mercado(
+            nome, float(config["odd_ref"]), stake, comps
+        ))
+    return cards
+
+
+def _build_performance_section(
+    conn, history: list, entrada: str | None, stake: float, odd: float,
+    gale_on: bool, toggle_mode: str,
+) -> "dash_table.DataTable | html.P":
+    """Constroi DataTable de performance com colunas condicionais por toggle_mode."""
+    if not history:
+        return html.P("Sem dados para o periodo selecionado.", className="text-muted")
+
+    if entrada:
+        # Visao por mercado (D-06): principal + cada complementar como linha separada
+        slug = _entrada_para_slug(entrada)
+        if slug:
+            comp_config = get_complementares_config(conn, slug)
+            roi_princ = calculate_roi(history, stake, odd, gale_on)
+            roi_comp = calculate_roi_complementares(history, comp_config, stake, gale_on)
+
+            rows = []
+            # Linha do principal
+            p_total = roi_princ["greens"] + roi_princ["reds"]
+            p_taxa = roi_princ["greens"] / p_total * 100 if p_total > 0 else 0
+            p_roi = roi_princ["profit"] / roi_princ["total_invested"] * 100 if roi_princ["total_invested"] > 0 else 0
+            rows.append({
+                "entrada": f"{entrada} (Principal)",
+                "greens": roi_princ["greens"],
+                "reds": roi_princ["reds"],
+                "total": p_total,
+                "investido": round(roi_princ["total_invested"], 2),
+                "retorno": round(roi_princ["total_invested"] + roi_princ["profit"], 2),
+                "lucro": round(roi_princ["profit"], 2),
+                "taxa_green": round(p_taxa, 1),
+                "taxa_red": round(100 - p_taxa, 1) if p_total > 0 else 0,
+                "roi": round(p_roi, 1),
+            })
+            # Linhas por complementar
+            for pm in roi_comp.get("por_mercado", []):
+                c_total = pm["greens"] + pm["reds"]
+                c_taxa = pm["greens"] / c_total * 100 if c_total > 0 else 0
+                c_roi = pm["lucro"] / pm["investido"] * 100 if pm["investido"] > 0 else 0
+                rows.append({
+                    "entrada": pm["nome_display"],
+                    "greens": pm["greens"],
+                    "reds": pm["reds"],
+                    "total": c_total,
+                    "investido": round(pm["investido"], 2),
+                    "retorno": round(pm["investido"] + pm["lucro"], 2),
+                    "lucro": round(pm["lucro"], 2),
+                    "taxa_green": round(c_taxa, 1),
+                    "taxa_red": round(100 - c_taxa, 1) if c_total > 0 else 0,
+                    "roi": round(c_roi, 1),
+                })
+        else:
+            rows = []
+    else:
+        # Visao geral (D-06): agrupado por entrada
+        signals_placar = get_signals_com_placar(conn, entrada=entrada)
+        # Obter configs de complementares e odds para todos os mercados
+        comps_por_mercado = {}
+        odds_por_mercado = {}
+        for slug, nome in MERCADOS_CONFIG:
+            cfg = get_mercado_config(conn, slug)
+            if cfg:
+                odds_por_mercado[slug] = float(cfg["odd_ref"])
+                comps_por_mercado[slug] = get_complementares_config(conn, slug)
+        pl_lista = calculate_pl_por_entrada(signals_placar, comps_por_mercado, stake, odds_por_mercado, gale_on)
+        rows = _agregar_por_entrada(pl_lista)
+
+    if not rows:
+        return html.P("Sem dados para o periodo selecionado.", className="text-muted")
+
+    # Mapas de nomes de colunas para headers legiveis
+    col_headers = {
+        "entrada": "Entrada",
+        "greens": "Greens",
+        "reds": "Reds",
+        "total": "Total",
+        "taxa_green": "Taxa Green (%)",
+        "taxa_red": "Taxa Red (%)",
+        "investido": "Investido (R$)",
+        "retorno": "Retorno (R$)",
+        "lucro": "P&L (R$)",
+        "roi": "ROI (%)",
+    }
+    colunas_visiveis = _get_colunas_visiveis(toggle_mode)
+    columns = [{"name": col_headers.get(c, c), "id": c} for c in colunas_visiveis]
+
+    # Formatar valores monetarios nas rows para display
+    for row in rows:
+        for key in ("investido", "retorno", "lucro"):
+            if key in row:
+                row[key] = round(row[key], 2)
+
+    return dash_table.DataTable(
+        data=rows,
+        columns=columns,
+        style_header={"backgroundColor": "#303030", "color": "white", "fontWeight": "bold"},
+        style_cell={"backgroundColor": "#222", "color": "white", "border": "1px solid #444", "textAlign": "center"},
+        style_data_conditional=[
+            {"if": {"filter_query": "{lucro} > 0", "column_id": "lucro"}, "color": "#28a745", "fontWeight": "bold"},
+            {"if": {"filter_query": "{lucro} < 0", "column_id": "lucro"}, "color": "#dc3545", "fontWeight": "bold"},
+            {"if": {"filter_query": "{roi} > 0", "column_id": "roi"}, "color": "#28a745"},
+            {"if": {"filter_query": "{roi} < 0", "column_id": "roi"}, "color": "#dc3545"},
+        ],
+        page_size=20,
+        style_table={"overflowX": "auto"},
+    )
 
 
 def make_kpi_card(title: str, value_id: str, color_class: str = "text-light"):
@@ -368,27 +527,30 @@ def toggle_datepicker(periodo):
 
 
 @callback(
-    Output("kpi-total",        "children"),
-    Output("kpi-winrate",      "children"),
-    Output("kpi-pl-total",     "children"),
-    Output("kpi-pl-total",     "className"),
-    Output("kpi-roi",          "children"),
-    Output("kpi-roi",          "className"),
-    Output("kpi-streak-green", "children"),
-    Output("kpi-streak-red",   "children"),
-    Output("history-table",    "rowData"),
-    Output("filter-liga",      "options"),
-    Input("periodo-selector",  "value"),
-    Input("filter-date-custom", "start_date"),
-    Input("filter-date-custom", "end_date"),
-    Input("filter-mercado",    "value"),
-    Input("filter-liga",       "value"),
-    Input("stake-input",       "value"),
-    Input("odd-input",         "value"),
-    Input("gale-toggle",       "value"),
-    Input("interval-refresh",  "n_intervals"),
+    Output("kpi-total",                   "children"),
+    Output("kpi-winrate",                 "children"),
+    Output("kpi-pl-total",                "children"),
+    Output("kpi-pl-total",                "className"),
+    Output("kpi-roi",                     "children"),
+    Output("kpi-roi",                     "className"),
+    Output("kpi-streak-green",            "children"),
+    Output("kpi-streak-red",              "children"),
+    Output("history-table",               "rowData"),
+    Output("filter-liga",                 "options"),
+    Output("config-mercados-container",   "children"),  # DASH-03
+    Output("perf-table",                  "children"),  # DASH-04
+    Input("periodo-selector",             "value"),
+    Input("filter-date-custom",           "start_date"),
+    Input("filter-date-custom",           "end_date"),
+    Input("filter-mercado",               "value"),
+    Input("filter-liga",                  "value"),
+    Input("stake-input",                  "value"),
+    Input("odd-input",                    "value"),
+    Input("gale-toggle",                  "value"),
+    Input("perf-toggle-view",             "value"),
+    Input("interval-refresh",             "n_intervals"),
 )
-def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, odd, gale_on, _n):
+def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, odd, gale_on, perf_toggle, _n):
     """Callback master: atualiza todos os KPIs, historico e opcoes de liga."""
     # 1. Resolver periodo em datas
     date_start, date_end = _resolve_periodo(periodo, custom_start, custom_end)
@@ -494,10 +656,18 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
                 "placar": sig.get("placar", ""),
             })
 
+        # 17. Config Mercados (DASH-03)
+        config_section = _build_config_mercados_section(conn, stake)
+
+        # 18. Performance (DASH-04)
+        perf_section = _build_performance_section(
+            conn, history, entrada, stake, odd, gale_on, perf_toggle or "pct"
+        )
+
     finally:
         conn.close()
 
-    # 17. Return tuple com todos os 10 Outputs na ordem
+    # 19. Return tuple com todos os 12 Outputs na ordem
     return (
         str(total),
         winrate,
@@ -509,6 +679,8 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
         streak_red,
         row_data,
         liga_options,
+        config_section,   # NOVO
+        perf_section,     # NOVO
     )
 
 

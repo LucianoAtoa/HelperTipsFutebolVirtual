@@ -513,6 +513,19 @@ def test_performance_toggle_colunas():
 # ---------------------------------------------------------------------------
 
 
+def test_build_config_card_mercado():
+    """DASH-03: Card de config mercado renderiza com header e tabela de complementares."""
+    from helpertips.dashboard import _build_config_card_mercado
+    comps = [
+        {"nome_display": "Resultado Final", "percentual": 0.20, "odd_ref": 1.80, "regra_validacao": "resultado_final"},
+        {"nome_display": "HT/FT", "percentual": 0.10, "odd_ref": 2.50, "regra_validacao": "ht_ft"},
+    ]
+    card = _build_config_card_mercado("Over 2.5", 2.30, 100.0, comps)
+    assert card is not None
+    # Verificar que eh um dbc.Card
+    assert hasattr(card, 'children')
+
+
 def test_layout_has_phase12_component_ids():
     """Phase 12: IDs dos novos componentes devem existir na arvore do layout."""
     required_phase12 = {
