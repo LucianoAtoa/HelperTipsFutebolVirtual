@@ -12,7 +12,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 **Shipped:** v1.1 Cloud Deploy (2026-04-04)
 **Codebase:** ~16k LOC Python | 177 testes | ~175 commits
-**Phase 10 complete:** Lógica Financeira — P&L on-the-fly com complementares por mercado e Martingale T1-T4
+**Phase 11 complete:** Dashboard Fundação — filtros globais e KPIs com P&L real
 **Stack:** Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dash-bootstrap-components 2.0, gunicorn 25.x, nginx
 
 **O que funciona (produção na EC2):**
@@ -64,6 +64,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 ### Validated (v1.2)
 
 - ✓ Cálculo financeiro P&L com complementares, odds de referência e Martingale — v1.2 Phase 10
+- ✓ Dashboard fundação: filtros globais (período/mercado/liga) e KPIs com P&L real — v1.2 Phase 11
 
 ## Current Milestone: v1.2 Multi-Market Analytics
 
@@ -135,4 +136,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 9 Listener Multi-Grupo completed*
+*Last updated: 2026-04-04 after Phase 11 Dashboard Fundação completed*
