@@ -50,7 +50,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-- Dashboard deploy na AWS (Dash + nginx reverse proxy 24/7)
+- (nenhum — milestone v1.1 completo)
 
 ### Validated (v1.1)
 
@@ -69,6 +69,9 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Listener Telethon rodando 24/7 como systemd service na EC2 com Restart=on-failure — Phase 7
 - ✓ Autenticação interativa Telethon completada via SSH, .session gerado na EC2 — Phase 7
 - ✓ Logging condicional TTY (Rich em dev, RotatingFileHandler em daemon) — Phase 7
+- ✓ Dashboard rodando via gunicorn como systemd service com 2 workers e Restart=on-failure — Phase 8
+- ✓ Nginx reverse proxy na porta 80 com HTTP Basic Auth protegendo o dashboard — Phase 8
+- ✓ .env.example atualizado com DASHBOARD_USER e DASHBOARD_PASSWORD — Phase 8
 
 ### Out of Scope
 
@@ -88,6 +91,7 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - Listener e dashboard rodam como processos separados (listener.py + dashboard.py)
 - Parser calibrado contra formato real do grupo {VIP} ExtremeTips
 - Listener rodando 24/7 na EC2 como systemd service, capturando sinais reais do Telegram
+- Dashboard acessível via http://<EC2-IP> com autenticação HTTP Basic Auth, servido por gunicorn + nginx
 
 ## Constraints
 
@@ -128,4 +132,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 7 (Listener Deployment) complete*
+*Last updated: 2026-04-04 after Phase 8 (Dashboard & Proxy) complete — v1.1 milestone complete*
