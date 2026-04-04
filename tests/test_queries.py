@@ -641,24 +641,23 @@ def test_calculate_roi_complementares_pending_ignorado():
 def test_calculate_roi_complementares_green_t1_stake_fixa():
     """
     1 sinal GREEN placar='3-2' tentativa=1, stake=100, gale_on=False, config over_2_5:
-    GREEN comps: invested = stake_comp * 1 (tentativa do sinal)
-    RED comps: invested = stake_comp * 4 (all 4 attempts lost)
-    - over_3_5: GREEN -> invested=20, lucro=20*(4.00-1)=60
-    - empate_3_3_4_4: RED -> invested=1*4=4, lucro=-4
-    - over_5_plus: GREEN -> invested=10, lucro=10*(8.00-1)=70
-    - gols_casa_4: RED -> invested=1*4=4, lucro=-4
-    - gols_fora_4: RED -> invested=1*4=4, lucro=-4
-    - gols_casa_5_plus: RED -> invested=1*4=4, lucro=-4
-    - gols_fora_5_plus: RED -> invested=1*4=4, lucro=-4
-    - Total investido=50, profit=60-4+70-4-4-4-4=110
+    GREEN t1: comps follow principal tentativa (1 attempt each)
+    - over_3_5: GREEN -> invested=20, lucro=60
+    - empate_3_3_4_4: RED -> invested=1*1=1, lucro=-1
+    - over_5_plus: GREEN -> invested=10, lucro=70
+    - gols_casa_4: RED -> invested=1*1=1, lucro=-1
+    - gols_fora_4: RED -> invested=1*1=1, lucro=-1
+    - gols_casa_5_plus: RED -> invested=1*1=1, lucro=-1
+    - gols_fora_5_plus: RED -> invested=1*1=1, lucro=-1
+    - Total investido=35, profit=60-1+70-1-1-1-1=125
     """
     signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
 
     result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
 
-    assert result["total_invested"] == pytest.approx(50.0)
-    assert result["profit"] == pytest.approx(110.0)
-    assert result["roi_pct"] == pytest.approx(110.0 / 50.0 * 100)
+    assert result["total_invested"] == pytest.approx(35.0)
+    assert result["profit"] == pytest.approx(125.0)
+    assert result["roi_pct"] == pytest.approx(125.0 / 35.0 * 100)
 
 
 def test_calculate_roi_complementares_por_mercado_chaves():
@@ -1446,27 +1445,25 @@ def test_pl_red_stake_fixa():
 
 
 def test_pl_complementares_over_2_5():
-    """GREEN T1 placar=4-0 mercado over_2_5 gale: RED comps invest 4 attempts (2^4-1)."""
+    """GREEN T1 placar=4-0 mercado over_2_5 gale: comps follow t1 (1 attempt each)."""
     if not _IMPORTS_OK:
         pytest.skip(f"Import failed: {_IMPORT_ERROR}")
     sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="over_2_5")]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     row = result[0]
-    # GREEN comps (t1): over_3_5=20, gols_casa_4=1 -> 21
-    # RED comps (15x): empate=15, over_5_plus=150, gols_fora_4=15, casa_5+=15, fora_5+=15 -> 210
-    assert row["investido_comp"] == pytest.approx(231.0, abs=0.01)
+    # All comps use t1 (2^1-1=1x): over_3_5=20, empate=1, over_5+=10, casa_4=1, fora_4=1, casa_5+=1, fora_5+=1 = 35
+    assert row["investido_comp"] == pytest.approx(35.0, abs=0.01)
 
 
 def test_pl_complementares_ambas_marcam():
-    """GREEN T1 mercado ambas_marcam gale: RED comps invest 4 attempts (2^4-1)."""
+    """GREEN T1 mercado ambas_marcam gale: comps follow t1 (1 attempt each)."""
     if not _IMPORTS_OK:
         pytest.skip(f"Import failed: {_IMPORT_ERROR}")
     sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="ambas_marcam", entrada="Ambas Marcam")]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     row = result[0]
-    # GREEN comps (t1): over_3_5=10, gols_casa_4=1 -> 11
-    # RED comps (15x): empate=15, over_5_plus=75, gols_fora_4=15, casa_5+=15, fora_5+=15 -> 135
-    assert row["investido_comp"] == pytest.approx(146.0, abs=0.01)
+    # All comps use t1 (2^1-1=1x): over_3_5=10, empate=1, over_5+=5, casa_4=1, fora_4=1, casa_5+=1, fora_5+=1 = 20
+    assert row["investido_comp"] == pytest.approx(20.0, abs=0.01)
 
 
 def test_pl_red_sem_placar_complementares():
