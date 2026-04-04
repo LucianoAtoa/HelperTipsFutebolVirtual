@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
 status: verifying
-stopped_at: "Completed 07-01-PLAN.md — checkpoint:human-action Task 3 pendente (autenticacao Telethon EC2)"
-last_updated: "2026-04-04T04:01:04.328Z"
+stopped_at: Completed 07-01-PLAN.md — listener service active on EC2 (deployed)
+last_updated: "2026-04-04T04:16:21.271Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
@@ -89,6 +89,7 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 - [Phase 07]: configure_logging() com LOG_PATH como constante de modulo — testabilidade sem mock de path hardcoded
 - [Phase 07]: StartLimitBurst/StartLimitIntervalSec na secao [Unit] (nao [Service]) — pitfall critico que causa ignoramento silencioso
 - [Phase 07]: StandardOutput=null no unit file — logs vao para RotatingFileHandler, evita duplicacao no journald
+- [Phase 07]: Autenticacao Telethon concluida na EC2 — .session gerado, servico helpertips-listener active (running), sinais sendo capturados no banco
 
 ### Pending Todos
 
@@ -102,6 +103,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-04T04:01:04.326Z
-Stopped at: Completed 07-01-PLAN.md — checkpoint:human-action Task 3 pendente (autenticacao Telethon EC2)
+Last session: 2026-04-04T04:16:17.194Z
+Stopped at: Completed 07-01-PLAN.md — listener service active on EC2 (deployed)
 Resume file: None
