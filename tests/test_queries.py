@@ -455,13 +455,14 @@ def test_validar_complementar_over_3_5_red():
 
 
 def test_validar_complementar_over_5_plus_green():
-    """over_5_plus retorna GREEN quando total >= 6."""
+    """over_5_plus retorna GREEN quando total >= 5."""
     assert validar_complementar("over_5_plus", "4-3", "GREEN") == "GREEN"  # total=7
+    assert validar_complementar("over_5_plus", "3-2", "GREEN") == "GREEN"  # total=5
 
 
 def test_validar_complementar_over_5_plus_red():
-    """over_5_plus retorna RED quando total < 6."""
-    assert validar_complementar("over_5_plus", "3-2", "GREEN") == "RED"  # total=5
+    """over_5_plus retorna RED quando total < 5."""
+    assert validar_complementar("over_5_plus", "2-2", "GREEN") == "RED"  # total=4
 
 
 def test_validar_complementar_empate_3_3_4_4_green():
@@ -637,20 +638,20 @@ def test_calculate_roi_complementares_green_t1_stake_fixa():
     1 sinal GREEN placar='3-2' tentativa=1, stake=100, gale_on=False, config over_2_5:
     - over_3_5: GREEN (total=5 > 3.5) -> stake_comp=100*0.20=20, lucro=20*(4.00-1)=60, investido=20
     - empate_3_3_4_4: RED -> stake_comp=100*0.01=1, lucro=-1, investido=1
-    - over_5_plus: RED (total=5 < 6) -> stake_comp=100*0.10=10, lucro=-10, investido=10
+    - over_5_plus: GREEN (total=5 >= 5) -> stake_comp=100*0.10=10, lucro=10*(8.00-1)=70, investido=10
     - gols_casa_4: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
     - gols_fora_4: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
     - gols_casa_5_plus: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
     - gols_fora_5_plus: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
-    - Total investido=35, profit=60-1-10-1-1-1-1=45
+    - Total investido=35, profit=60-1+70-1-1-1-1=125
     """
     signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
 
     result = calculate_roi_complementares(signals, _OVER_2_5_CONFIG, stake=100.0, gale_on=False)
 
     assert result["total_invested"] == pytest.approx(35.0)
-    assert result["profit"] == pytest.approx(45.0)
-    assert result["roi_pct"] == pytest.approx(45.0 / 35.0 * 100)
+    assert result["profit"] == pytest.approx(125.0)
+    assert result["roi_pct"] == pytest.approx(125.0 / 35.0 * 100)
 
 
 def test_calculate_roi_complementares_por_mercado_chaves():

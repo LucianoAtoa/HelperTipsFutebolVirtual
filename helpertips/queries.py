@@ -308,7 +308,7 @@ def _parse_placar(placar: str | None) -> tuple[int, int] | None:
 # Dispatch dict: maps regra name -> validator(casa, fora) -> bool
 _REGRA_VALIDATORS: dict[str, Callable[[int, int], bool]] = {
     "over_3_5": lambda casa, fora: (casa + fora) > 3.5,
-    "over_5_plus": lambda casa, fora: (casa + fora) >= 6,
+    "over_5_plus": lambda casa, fora: (casa + fora) >= 5,
     # empate_3_3_4_4: must be a draw AND total goals in (6, 8) — excludes 2-4, 4-2, 1-5, etc.
     "empate_3_3_4_4": lambda casa, fora: casa == fora and (casa + fora) in (6, 8),
     "gols_casa_4": lambda casa, fora: casa == 4,
