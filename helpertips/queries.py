@@ -145,7 +145,7 @@ def get_signal_history(conn, liga=None, entrada=None, date_start=None,
     Returns
     -------
     list[dict]
-        Each dict has keys: liga, entrada, horario, resultado, placar,
+        Each dict has keys: id, liga, entrada, horario, resultado, placar,
         tentativa, received_at. Ordered received_at DESC.
     """
     where, params = _build_where(liga=liga, entrada=entrada,
@@ -153,7 +153,7 @@ def get_signal_history(conn, liga=None, entrada=None, date_start=None,
     params.append(limit)
 
     sql = f"""
-        SELECT liga, entrada, horario, resultado, placar, tentativa, received_at
+        SELECT id, liga, entrada, horario, resultado, placar, tentativa, received_at
         FROM signals
         WHERE {where}
         ORDER BY received_at DESC

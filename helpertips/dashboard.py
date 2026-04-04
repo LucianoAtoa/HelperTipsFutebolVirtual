@@ -159,9 +159,26 @@ def _build_config_card_mercado(nome: str, odd_ref: float, stake: float, comps: l
     """Constroi card read-only de config de um mercado com tabela de complementares e stakes T1-T4."""
     header_text = f"Odd ref: {odd_ref:.2f} | Stake base: R$ {stake:.2f} | Progressao: 1x 2x 4x 8x"
     rows = []
+    # Principal por tentativa: stake * multiplicador gale
+    princ = [stake, stake * 2, stake * 4, stake * 8]
+    bold = {"fontWeight": "bold"}
+    rows.append(html.Tr([
+        html.Td("Principal", style=bold),
+        html.Td("—"),
+        html.Td(f"{odd_ref:.2f}"),
+        html.Td(f"R$ {princ[0]:.2f}", style=bold),
+        html.Td(f"R$ {princ[1]:.2f}", style=bold),
+        html.Td(f"R$ {princ[2]:.2f}", style=bold),
+        html.Td(f"R$ {princ[3]:.2f}", style=bold),
+    ], className="table-info"))
+    totals = [0.0, 0.0, 0.0, 0.0]  # acumula complementares por tentativa
     for comp in comps:
         pct = float(comp["percentual"])
         t1, t2, t3, t4 = _calcular_stakes_gale(stake, pct)
+        totals[0] += t1
+        totals[1] += t2
+        totals[2] += t3
+        totals[3] += t4
         rows.append(html.Tr([
             html.Td(comp["nome_display"]),
             html.Td(f"{pct * 100:.0f}%"),
@@ -171,6 +188,17 @@ def _build_config_card_mercado(nome: str, odd_ref: float, stake: float, comps: l
             html.Td(f"R$ {t3:.2f}"),
             html.Td(f"R$ {t4:.2f}"),
         ]))
+    # Total investido por tentativa = principal + complementares
+    inv_per_t = [princ[i] + totals[i] for i in range(4)]
+    # Total possivel nas 4 tentativas
+    total_4t = sum(inv_per_t)
+    rows.append(html.Tr([
+        html.Td("Total por entrada", style=bold, colSpan=3),
+        html.Td(f"R$ {inv_per_t[0]:.2f}", style=bold),
+        html.Td(f"R$ {inv_per_t[1]:.2f}", style=bold),
+        html.Td(f"R$ {inv_per_t[2]:.2f}", style=bold),
+        html.Td(f"R$ {inv_per_t[3]:.2f}", style=bold),
+    ], className="table-secondary"))
     thead = html.Thead(html.Tr([
         html.Th("Complementar"), html.Th("%"), html.Th("Odd Ref"),
         html.Th("T1"), html.Th("T2"), html.Th("T3"), html.Th("T4"),
@@ -180,6 +208,10 @@ def _build_config_card_mercado(nome: str, odd_ref: float, stake: float, comps: l
         dbc.CardBody([
             html.P(header_text, className="text-muted small"),
             dbc.Table([thead, html.Tbody(rows)], bordered=True, color="dark", hover=True, size="sm"),
+            html.P(
+                f"Total possivel (4 tentativas): R$ {total_4t:.2f}",
+                className="text-warning fw-bold mt-2 mb-0",
+            ),
         ]),
     ], className="mb-3")
 
@@ -716,6 +748,11 @@ app.layout = dbc.Container([
                  ]}},
                 {"field": "tentativa", "headerName": "Tentativa", "sortable": True, "width": 100},
                 {"field": "placar", "headerName": "Placar", "width": 80},
+                {"field": "lucro", "headerName": "Lucro Total", "sortable": True, "width": 120,
+                 "cellStyle": {"styleConditions": [
+                     {"condition": "params.value && params.value.includes('+')", "style": {"color": "#28a745", "fontWeight": "bold"}},
+                     {"condition": "params.value && params.value.includes('-')", "style": {"color": "#dc3545", "fontWeight": "bold"}},
+                 ]}},
             ],
             defaultColDef={"resizable": True, "minWidth": 80},
             dashGridOptions={"pagination": True, "paginationPageSize": 20, "domLayout": "autoHeight"},
@@ -863,40 +900,7 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
         ligas = get_distinct_values(conn, "liga")
         liga_options = [{"label": v, "value": v} for v in ligas]
 
-        # 16. History rowData para AG Grid
-        row_data = []
-        for sig in history:
-            received_at = sig.get("received_at")
-            if received_at is not None:
-                try:
-                    data_hora = received_at.strftime("%d/%m/%Y %H:%M")
-                except AttributeError:
-                    data_hora = str(received_at)
-            else:
-                data_hora = ""
-            # Extrair time_casa e time_fora do campo horario (formato "HH:MM casa x fora" nao disponivel no get_signal_history)
-            row_data.append({
-                "data_hora": data_hora,
-                "liga": sig.get("liga", ""),
-                "entrada": sig.get("entrada", ""),
-                "time_casa": "",
-                "time_fora": "",
-                "resultado": sig.get("resultado", ""),
-                "tentativa": sig.get("tentativa", ""),
-                "placar": sig.get("placar", ""),
-            })
-
-        # 17. Config Mercados (DASH-03)
-        config_section = _build_config_mercados_section(conn, stake)
-
-        # 18. Performance (DASH-04)
-        perf_section = _build_performance_section(
-            conn, history, entrada, stake, odd, gale_on, perf_toggle or "pct"
-        )
-
-        # 19. Phase 13 — Analise por Liga, Equity Curve, Gale (DASH-05, DASH-06, DASH-07)
-        # Calcular signals_placar, comps_por_mercado, odds_por_mercado e pl_lista no nivel do callback
-        # para reutilizacao em _build_phase13_section sem round-trips extras (D-08)
+        # 16. P&L por sinal (reutilizado em history grid e phase13)
         signals_placar_13 = get_signals_com_placar(
             conn, entrada=entrada, liga=liga, date_start=date_start, date_end=date_end
         )
@@ -910,6 +914,51 @@ def update_dashboard(periodo, custom_start, custom_end, mercado, liga, stake, od
         pl_lista_13 = calculate_pl_por_entrada(
             signals_placar_13, comps_por_mercado_13, stake, odds_por_mercado_13, gale_on
         )
+
+        # Lookup P&L por signal id para enriquecer history grid
+        pl_by_id = {}
+        for sig_pl, sig_orig in zip(pl_lista_13, signals_placar_13):
+            sig_id = sig_orig.get("id")
+            if sig_id is not None:
+                pl_by_id[sig_id] = sig_pl.get("lucro_total", 0.0)
+
+        # 16b. History rowData para AG Grid
+        row_data = []
+        for sig in history:
+            received_at = sig.get("received_at")
+            if received_at is not None:
+                try:
+                    data_hora = received_at.strftime("%d/%m/%Y %H:%M")
+                except AttributeError:
+                    data_hora = str(received_at)
+            else:
+                data_hora = ""
+            # Lookup lucro_total via id do signal
+            sig_id = sig.get("id")
+            lucro = pl_by_id.get(sig_id, 0.0)
+            lucro_fmt = f"R$ {lucro:+.2f}" if sig.get("resultado") in ("GREEN", "RED") else ""
+            row_data.append({
+                "data_hora": data_hora,
+                "liga": sig.get("liga", ""),
+                "entrada": sig.get("entrada", ""),
+                "time_casa": "",
+                "time_fora": "",
+                "resultado": sig.get("resultado", ""),
+                "tentativa": sig.get("tentativa", ""),
+                "placar": sig.get("placar", ""),
+                "lucro": lucro_fmt,
+            })
+
+        # 17. Config Mercados (DASH-03)
+        config_section = _build_config_mercados_section(conn, stake)
+
+        # 18. Performance (DASH-04)
+        perf_section = _build_performance_section(
+            conn, history, entrada, stake, odd, gale_on, perf_toggle or "pct"
+        )
+
+        # 19. Phase 13 — Analise por Liga, Equity Curve, Gale (DASH-05, DASH-06, DASH-07)
+        # signals_placar_13, comps/odds_por_mercado_13, pl_lista_13 ja calculados no step 16
         phase13_section = _build_phase13_section(
             signals_placar=signals_placar_13,
             pl_lista=pl_lista_13,
