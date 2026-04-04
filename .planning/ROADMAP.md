@@ -150,7 +150,10 @@ Plans:
   4. Totais consolidados no rodapé: investido total, retorno total e lucro líquido somando principal + todos os complementares
   5. Botão "Voltar" retorna ao dashboard preservando os filtros ativos
   6. Acessar `/sinal?id=<inexistente>` exibe mensagem amigável "Sinal não encontrado" sem erro 500
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 15-01-PLAN.md — TDD: get_sinal_detalhado + calculate_pl_detalhado_por_sinal em queries.py
+- [ ] 15-02-PLAN.md — pages/sinal.py layout + navegacao AG Grid + verificacao visual
 **UI hint**: yes
 
 ## Progress
@@ -172,4 +175,4 @@ Plans:
 | 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete | 2026-04-04 |
 | 14. Migração Multi-Page | v1.3 | 1/1 | Complete    | 2026-04-04 |
-| 15. Página de Detalhe do Sinal | v1.3 | 0/? | Not started | - |
+| 15. Página de Detalhe do Sinal | v1.3 | 0/2 | Not started | - |
