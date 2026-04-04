@@ -61,7 +61,16 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ### Active
 
-- Página Dash separada para análise individual de sinais — v1.3 Phase 15
+- Página de configurações editável para mercados (stake, percentuais, odds) — v1.4
+- Listener usa config ativa do banco ao gravar sinais — v1.4
+- KPI Total Investido no dashboard — v1.4
+- Performance Individual por Mercado no dashboard — v1.4
+- Navegação entre Dashboard e Configurações — v1.4
+
+### Validated (v1.3)
+
+- ✓ Página de detalhe do sinal com breakdown P&L por entrada — v1.3 Phase 15
+- ✓ Dashboard migrado para Dash Pages (multi-page routing) — v1.3 Phase 14
 
 ### Validated (v1.2)
 
@@ -70,17 +79,19 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Dashboard mercados e performance: config read-only e tabela P&L por entrada com toggle — v1.2 Phase 12
 - ✓ Dashboard análises visuais: análise por liga, equity curve, análise de gale — v1.2 Phase 13
 
-## Current Milestone: v1.3 Análise Individual de Sinais
+## Current Milestone: v1.4 Configurações de Mercado + Dashboard Ajustes
 
-**Goal:** Criar página dedicada para análise detalhada de cada sinal, exibindo todas as entradas (principal + complementares) com resultados, horários e lucro/prejuízo. Página separada para acomodar futuras expansões.
+**Goal:** Página de configurações editável para odds/stakes/percentuais dos mercados, com listener usando config ativa, e melhorias no dashboard (Total Investido, Performance por Mercado).
 
 **Target features:**
-- Página Dash separada acessível ao clicar em um sinal no histórico
-- Exibição da entrada principal: mercado, odd, stake, resultado (GREEN/RED), horário, lucro
-- Exibição de cada entrada complementar: nome, odd, stake, resultado validado pelo placar, horário, lucro
-- Totais consolidados: investido total, retorno total, lucro líquido
-- Horário de cada entrada visível
-- Estrutura extensível para futuras informações adicionais
+- Página `/config` com formulário editável: stake base, fator progressão, max tentativas, percentuais e odds por complementar
+- Preview de stakes em tempo real (T1–T4) recalcula ao editar
+- Persistência da config no banco (tabelas mercados + complementares)
+- Listener usa config ativa ao capturar sinais (não retroativo)
+- Dashboard: remover seções Config Mercados e Simulação de ROI
+- Dashboard: KPI Total Investido (soma stakes principal + complementares no período)
+- Dashboard: Performance Individual por Mercado (greens, reds, taxa, P&L, ROI por mercado)
+- Navegação tabs/menu entre Dashboard e Configurações
 
 ### Out of Scope
 
@@ -144,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after v1.3 milestone*
+*Last updated: 2026-04-04 after v1.4 milestone start*

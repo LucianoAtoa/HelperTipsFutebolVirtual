@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Análise Individual de Sinais
-status: executing
-stopped_at: Completed 15-p-gina-de-detalhe-do-sinal/15-01-PLAN.md
+milestone: v1.4
+milestone_name: Configurações de Mercado + Dashboard Ajustes
+status: defining requirements
+stopped_at: null
 last_updated: "2026-04-04T20:33:31.958Z"
 last_activity: 2026-04-04
 progress:
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Capturar automaticamente todos os sinais do Telegram e transformar em estatísticas confiáveis para tomada de decisão nas apostas.
-**Current focus:** Phase 15 — p-gina-de-detalhe-do-sinal
+**Current focus:** Defining requirements for v1.4
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-04
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-04 — Milestone v1.4 started
 
 Progress: [░░░░░░░░░░] 0%
 
