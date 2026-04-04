@@ -10,6 +10,8 @@ Provides filtered SQL queries and pure-Python ROI calculation:
   - _REGRA_VALIDATORS: dispatch dict for complementary market validation rules
   - validar_complementar: determine GREEN/RED/None for a complementary market
   - get_complementares_config: query complementary market config for a given mercado slug
+  - get_mercado_config: query market config (id, slug, odd_ref, ativo) by slug
+  - get_signals_com_placar: resolved signals with mercado_slug for P&L calculation (FIN-01)
   - calculate_roi_complementares: pure Python ROI for complementary markets with Gale support
   - get_heatmap_data: win rate by hour x day-of-week matrix (24x7) for go.Heatmap
   - get_winrate_by_dow: win rate per day-of-week list for bar chart
@@ -37,7 +39,7 @@ from helpertips.db import get_connection  # noqa: F401 (re-export for callers)
 _ALLOWED_DISTINCT_FIELDS = frozenset({"liga", "entrada"})
 
 
-def _build_where(liga=None, entrada=None, date_start=None, date_end=None):
+def _build_where(liga=None, entrada=None, date_start=None, date_end=None, mercado_id=None):
     """
     Build a parameterized WHERE clause from optional filter args.
 
@@ -62,6 +64,10 @@ def _build_where(liga=None, entrada=None, date_start=None, date_end=None):
     if date_end is not None:
         conditions.append("received_at::date <= %s::date")
         params.append(date_end)
+
+    if mercado_id is not None:
+        conditions.append("mercado_id = %s")
+        params.append(mercado_id)
 
     return " AND ".join(conditions), params
 
@@ -404,6 +410,98 @@ def get_complementares_config(conn, mercado_slug: str) -> list[dict]:
         columns = [desc[0] for desc in cur.description]
         rows = cur.fetchall()
 
+    return [dict(zip(columns, row)) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# Market config query
+# ---------------------------------------------------------------------------
+
+
+def get_mercado_config(conn, mercado_slug: str) -> dict | None:
+    """
+    Retorna config de um mercado por slug. None se nao existir ou inativo.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    mercado_slug : str
+        Slug do mercado (ex: 'over_2_5', 'ambas_marcam').
+
+    Retorna
+    -------
+    dict | None
+        Dict com chaves: id, slug, nome_display, odd_ref, ativo.
+        None se o mercado nao existir ou estiver inativo.
+    """
+    sql = """
+        SELECT id, slug, nome_display, odd_ref, ativo
+        FROM mercados
+        WHERE slug = %s AND ativo = TRUE
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, (mercado_slug,))
+        row = cur.fetchone()
+    if row is None:
+        return None
+    columns = ["id", "slug", "nome_display", "odd_ref", "ativo"]
+    return dict(zip(columns, row))
+
+
+# ---------------------------------------------------------------------------
+# Signals com placar e mercado_slug — para calculo P&L (FIN-01)
+# ---------------------------------------------------------------------------
+
+
+def get_signals_com_placar(
+    conn,
+    liga=None, entrada=None, date_start=None, date_end=None, mercado_id=None,
+) -> list[dict]:
+    """
+    Retorna sinais resolvidos (GREEN/RED) com mercado_id e mercado_slug.
+
+    Ordenado por received_at ASC para calculo cronologico de P&L.
+    Inclui sinais com placar=NULL (REDs sem placar registrado).
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    liga : str | None
+        Filtro opcional por liga.
+    entrada : str | None
+        Filtro opcional por entrada.
+    date_start : str | None
+        Data inicio ISO (YYYY-MM-DD), inclusiva.
+    date_end : str | None
+        Data fim ISO (YYYY-MM-DD), inclusiva.
+    mercado_id : int | None
+        Filtro opcional por mercado. None retorna todos os mercados (backward compat).
+
+    Retorna
+    -------
+    list[dict]
+        Cada dict tem chaves: id, resultado, placar, tentativa, mercado_id,
+        mercado_slug, entrada, liga, received_at. Ordenado por received_at ASC.
+    """
+    where, params = _build_where(
+        liga=liga, entrada=entrada,
+        date_start=date_start, date_end=date_end,
+        mercado_id=mercado_id,
+    )
+    sql = f"""
+        SELECT s.id, s.resultado, s.placar, s.tentativa,
+               s.mercado_id, m.slug AS mercado_slug, s.entrada, s.liga, s.received_at
+        FROM signals s
+        LEFT JOIN mercados m ON s.mercado_id = m.id
+        WHERE s.resultado IN ('GREEN', 'RED') AND {where}
+        ORDER BY s.received_at ASC
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        columns = [desc[0] for desc in cur.description]
+        rows = cur.fetchall()
     return [dict(zip(columns, row)) for row in rows]
 
 
