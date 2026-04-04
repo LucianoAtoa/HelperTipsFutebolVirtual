@@ -1,0 +1,10 @@
+/* Override contraste RadioItems btn-outline-secondary no tema DARKLY */
+.btn-check:not(:checked) + .btn-outline-secondary {
+    color: #e0e0e0;
+    border-color: #6c757d;
+}
+.btn-check:checked + .btn-outline-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: #fff;
+}
