@@ -13,7 +13,7 @@ import os
 
 import dash
 import dash_bootstrap_components as dbc
-from dash import dcc
+from dash import dcc, html
 
 app = dash.Dash(
     __name__,
@@ -26,6 +26,15 @@ server = app.server  # WSGI callable para gunicorn
 
 app.layout = dbc.Container([
     dcc.Location(id="url-nav", refresh="callback-nav"),
+    dbc.Nav(
+        [
+            dbc.NavLink("Dashboard", href="/", id="nav-link-home", active="exact"),
+            dbc.NavLink("Configuracoes", href="/config", id="nav-link-config", active="exact"),
+        ],
+        id="nav-tabs",
+        pills=True,
+        className="my-3",
+    ),
     dash.page_container,
 ], fluid=True)
 

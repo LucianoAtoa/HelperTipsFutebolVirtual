@@ -27,6 +27,7 @@ Sem conexao com banco de dados ou servidor em execucao. Todos os imports sao seg
 import os
 from datetime import date, timedelta
 
+import dash
 import pytest
 from helpertips.dashboard import app
 from helpertips.queries import calculate_roi
@@ -758,3 +759,27 @@ def test_history_rowdata_includes_id():
     assert '"id": sig.get("id")' in source, (
         "Campo 'id' nao encontrado no rowData do AG Grid em home.py"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 16 — Navegacao por tabs (NAV-01)
+# ---------------------------------------------------------------------------
+
+
+def test_nav_tabs_present():
+    """NAV-01: nav-tabs presente no layout do shell."""
+    ids = collect_ids(app.layout)
+    assert "nav-tabs" in ids
+
+
+def test_nav_links_present():
+    """NAV-01: links Dashboard e Configuracoes presentes no nav."""
+    ids = collect_ids(app.layout)
+    assert "nav-link-home" in ids
+    assert "nav-link-config" in ids
+
+
+def test_config_page_registered():
+    """NAV-01: pagina /config registrada no Dash Pages."""
+    page_paths = [p["path"] for p in dash.page_registry.values()]
+    assert "/config" in page_paths
