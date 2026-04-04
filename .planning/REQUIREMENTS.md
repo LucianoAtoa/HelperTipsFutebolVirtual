@@ -22,8 +22,8 @@ Requirements para deploy em produção na AWS. Cada um mapeia para fases do road
 ### Infraestrutura AWS
 
 - [x] **AWS-01**: EC2 t3.micro provisionado com Elastic IP e Security Group restrito (SSH + HTTP/HTTPS)
-- [ ] **AWS-02**: PostgreSQL instalado e rodando na instância EC2 com schema migrado
-- [ ] **AWS-03**: Budget alert configurado em $15/mês para evitar surpresas de custo
+- [x] **AWS-02**: PostgreSQL instalado e rodando na instância EC2 com schema migrado
+- [x] **AWS-03**: Budget alert configurado em $15/mês para evitar surpresas de custo
 - [ ] **AWS-04**: Credenciais (Telegram API, DB) armazenadas de forma segura no servidor (SSM Parameter Store ou .env protegido)
 - [ ] **AWS-05**: Backup periódico do arquivo .session para S3 ou volume persistente
 
@@ -81,8 +81,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GH-01 | Phase 5 | Complete |
 | GH-02 | Phase 5 | Complete |
 | AWS-01 | Phase 6 | Complete |
-| AWS-02 | Phase 6 | Pending |
-| AWS-03 | Phase 6 | Pending |
+| AWS-02 | Phase 6 | Complete |
+| AWS-03 | Phase 6 | Complete |
 | AWS-04 | Phase 6 | Pending |
 | AWS-05 | Phase 6 | Pending |
 | DEP-05 | Phase 7 | Pending |

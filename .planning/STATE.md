@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cloud Deploy
 status: executing
-stopped_at: "Completed 06-aws-infrastructure-01-PLAN.md — aguardando Task 2 (checkpoint:human-action: provisionar EC2 no AWS Console)"
-last_updated: "2026-04-04T00:41:33.662Z"
+stopped_at: "Completed 06-aws-infrastructure-02-PLAN.md — aguardando Task 2 (checkpoint:human-action: instalar PostgreSQL, migrar schema e configurar budget alert no EC2)"
+last_updated: "2026-04-04T01:14:35.832Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 ## Current Position
 
 Phase: 06 (aws-infrastructure) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-04
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-github-publication P01 | 10 | 2 tasks | 11 files |
 | Phase 05-github-publication P02 | 2 | 2 tasks | 0 files |
 | Phase 06-aws-infrastructure P01 | 2 | 1 tasks | 2 files |
+| Phase 06-aws-infrastructure P02 | 1 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 milestone).
 - [Phase 05-github-publication]: exclude .claude/ do ruff — worktrees GSD residem dentro do projeto e causariam violacoes duplicadas
 - [Phase 05-github-publication]: Repositório tornado público (GH-01) — auto-selecionado em auto-mode; gh repo edit requer --accept-visibility-change-consequences
 - [Phase 06-aws-infrastructure]: Script bootstrap EC2 idempotente com guards — permite re-execucao segura; SSH SG restrito a /32; porta 8050 aberta temporariamente ate Phase 8 nginx
+- [Phase 06-aws-infrastructure]: scram-sha-256 no pg_hba.conf — peer auth invalida para psycopg2 que autentica por senha
+- [Phase 06-aws-infrastructure]: shared_buffers=64MB para t3.micro — default 128MB consome RAM excessiva em instancia de 1GB com Telethon+Dash+PG
+- [Phase 06-aws-infrastructure]: Budget alert a 80% ($12) em vez de 100% ($15) — antecipacao para reagir antes de ultrapassar o limite
 
 ### Pending Todos
 
@@ -91,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-04T00:41:33.660Z
-Stopped at: Completed 06-aws-infrastructure-01-PLAN.md — aguardando Task 2 (checkpoint:human-action: provisionar EC2 no AWS Console)
+Last session: 2026-04-04T01:14:35.829Z
+Stopped at: Completed 06-aws-infrastructure-02-PLAN.md — aguardando Task 2 (checkpoint:human-action: instalar PostgreSQL, migrar schema e configurar budget alert no EC2)
 Resume file: None
