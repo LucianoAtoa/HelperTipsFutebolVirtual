@@ -23,6 +23,7 @@ import pytest
 try:
     from helpertips.db import ensure_schema, get_connection
     from helpertips.queries import (
+        _build_where,
         _parse_placar,
         calculate_equity_curve,
         calculate_roi,
@@ -34,8 +35,10 @@ try:
         get_filtered_stats,
         get_gale_analysis,
         get_heatmap_data,
+        get_mercado_config,
         get_parse_failures_detail,
         get_signal_history,
+        get_signals_com_placar,
         get_volume_by_day,
         get_winrate_by_dow,
         get_winrate_by_periodo,
@@ -1169,3 +1172,146 @@ def test_get_winrate_by_periodo_empty(db_conn):
 
     result = get_winrate_by_periodo(db_conn)
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# _build_where com mercado_id — testes puros (sem DB)
+# ---------------------------------------------------------------------------
+
+
+def test_build_where_mercado_id():
+    """_build_where(mercado_id=1) gera clausula AND mercado_id = %s com param [1]."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    where, params = _build_where(mercado_id=1)
+    assert "mercado_id = %s" in where
+    assert 1 in params
+
+
+def test_build_where_mercado_id_none():
+    """_build_where(mercado_id=None) retorna '1=1' sem condicao de mercado — backward compat."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    where, params = _build_where(mercado_id=None)
+    assert where == "1=1"
+    assert params == []
+
+
+def test_build_where_mercado_id_com_liga():
+    """_build_where(liga='Superliga', mercado_id=2) gera ambos os filtros."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Import failed: {_IMPORT_ERROR}")
+    where, params = _build_where(liga="Superliga", mercado_id=2)
+    assert "liga = %s" in where
+    assert "mercado_id = %s" in where
+    assert "Superliga" in params
+    assert 2 in params
+
+
+# ---------------------------------------------------------------------------
+# get_mercado_config — testes DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_mercado_config_over(db_conn):
+    """get_mercado_config(conn, 'over_2_5') retorna dict com slug, odd_ref e ativo=True."""
+    result = get_mercado_config(db_conn, "over_2_5")
+    assert result is not None, "Esperado config de mercado 'over_2_5', recebido None"
+    assert result["slug"] == "over_2_5"
+    assert "odd_ref" in result
+    assert result["ativo"] is True
+
+
+def test_get_mercado_config_inexistente(db_conn):
+    """get_mercado_config(conn, 'nao_existe') retorna None."""
+    result = get_mercado_config(db_conn, "nao_existe")
+    assert result is None, f"Esperado None para mercado inexistente, recebido {result}"
+
+
+# ---------------------------------------------------------------------------
+# get_signals_com_placar — testes DB
+# ---------------------------------------------------------------------------
+
+
+def test_get_signals_com_placar_retorna_campos(db_conn):
+    """Resultado inclui chaves: id, resultado, placar, tentativa, mercado_id, mercado_slug, entrada, liga, received_at."""
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO signals (message_id, group_id, liga, entrada, resultado, placar, tentativa, raw_text, mercado_id)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (20001, -1001000000001, "Superliga", "Over 2.5", "GREEN", "3-1", 1, "raw", 1),
+        )
+    db_conn.commit()
+
+    rows = get_signals_com_placar(db_conn)
+    assert len(rows) > 0, "Esperado pelo menos 1 sinal resolvido"
+    row = rows[0]
+    expected_keys = {"id", "resultado", "placar", "tentativa", "mercado_id", "mercado_slug", "entrada", "liga", "received_at"}
+    assert expected_keys.issubset(set(row.keys())), (
+        f"Chaves faltando: {expected_keys - set(row.keys())}"
+    )
+
+
+def test_get_signals_com_placar_exclui_pendentes(db_conn):
+    """Sinais com resultado=NULL nao aparecem no resultado."""
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (20010, -1001000000001, "Superliga", "Over 2.5", None, 1, "raw"),
+        )
+        cur.execute(
+            "INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (20011, -1001000000001, "Superliga", "Over 2.5", "GREEN", 1, "raw"),
+        )
+    db_conn.commit()
+
+    rows = get_signals_com_placar(db_conn)
+    resultados = [r["resultado"] for r in rows]
+    assert None not in resultados, "Sinais pendentes (NULL) nao devem aparecer"
+    assert "GREEN" in resultados
+
+
+def test_get_signals_com_placar_filtro_mercado(db_conn):
+    """Com mercado_id=1 retorna apenas sinais Over 2.5 (mercado_id=1)."""
+    with db_conn.cursor() as cur:
+        # sinal mercado 1 (over_2_5)
+        cur.execute(
+            "INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text, mercado_id)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (20020, -1001000000001, "Superliga", "Over 2.5", "GREEN", 1, "raw", 1),
+        )
+        # sinal mercado 2 (ambas_marcam)
+        cur.execute(
+            "INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text, mercado_id)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (20021, -1001000000002, "Superliga", "Ambas Marcam", "RED", 1, "raw", 2),
+        )
+    db_conn.commit()
+
+    rows = get_signals_com_placar(db_conn, mercado_id=1)
+    mercado_ids = [r["mercado_id"] for r in rows]
+    assert all(mid == 1 for mid in mercado_ids), (
+        f"Esperado apenas mercado_id=1, recebido {mercado_ids}"
+    )
+    assert len(rows) >= 1
+
+
+def test_get_signals_com_placar_sem_filtro(db_conn):
+    """Sem mercado_id retorna todos os sinais resolvidos (GREEN e RED)."""
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text, mercado_id)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (20030, -1001000000001, "Superliga", "Over 2.5", "GREEN", 1, "raw", 1),
+        )
+        cur.execute(
+            "INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text, mercado_id)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (20031, -1001000000002, "Superliga", "Ambas Marcam", "RED", 1, "raw", 2),
+        )
+    db_conn.commit()
+
+    rows = get_signals_com_placar(db_conn)
+    assert len(rows) >= 2, f"Esperado >= 2 sinais resolvidos, recebido {len(rows)}"
