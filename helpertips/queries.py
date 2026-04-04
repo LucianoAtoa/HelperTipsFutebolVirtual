@@ -587,13 +587,17 @@ def calculate_roi_complementares(
             )
 
             stake_comp = stake * percentual
+            # Complementares follow the same attempts as the principal signal:
+            # - Principal RED: all 4 attempts were made
+            # - Principal GREEN at tentativa N: N attempts were made
+            attempts = 4 if signal.get("resultado") == "RED" else tentativa
 
             if resultado_comp != "GREEN":
-                # RED: all 4 attempts lost
+                # RED comp: lost all attempts made
                 if not gale_on:
-                    invested = stake_comp * 4
+                    invested = stake_comp * attempts
                 else:
-                    invested = stake * (2 ** 4 - 1) * percentual
+                    invested = stake * (2 ** attempts - 1) * percentual
                 net = -invested
                 per_comp[slug]["reds"] += 1
             elif not gale_on:
@@ -711,13 +715,14 @@ def calculate_pl_por_entrada(
             )
 
             stake_comp = stake * percentual
+            attempts = 4 if resultado == "RED" else tentativa
 
             if resultado_comp != "GREEN":
-                # RED: all 4 attempts lost
+                # RED comp: lost all attempts made
                 if gale_on:
-                    invested_comp = stake * (2 ** 4 - 1) * percentual
+                    invested_comp = stake * (2 ** attempts - 1) * percentual
                 else:
-                    invested_comp = stake_comp * 4
+                    invested_comp = stake_comp * attempts
                 ret_comp = 0.0
                 net_comp = -invested_comp
             elif gale_on:
@@ -905,13 +910,14 @@ def calculate_pl_detalhado_por_sinal(
             continue
 
         stake_comp = stake * percentual
+        attempts = 4 if resultado == "RED" else tentativa
 
         if resultado_comp != "GREEN":
-            # RED: all 4 attempts lost
+            # RED comp: lost all attempts made
             if gale_on:
-                invested_comp = stake * (2 ** 4 - 1) * percentual
+                invested_comp = stake * (2 ** attempts - 1) * percentual
             else:
-                invested_comp = stake_comp * 4
+                invested_comp = stake_comp * attempts
             ret_comp = 0.0
             net_comp = -invested_comp
         elif gale_on:
@@ -1645,6 +1651,66 @@ def calculate_total_risco(
             "total": round(total, 4),
         })
     return result
+
+
+# ---------------------------------------------------------------------------
+# Funcoes de persistencia de config de mercado
+# ---------------------------------------------------------------------------
+
+
+def save_mercado_config(
+    conn,
+    mercado_slug: str,
+    stake_base: float,
+    fator_progressao: float,
+    max_tentativas: int,
+) -> None:
+    """
+    Persiste stake_base, fator_progressao e max_tentativas no banco para um mercado.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    mercado_slug : str
+        Slug do mercado a atualizar (ex: 'over_2_5').
+    stake_base : float
+        Novo valor de stake base.
+    fator_progressao : float
+        Novo fator de progressao (Martingale).
+    max_tentativas : int
+        Novo numero maximo de tentativas.
+    """
+    sql = """
+        UPDATE mercados
+        SET stake_base = %s, fator_progressao = %s, max_tentativas = %s
+        WHERE slug = %s
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, (stake_base, fator_progressao, max_tentativas, mercado_slug))
+    conn.commit()
+
+
+def save_complementares_config(conn, complementares: list[dict]) -> None:
+    """
+    Persiste percentual e odd_ref de cada complementar no banco.
+
+    Parametros
+    ----------
+    conn : psycopg2 connection
+        Conexao aberta. O chamador gerencia o ciclo de vida.
+    complementares : list[dict]
+        Lista de dicts com chaves "id" (int), "percentual" (float), "odd_ref" (float).
+    """
+    sql = """
+        UPDATE complementares
+        SET percentual = %s, odd_ref = %s
+        WHERE id = %s
+    """
+    with conn.cursor() as cur:
+        for comp in complementares:
+            cur.execute(sql, (comp["percentual"], comp["odd_ref"], comp["id"]))
+    conn.commit()
 
 
 def aggregate_pl_por_tentativa(pl_lista: list[dict]) -> list[dict]:

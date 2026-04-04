@@ -1966,3 +1966,84 @@ def test_calculate_total_risco_basic():
     assert t2["principal"] == pytest.approx(20.0)
     assert t2["complementares"] == pytest.approx(4.0)
     assert t2["total"] == pytest.approx(24.0)
+
+
+# ---------------------------------------------------------------------------
+# Task 17-01 Task 2: save_mercado_config + save_complementares_config
+# ---------------------------------------------------------------------------
+
+
+def test_save_mercado_config():
+    """save_mercado_config executa UPDATE em mercados SET stake_base, fator_progressao, max_tentativas."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
+
+    from unittest.mock import MagicMock, call
+    from helpertips.queries import save_mercado_config
+
+    mock_cursor = MagicMock()
+    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_cursor.__exit__ = MagicMock(return_value=False)
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    save_mercado_config(
+        mock_conn,
+        mercado_slug="over_2_5",
+        stake_base=15.0,
+        fator_progressao=3.0,
+        max_tentativas=3,
+    )
+
+    # Verifica que execute foi chamado
+    assert mock_cursor.execute.called
+    call_args = mock_cursor.execute.call_args
+    sql = call_args[0][0]
+    params = call_args[0][1]
+
+    assert "UPDATE mercados" in sql
+    assert "SET stake_base" in sql
+    assert params == (15.0, 3.0, 3, "over_2_5")
+
+    # Verifica que commit foi chamado
+    assert mock_conn.commit.called
+
+
+def test_save_complementares_config():
+    """save_complementares_config executa UPDATE em complementares SET percentual, odd_ref por comp."""
+    if not _IMPORTS_OK:
+        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
+
+    from unittest.mock import MagicMock
+    from helpertips.queries import save_complementares_config
+
+    mock_cursor = MagicMock()
+    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_cursor.__exit__ = MagicMock(return_value=False)
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    complementares = [
+        {"id": 1, "percentual": 0.25, "odd_ref": 5.0},
+        {"id": 2, "percentual": 0.02, "odd_ref": 35.0},
+    ]
+    save_complementares_config(mock_conn, complementares)
+
+    # Verifica que execute foi chamado 2 vezes (uma por complementar)
+    assert mock_cursor.execute.call_count == 2
+
+    # Verifica parametros de cada chamada
+    calls = mock_cursor.execute.call_args_list
+    first_sql = calls[0][0][0]
+    first_params = calls[0][0][1]
+    second_params = calls[1][0][1]
+
+    assert "UPDATE complementares" in first_sql
+    assert "SET percentual" in first_sql
+    assert first_params == (0.25, 5.0, 1)
+    assert second_params == (0.02, 35.0, 2)
+
+    # Verifica que commit foi chamado
+    assert mock_conn.commit.called
