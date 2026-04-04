@@ -35,7 +35,7 @@
 - [x] **Phase 10: Lógica Financeira** — Cálculo P&L com complementares diferenciados por mercado e Martingale 4 tentativas (completed 2026-04-04)
 - [x] **Phase 11: Dashboard Fundação** — Filtros globais e KPIs com P&L que sustentam todo o redesign (completed 2026-04-04)
 - [x] **Phase 12: Dashboard Mercados e Performance** — Config de mercados read-only e tabela P&L por entrada (completed 2026-04-04)
-- [ ] **Phase 13: Dashboard Análises Visuais** — Análise por liga, equity curve e análise de gale
+- [x] **Phase 13: Dashboard Análises Visuais** — Análise por liga, equity curve e análise de gale (completed 2026-04-04)
 
 ## Phase Details
 
@@ -112,7 +112,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 13-01-PLAN.md — TDD testes + funcoes de agregacao (queries.py) + builders Plotly (dashboard.py)
-- [ ] 13-02-PLAN.md — Integracao callback master + _build_phase13_section + verificacao visual
+- [x] 13-02-PLAN.md — Integracao callback master + _build_phase13_section + verificacao visual
 **UI hint**: yes
 
 ## Progress
@@ -132,4 +132,4 @@ Plans:
 | 10. Lógica Financeira | v1.2 | 2/2 | Complete    | 2026-04-04 |
 | 11. Dashboard Fundação | v1.2 | 2/2 | Complete    | 2026-04-04 |
 | 12. Dashboard Mercados e Performance | v1.2 | 2/2 | Complete    | 2026-04-04 |
-| 13. Dashboard Análises Visuais | v1.2 | 1/2 | In Progress|  |
+| 13. Dashboard Análises Visuais | v1.2 | 2/2 | Complete   | 2026-04-04 |
