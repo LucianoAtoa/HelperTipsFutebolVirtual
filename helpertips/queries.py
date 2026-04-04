@@ -246,25 +246,29 @@ def calculate_roi(signals: list, stake: float, odd: float, gale_on: bool) -> dic
 
         tentativa = signal.get("tentativa") or 1
 
-        if resultado == "RED":
-            # RED: all 4 attempts were made and lost
-            if not gale_on:
-                invested = stake * 4
-            else:
-                invested = stake * (2 ** 4 - 1)  # 10+20+40+80 = 150
-            net = -invested
-        elif not gale_on:
-            # GREEN Stake Fixa: same stake every time
+        if not gale_on:
+            # Stake Fixa: same stake every time
             invested = stake
-            net = stake * (odd - 1)
+            if resultado == "GREEN":
+                net = stake * (odd - 1)
+            else:
+                net = -stake
         else:
-            # GREEN Gale: stake doubles on each attempt
+            # Gale: stake doubles on each attempt
+            # Total invested across all N attempts: stake * (2^N - 1)
+            # The Nth attempt uses stake * 2^(N-1)
             accumulated_stake = stake * (2 ** tentativa - 1)
             winning_stake = stake * (2 ** (tentativa - 1))
             invested = accumulated_stake
-            win_profit = winning_stake * (odd - 1)
-            prior_losses = accumulated_stake - winning_stake
-            net = win_profit - prior_losses
+
+            if resultado == "GREEN":
+                # Win on last attempt: profit minus all prior losses
+                win_profit = winning_stake * (odd - 1)
+                prior_losses = accumulated_stake - winning_stake
+                net = win_profit - prior_losses
+            else:
+                # RED: lost all attempts
+                net = -accumulated_stake
 
         total_invested += invested
         profit += net
@@ -432,8 +436,7 @@ def get_mercado_config(conn, mercado_slug: str) -> dict | None:
         None se o mercado nao existir ou estiver inativo.
     """
     sql = """
-        SELECT id, slug, nome_display, odd_ref, ativo,
-               stake_base, fator_progressao, max_tentativas
+        SELECT id, slug, nome_display, odd_ref, ativo
         FROM mercados
         WHERE slug = %s AND ativo = TRUE
     """
@@ -442,10 +445,7 @@ def get_mercado_config(conn, mercado_slug: str) -> dict | None:
         row = cur.fetchone()
     if row is None:
         return None
-    columns = [
-        "id", "slug", "nome_display", "odd_ref", "ativo",
-        "stake_base", "fator_progressao", "max_tentativas",
-    ]
+    columns = ["id", "slug", "nome_display", "odd_ref", "ativo"]
     return dict(zip(columns, row))
 
 
@@ -586,33 +586,32 @@ def calculate_roi_complementares(
                 signal.get("resultado"),
             )
 
-            stake_comp = stake * percentual
-            # Complementares follow the same attempts as the principal signal:
-            # - Principal RED: all 4 attempts were made
-            # - Principal GREEN at tentativa N: N attempts were made
-            attempts = 4 if signal.get("resultado") == "RED" else tentativa
-
-            if resultado_comp != "GREEN":
-                # RED comp: lost all attempts made
-                if not gale_on:
-                    invested = stake_comp * attempts
-                else:
-                    invested = stake * (2 ** attempts - 1) * percentual
-                net = -invested
-                per_comp[slug]["reds"] += 1
-            elif not gale_on:
-                # GREEN Stake Fixa
+            if not gale_on:
+                # Stake Fixa: stake_comp fixo independente da tentativa
+                stake_comp = stake * percentual
                 invested = stake_comp
-                net = stake_comp * (odd_ref - 1)
-                per_comp[slug]["greens"] += 1
+
+                if resultado_comp == "GREEN":
+                    net = stake_comp * (odd_ref - 1)
+                    per_comp[slug]["greens"] += 1
+                else:
+                    net = -stake_comp
+                    per_comp[slug]["reds"] += 1
             else:
-                # GREEN Gale
+                # Gale: stake dobra a cada tentativa
+                # Acumulado = stake * (2^N - 1) * percentual
+                # Winning = stake * 2^(N-1) * percentual
                 accumulated_stake = stake * (2 ** tentativa - 1) * percentual
                 winning_stake = stake * (2 ** (tentativa - 1)) * percentual
                 invested = accumulated_stake
-                prior_losses = accumulated_stake - winning_stake
-                net = winning_stake * (odd_ref - 1) - prior_losses
-                per_comp[slug]["greens"] += 1
+
+                if resultado_comp == "GREEN":
+                    prior_losses = accumulated_stake - winning_stake
+                    net = winning_stake * (odd_ref - 1) - prior_losses
+                    per_comp[slug]["greens"] += 1
+                else:
+                    net = -accumulated_stake
+                    per_comp[slug]["reds"] += 1
 
             per_comp[slug]["lucro"] += net
             per_comp[slug]["investido"] += invested
@@ -679,24 +678,25 @@ def calculate_pl_por_entrada(
         odd = odd_por_mercado.get(mercado_slug, 2.30)
 
         # Calculo principal (replicando formula exata de calculate_roi)
-        if resultado == "RED":
-            # RED: all 4 attempts lost
-            if gale_on:
-                investido_principal = stake * (2 ** 4 - 1)
-            else:
-                investido_principal = stake * 4
-            retorno_principal = 0.0
-            lucro_principal = -investido_principal
-        elif gale_on:
+        if gale_on:
             accumulated_stake = stake * (2 ** tentativa - 1)
             winning_stake = stake * (2 ** (tentativa - 1))
             investido_principal = accumulated_stake
-            retorno_principal = winning_stake * odd
-            lucro_principal = winning_stake * (odd - 1) - (accumulated_stake - winning_stake)
+
+            if resultado == "GREEN":
+                retorno_principal = winning_stake * odd
+                lucro_principal = winning_stake * (odd - 1) - (accumulated_stake - winning_stake)
+            else:
+                retorno_principal = 0.0
+                lucro_principal = -accumulated_stake
         else:
             investido_principal = stake
-            retorno_principal = stake * odd
-            lucro_principal = stake * (odd - 1)
+            if resultado == "GREEN":
+                retorno_principal = stake * odd
+                lucro_principal = stake * (odd - 1)
+            else:
+                retorno_principal = 0.0
+                lucro_principal = -stake
 
         # Calculo complementares (replicando logica de calculate_roi_complementares)
         comps = complementares_por_mercado.get(mercado_slug, [])
@@ -714,27 +714,27 @@ def calculate_pl_por_entrada(
                 signal.get("resultado"),
             )
 
-            stake_comp = stake * percentual
-            attempts = 4 if resultado == "RED" else tentativa
-
-            if resultado_comp != "GREEN":
-                # RED comp: lost all attempts made
-                if gale_on:
-                    invested_comp = stake * (2 ** attempts - 1) * percentual
-                else:
-                    invested_comp = stake_comp * attempts
-                ret_comp = 0.0
-                net_comp = -invested_comp
-            elif gale_on:
+            if gale_on:
                 acc_comp = stake * (2 ** tentativa - 1) * percentual
                 win_comp = stake * (2 ** (tentativa - 1)) * percentual
                 invested_comp = acc_comp
-                ret_comp = win_comp * odd_ref
-                net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
+
+                if resultado_comp == "GREEN":
+                    ret_comp = win_comp * odd_ref
+                    net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
+                else:
+                    ret_comp = 0.0
+                    net_comp = -acc_comp
             else:
+                stake_comp = stake * percentual
                 invested_comp = stake_comp
-                ret_comp = stake_comp * odd_ref
-                net_comp = stake_comp * (odd_ref - 1)
+
+                if resultado_comp == "GREEN":
+                    ret_comp = stake_comp * odd_ref
+                    net_comp = stake_comp * (odd_ref - 1)
+                else:
+                    ret_comp = 0.0
+                    net_comp = -stake_comp
 
             investido_comp += invested_comp
             retorno_comp += ret_comp
@@ -836,28 +836,27 @@ def calculate_pl_detalhado_por_sinal(
     placar = sinal.get("placar")
 
     # --- Principal ---
-    if resultado == "RED":
-        # RED: all 4 attempts lost
-        if gale_on:
-            investido_principal = stake * (2 ** 4 - 1)
-            stake_efetiva = stake * (2 ** 3)
-        else:
-            investido_principal = stake * 4
-            stake_efetiva = stake
-        retorno_principal = 0.0
-        lucro_principal = -investido_principal
-    elif gale_on:
+    if gale_on:
         accumulated_stake = stake * (2 ** tentativa - 1)
         winning_stake = stake * (2 ** (tentativa - 1))
         investido_principal = accumulated_stake
         stake_efetiva = winning_stake
-        retorno_principal = winning_stake * odd_principal
-        lucro_principal = winning_stake * (odd_principal - 1) - (accumulated_stake - winning_stake)
+
+        if resultado == "GREEN":
+            retorno_principal = winning_stake * odd_principal
+            lucro_principal = winning_stake * (odd_principal - 1) - (accumulated_stake - winning_stake)
+        else:
+            retorno_principal = 0.0
+            lucro_principal = -accumulated_stake
     else:
         investido_principal = stake
         stake_efetiva = stake
-        retorno_principal = stake * odd_principal
-        lucro_principal = stake * (odd_principal - 1)
+        if resultado == "GREEN":
+            retorno_principal = stake * odd_principal
+            lucro_principal = stake * (odd_principal - 1)
+        else:
+            retorno_principal = 0.0
+            lucro_principal = -stake
 
     principal = {
         "odd": round(odd_principal, 2),
@@ -909,27 +908,27 @@ def calculate_pl_detalhado_por_sinal(
             })
             continue
 
-        stake_comp = stake * percentual
-        attempts = 4 if resultado == "RED" else tentativa
-
-        if resultado_comp != "GREEN":
-            # RED comp: lost all attempts made
-            if gale_on:
-                invested_comp = stake * (2 ** attempts - 1) * percentual
-            else:
-                invested_comp = stake_comp * attempts
-            ret_comp = 0.0
-            net_comp = -invested_comp
-        elif gale_on:
+        if gale_on:
             acc_comp = stake * (2 ** tentativa - 1) * percentual
             win_comp = stake * (2 ** (tentativa - 1)) * percentual
             invested_comp = acc_comp
-            ret_comp = win_comp * odd_ref
-            net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
+
+            if resultado_comp == "GREEN":
+                ret_comp = win_comp * odd_ref
+                net_comp = win_comp * (odd_ref - 1) - (acc_comp - win_comp)
+            else:
+                ret_comp = 0.0
+                net_comp = -acc_comp
         else:
+            stake_comp = stake * percentual
             invested_comp = stake_comp
-            ret_comp = stake_comp * odd_ref
-            net_comp = stake_comp * (odd_ref - 1)
+
+            if resultado_comp == "GREEN":
+                ret_comp = stake_comp * odd_ref
+                net_comp = stake_comp * (odd_ref - 1)
+            else:
+                ret_comp = 0.0
+                net_comp = -stake_comp
 
         complementares.append({
             "nome": nome,
@@ -1557,160 +1556,6 @@ def aggregate_pl_por_liga(pl_lista: list[dict]) -> list[dict]:
         })
     result.sort(key=lambda r: r["pl_total"], reverse=True)
     return result
-
-
-# ---------------------------------------------------------------------------
-# Funcoes puras para preview de stakes (sem acesso ao banco)
-# ---------------------------------------------------------------------------
-
-
-def calculate_preview_stakes(
-    stake_base: float,
-    fator_progressao: float,
-    max_tentativas: int,
-    complementares: list[dict],
-) -> list[dict]:
-    """
-    Calcula stakes T1-TN para cada complementar sem acesso ao banco.
-
-    Funcao PURA — sem efeitos colaterais, sem I/O.
-
-    Parametros
-    ----------
-    stake_base : float
-        Stake base do mercado principal (ex: 10.0).
-    fator_progressao : float
-        Fator multiplicador por tentativa (ex: 2.0 para dobrar).
-    max_tentativas : int
-        Numero de tentativas configuradas (determina quantas chaves Tn existem).
-    complementares : list[dict]
-        Lista de dicts com chaves "percentual" (float) e "nome_display" (str).
-
-    Retorna
-    -------
-    list[dict]
-        Lista de dicts, um por complementar. Cada dict tem:
-        "nome_display" + "T1", "T2", ..., "T{max_tentativas}".
-    """
-    result = []
-    for comp in complementares:
-        percentual = float(comp["percentual"])
-        stake_comp_base = stake_base * percentual
-        item: dict = {"nome_display": comp["nome_display"]}
-        for t in range(1, max_tentativas + 1):
-            stake_t = stake_comp_base * (fator_progressao ** (t - 1))
-            item[f"T{t}"] = round(stake_t, 4)
-        result.append(item)
-    return result
-
-
-def calculate_total_risco(
-    stake_base: float,
-    fator_progressao: float,
-    max_tentativas: int,
-    odd_principal: float,
-    complementares: list[dict],
-) -> list[dict]:
-    """
-    Calcula total em risco por tentativa (principal + complementares) sem acesso ao banco.
-
-    Funcao PURA — sem efeitos colaterais, sem I/O.
-
-    Parametros
-    ----------
-    stake_base : float
-        Stake base do mercado principal.
-    fator_progressao : float
-        Fator multiplicador por tentativa.
-    max_tentativas : int
-        Numero de tentativas configuradas.
-    odd_principal : float
-        Odd de referencia do mercado principal (informativo, nao usada no calculo de risco).
-    complementares : list[dict]
-        Lista de dicts com chaves "percentual" (float) e "odd_ref" (float).
-
-    Retorna
-    -------
-    list[dict]
-        Lista de dicts por tentativa com chaves:
-        "tentativa" (str, ex: "T1"), "principal" (float), "complementares" (float), "total" (float).
-    """
-    result = []
-    for t in range(1, max_tentativas + 1):
-        fator_t = fator_progressao ** (t - 1)
-        principal = stake_base * fator_t
-        comp_total = sum(
-            stake_base * float(c["percentual"]) * fator_t
-            for c in complementares
-        )
-        total = principal + comp_total
-        result.append({
-            "tentativa": f"T{t}",
-            "principal": round(principal, 4),
-            "complementares": round(comp_total, 4),
-            "total": round(total, 4),
-        })
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Funcoes de persistencia de config de mercado
-# ---------------------------------------------------------------------------
-
-
-def save_mercado_config(
-    conn,
-    mercado_slug: str,
-    stake_base: float,
-    fator_progressao: float,
-    max_tentativas: int,
-) -> None:
-    """
-    Persiste stake_base, fator_progressao e max_tentativas no banco para um mercado.
-
-    Parametros
-    ----------
-    conn : psycopg2 connection
-        Conexao aberta. O chamador gerencia o ciclo de vida.
-    mercado_slug : str
-        Slug do mercado a atualizar (ex: 'over_2_5').
-    stake_base : float
-        Novo valor de stake base.
-    fator_progressao : float
-        Novo fator de progressao (Martingale).
-    max_tentativas : int
-        Novo numero maximo de tentativas.
-    """
-    sql = """
-        UPDATE mercados
-        SET stake_base = %s, fator_progressao = %s, max_tentativas = %s
-        WHERE slug = %s
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql, (stake_base, fator_progressao, max_tentativas, mercado_slug))
-    conn.commit()
-
-
-def save_complementares_config(conn, complementares: list[dict]) -> None:
-    """
-    Persiste percentual e odd_ref de cada complementar no banco.
-
-    Parametros
-    ----------
-    conn : psycopg2 connection
-        Conexao aberta. O chamador gerencia o ciclo de vida.
-    complementares : list[dict]
-        Lista de dicts com chaves "id" (int), "percentual" (float), "odd_ref" (float).
-    """
-    sql = """
-        UPDATE complementares
-        SET percentual = %s, odd_ref = %s
-        WHERE id = %s
-    """
-    with conn.cursor() as cur:
-        for comp in complementares:
-            cur.execute(sql, (comp["percentual"], comp["odd_ref"], comp["id"]))
-    conn.commit()
 
 
 def aggregate_pl_por_tentativa(pl_lista: list[dict]) -> list[dict]:

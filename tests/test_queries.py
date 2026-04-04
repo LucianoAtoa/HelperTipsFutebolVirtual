@@ -335,12 +335,7 @@ def test_calculate_roi_stake_fixa():
 
 
 def test_calculate_roi_stake_fixa_mixed():
-    """
-    2 GREEN t1 + 1 RED at R$10 stake, odd 1.90:
-    - GREEN: invested=10, net=+9 (x2)
-    - RED: all 4 attempts lost, invested=40, net=-40
-    - Total: invested=10+10+40=60, profit=9+9-40=-22
-    """
+    """2 GREEN + 1 RED at R$10 stake, odd 1.90 => profit = 2*9 - 10 = 8.0, invested = 30.0."""
     signals = [
         {"resultado": "GREEN", "tentativa": 1},
         {"resultado": "GREEN", "tentativa": 1},
@@ -349,9 +344,9 @@ def test_calculate_roi_stake_fixa_mixed():
 
     result = calculate_roi(signals, stake=10.0, odd=1.90, gale_on=False)
 
-    assert result["total_invested"] == pytest.approx(60.0)
-    assert result["profit"] == pytest.approx(-22.0)
-    assert result["roi_pct"] == pytest.approx(-22.0 / 60.0 * 100)
+    assert result["total_invested"] == pytest.approx(30.0)
+    assert result["profit"] == pytest.approx(8.0)
+    assert result["roi_pct"] == pytest.approx(8.0 / 30.0 * 100)
 
 
 def test_calculate_roi_gale_on():
@@ -641,14 +636,13 @@ def test_calculate_roi_complementares_pending_ignorado():
 def test_calculate_roi_complementares_green_t1_stake_fixa():
     """
     1 sinal GREEN placar='3-2' tentativa=1, stake=100, gale_on=False, config over_2_5:
-    GREEN t1: comps follow principal tentativa (1 attempt each)
-    - over_3_5: GREEN -> invested=20, lucro=60
-    - empate_3_3_4_4: RED -> invested=1*1=1, lucro=-1
-    - over_5_plus: GREEN -> invested=10, lucro=70
-    - gols_casa_4: RED -> invested=1*1=1, lucro=-1
-    - gols_fora_4: RED -> invested=1*1=1, lucro=-1
-    - gols_casa_5_plus: RED -> invested=1*1=1, lucro=-1
-    - gols_fora_5_plus: RED -> invested=1*1=1, lucro=-1
+    - over_3_5: GREEN (total=5 > 3.5) -> stake_comp=100*0.20=20, lucro=20*(4.00-1)=60, investido=20
+    - empate_3_3_4_4: RED -> stake_comp=100*0.01=1, lucro=-1, investido=1
+    - over_5_plus: GREEN (total=5 >= 5) -> stake_comp=100*0.10=10, lucro=10*(8.00-1)=70, investido=10
+    - gols_casa_4: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
+    - gols_fora_4: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
+    - gols_casa_5_plus: RED (casa=3) -> stake_comp=1, lucro=-1, investido=1
+    - gols_fora_5_plus: RED (fora=2) -> stake_comp=1, lucro=-1, investido=1
     - Total investido=35, profit=60-1+70-1-1-1-1=125
     """
     signals = [{"resultado": "GREEN", "placar": "3-2", "tentativa": 1}]
@@ -1440,30 +1434,35 @@ def test_pl_red_stake_fixa():
     sinais = [_make_sinal("RED", tentativa=4, placar=None)]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=False)
     row = result[0]
-    assert row["lucro_principal"] == pytest.approx(-400.0, abs=0.01)
-    assert row["investido_principal"] == pytest.approx(400.0, abs=0.01)
+    assert row["lucro_principal"] == pytest.approx(-100.0, abs=0.01)
+    assert row["investido_principal"] == pytest.approx(100.0, abs=0.01)
 
 
 def test_pl_complementares_over_2_5():
-    """GREEN T1 placar=4-0 mercado over_2_5 gale: comps follow t1 (1 attempt each)."""
+    """GREEN T1 placar=4-0 mercado over_2_5: over_3_5 usa 20%, investido_comp para over_3_5 = 100*0.20=20."""
     if not _IMPORTS_OK:
         pytest.skip(f"Import failed: {_IMPORT_ERROR}")
     sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="over_2_5")]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     row = result[0]
-    # All comps use t1 (2^1-1=1x): over_3_5=20, empate=1, over_5+=10, casa_4=1, fora_4=1, casa_5+=1, fora_5+=1 = 35
-    assert row["investido_comp"] == pytest.approx(35.0, abs=0.01)
+    # investido_comp deve incluir a stake de over_3_5 = 100 * (2^1 - 1) * 0.20 = 20
+    # (e todos os outros complementares)
+    assert row["investido_comp"] == pytest.approx(100.0 * (2**1 - 1) * (0.20 + 0.01 + 0.10 + 0.01 + 0.01 + 0.01 + 0.01), abs=0.01)
+    # over_3_5 GREEN (4 > 3.5), lucro_comp > 0
+    assert row["lucro_comp"] > 0
 
 
 def test_pl_complementares_ambas_marcam():
-    """GREEN T1 mercado ambas_marcam gale: comps follow t1 (1 attempt each)."""
+    """GREEN T1 mercado ambas_marcam: over_3_5 usa 10% (nao 20%)."""
     if not _IMPORTS_OK:
         pytest.skip(f"Import failed: {_IMPORT_ERROR}")
     sinais = [_make_sinal("GREEN", tentativa=1, placar="4-0", mercado_slug="ambas_marcam", entrada="Ambas Marcam")]
     result = calculate_pl_por_entrada(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     row = result[0]
-    # All comps use t1 (2^1-1=1x): over_3_5=10, empate=1, over_5+=5, casa_4=1, fora_4=1, casa_5+=1, fora_5+=1 = 20
-    assert row["investido_comp"] == pytest.approx(20.0, abs=0.01)
+    # Para ambas_marcam, over_3_5 percentual=0.10 (nao 0.20 como em over_2_5)
+    # investido_comp = 100 * (2^1 - 1) * (0.10 + 0.01 + 0.05 + 0.01 + 0.01 + 0.01 + 0.01)
+    expected_investido = 100.0 * (2**1 - 1) * (0.10 + 0.01 + 0.05 + 0.01 + 0.01 + 0.01 + 0.01)
+    assert row["investido_comp"] == pytest.approx(expected_investido, abs=0.01)
 
 
 def test_pl_red_sem_placar_complementares():
@@ -1784,14 +1783,14 @@ def test_calculate_pl_detalhado_green_t1():
 
 
 def test_calculate_pl_detalhado_red():
-    """Sinal RED: all 4 attempts lost, principal lucro=-40, complementares todos RED."""
+    """Sinal RED tentativa 1: principal lucro=-10, complementares todos RED."""
     if not _HAS_DETALHE:
         pytest.skip("calculate_pl_detalhado_por_sinal nao disponivel")
     sinal = {"resultado": "RED", "placar": "1-0", "tentativa": 1, "mercado_slug": "over_2_5"}
     result = calculate_pl_detalhado_por_sinal(
         sinal, _COMPS_CONFIG, stake=10.0, odd_principal=2.30, gale_on=False
     )
-    assert result["principal"]["lucro"] == pytest.approx(-40.0)
+    assert result["principal"]["lucro"] == pytest.approx(-10.0)
     assert result["principal"]["retorno"] == pytest.approx(0.0)
     # Complementares: principal RED -> todos RED (D-08 de validar_complementar)
     for comp in result["complementares"]:
@@ -1839,208 +1838,3 @@ def test_calculate_pl_detalhado_complementar_individual():
     required_keys = {"nome", "odd", "stake", "resultado", "lucro", "investido", "retorno"}
     for comp in result["complementares"]:
         assert required_keys.issubset(comp.keys()), f"Faltam keys em complementar: {comp.keys()}"
-
-# ---------------------------------------------------------------------------
-# Task 17-01: get_mercado_config + funcoes puras de preview
-# ---------------------------------------------------------------------------
-
-
-def test_get_mercado_config_returns_config_columns():
-    """get_mercado_config retorna dict com 8 chaves incluindo colunas de config."""
-    if not _IMPORTS_OK:
-        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
-
-    from unittest.mock import MagicMock
-
-    # Monta row com 8 colunas na ordem do SELECT atualizado
-    row = (1, "over_2_5", "Over 2.5", 2.30, True, 10.00, 2.00, 4)
-
-    mock_cursor = MagicMock()
-    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
-    mock_cursor.__exit__ = MagicMock(return_value=False)
-    mock_cursor.fetchone.return_value = row
-
-    mock_conn = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-
-    result = get_mercado_config(mock_conn, "over_2_5")
-
-    assert result is not None
-    assert result["id"] == 1
-    assert result["slug"] == "over_2_5"
-    assert result["nome_display"] == "Over 2.5"
-    assert result["odd_ref"] == 2.30
-    assert result["ativo"] is True
-    assert result["stake_base"] == 10.00
-    assert result["fator_progressao"] == 2.00
-    assert result["max_tentativas"] == 4
-
-
-def test_calculate_preview_stakes_basic():
-    """calculate_preview_stakes calcula stakes T1-T4 para cada complementar."""
-    if not _IMPORTS_OK:
-        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
-
-    from helpertips.queries import calculate_preview_stakes
-
-    complementares = [
-        {"percentual": 0.20, "nome_display": "Over 3.5"},
-        {"percentual": 0.01, "nome_display": "Empate"},
-    ]
-    result = calculate_preview_stakes(
-        stake_base=10.0,
-        fator_progressao=2.0,
-        max_tentativas=4,
-        complementares=complementares,
-    )
-
-    assert len(result) == 2
-
-    over35 = result[0]
-    assert over35["nome_display"] == "Over 3.5"
-    assert over35["T1"] == pytest.approx(2.0)
-    assert over35["T2"] == pytest.approx(4.0)
-    assert over35["T3"] == pytest.approx(8.0)
-    assert over35["T4"] == pytest.approx(16.0)
-
-    empate = result[1]
-    assert empate["nome_display"] == "Empate"
-    assert empate["T1"] == pytest.approx(0.1)
-    assert empate["T2"] == pytest.approx(0.2)
-    assert empate["T3"] == pytest.approx(0.4)
-    assert empate["T4"] == pytest.approx(0.8)
-
-
-def test_calculate_preview_stakes_max_2():
-    """calculate_preview_stakes com max_tentativas=2 retorna apenas T1 e T2."""
-    if not _IMPORTS_OK:
-        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
-
-    from helpertips.queries import calculate_preview_stakes
-
-    complementares = [{"percentual": 0.20, "nome_display": "Over 3.5"}]
-    result = calculate_preview_stakes(
-        stake_base=10.0,
-        fator_progressao=2.0,
-        max_tentativas=2,
-        complementares=complementares,
-    )
-
-    assert len(result) == 1
-    item = result[0]
-    assert "T1" in item
-    assert "T2" in item
-    assert "T3" not in item
-    assert "T4" not in item
-
-
-def test_calculate_total_risco_basic():
-    """calculate_total_risco retorna lista de dicts por tentativa com principal, complementares, total."""
-    if not _IMPORTS_OK:
-        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
-
-    from helpertips.queries import calculate_total_risco
-
-    complementares = [{"percentual": 0.20, "odd_ref": 4.0}]
-    result = calculate_total_risco(
-        stake_base=10.0,
-        fator_progressao=2.0,
-        max_tentativas=4,
-        odd_principal=2.30,
-        complementares=complementares,
-    )
-
-    assert len(result) == 4
-
-    t1 = result[0]
-    assert t1["tentativa"] == "T1"
-    assert t1["principal"] == pytest.approx(10.0)
-    assert t1["complementares"] == pytest.approx(2.0)
-    assert t1["total"] == pytest.approx(12.0)
-
-    t2 = result[1]
-    assert t2["tentativa"] == "T2"
-    assert t2["principal"] == pytest.approx(20.0)
-    assert t2["complementares"] == pytest.approx(4.0)
-    assert t2["total"] == pytest.approx(24.0)
-
-
-# ---------------------------------------------------------------------------
-# Task 17-01 Task 2: save_mercado_config + save_complementares_config
-# ---------------------------------------------------------------------------
-
-
-def test_save_mercado_config():
-    """save_mercado_config executa UPDATE em mercados SET stake_base, fator_progressao, max_tentativas."""
-    if not _IMPORTS_OK:
-        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
-
-    from unittest.mock import MagicMock, call
-    from helpertips.queries import save_mercado_config
-
-    mock_cursor = MagicMock()
-    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
-    mock_cursor.__exit__ = MagicMock(return_value=False)
-
-    mock_conn = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-
-    save_mercado_config(
-        mock_conn,
-        mercado_slug="over_2_5",
-        stake_base=15.0,
-        fator_progressao=3.0,
-        max_tentativas=3,
-    )
-
-    # Verifica que execute foi chamado
-    assert mock_cursor.execute.called
-    call_args = mock_cursor.execute.call_args
-    sql = call_args[0][0]
-    params = call_args[0][1]
-
-    assert "UPDATE mercados" in sql
-    assert "SET stake_base" in sql
-    assert params == (15.0, 3.0, 3, "over_2_5")
-
-    # Verifica que commit foi chamado
-    assert mock_conn.commit.called
-
-
-def test_save_complementares_config():
-    """save_complementares_config executa UPDATE em complementares SET percentual, odd_ref por comp."""
-    if not _IMPORTS_OK:
-        pytest.skip(f"Imports nao disponiveis: {_IMPORT_ERROR}")
-
-    from unittest.mock import MagicMock
-    from helpertips.queries import save_complementares_config
-
-    mock_cursor = MagicMock()
-    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
-    mock_cursor.__exit__ = MagicMock(return_value=False)
-
-    mock_conn = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-
-    complementares = [
-        {"id": 1, "percentual": 0.25, "odd_ref": 5.0},
-        {"id": 2, "percentual": 0.02, "odd_ref": 35.0},
-    ]
-    save_complementares_config(mock_conn, complementares)
-
-    # Verifica que execute foi chamado 2 vezes (uma por complementar)
-    assert mock_cursor.execute.call_count == 2
-
-    # Verifica parametros de cada chamada
-    calls = mock_cursor.execute.call_args_list
-    first_sql = calls[0][0][0]
-    first_params = calls[0][0][1]
-    second_params = calls[1][0][1]
-
-    assert "UPDATE complementares" in first_sql
-    assert "SET percentual" in first_sql
-    assert first_params == (0.25, 5.0, 1)
-    assert second_params == (0.02, 35.0, 2)
-
-    # Verifica que commit foi chamado
-    assert mock_conn.commit.called
