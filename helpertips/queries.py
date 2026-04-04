@@ -1316,3 +1316,67 @@ def get_winrate_by_periodo(conn, liga=None, entrada=None, date_start=None, date_
         }
         for p, g, t in rows
     ]
+
+
+def aggregate_pl_por_liga(pl_lista: list[dict]) -> list[dict]:
+    """Agrega P&L por liga para analise dimensional (DASH-05)."""
+    from collections import defaultdict
+    grupos: dict[str, dict] = defaultdict(lambda: {
+        "lucro_principal": 0.0, "lucro_complementar": 0.0,
+        "greens": 0, "reds": 0,
+    })
+    for row in pl_lista:
+        liga = row.get("liga") or "Desconhecida"
+        resultado = row.get("resultado")
+        if resultado not in ("GREEN", "RED"):
+            continue
+        grupos[liga]["lucro_principal"] += row.get("lucro_principal", 0.0)
+        grupos[liga]["lucro_complementar"] += row.get("lucro_comp", 0.0)
+        if resultado == "GREEN":
+            grupos[liga]["greens"] += 1
+        else:
+            grupos[liga]["reds"] += 1
+
+    result = []
+    for liga, g in grupos.items():
+        total = g["greens"] + g["reds"]
+        pl_total = g["lucro_principal"] + g["lucro_complementar"]
+        taxa = g["greens"] / total * 100 if total > 0 else 0.0
+        result.append({
+            "liga": liga,
+            "lucro_principal": round(g["lucro_principal"], 2),
+            "lucro_complementar": round(g["lucro_complementar"], 2),
+            "pl_total": round(pl_total, 2),
+            "greens": g["greens"],
+            "reds": g["reds"],
+            "total": total,
+            "taxa_green": round(taxa, 1),
+        })
+    result.sort(key=lambda r: r["pl_total"], reverse=True)
+    return result
+
+
+def aggregate_pl_por_tentativa(pl_lista: list[dict]) -> list[dict]:
+    """Agrega P&L por tentativa para analise de gale (DASH-07, per D-07)."""
+    from collections import defaultdict
+    grupos: dict[int, dict] = defaultdict(lambda: {
+        "greens": 0, "lucro_total_greens": 0.0,
+    })
+    for row in pl_lista:
+        t = row.get("tentativa") or 1
+        if row.get("resultado") == "GREEN":
+            grupos[t]["greens"] += 1
+            grupos[t]["lucro_total_greens"] += row.get("lucro_total", 0.0)
+
+    result = []
+    for tentativa in sorted(grupos.keys()):
+        g = grupos[tentativa]
+        lucro_medio = (
+            g["lucro_total_greens"] / g["greens"] if g["greens"] > 0 else 0.0
+        )
+        result.append({
+            "tentativa": tentativa,
+            "greens": g["greens"],
+            "lucro_medio_green": round(lucro_medio, 2),
+        })
+    return result

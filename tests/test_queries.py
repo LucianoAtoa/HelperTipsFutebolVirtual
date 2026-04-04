@@ -1588,3 +1588,129 @@ def test_equity_curve_breakdown_pendentes_ignorados():
     ]
     result = calculate_equity_curve_breakdown(sinais, COMPLEMENTARES_POR_MERCADO, 100.0, ODD_POR_MERCADO, gale_on=True)
     assert len(result["x"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Phase 13 — aggregate_pl_por_liga e aggregate_pl_por_tentativa
+# ---------------------------------------------------------------------------
+
+try:
+    from helpertips.queries import aggregate_pl_por_liga
+    _HAS_AGGREGATE_LIGA = True
+except ImportError:
+    _HAS_AGGREGATE_LIGA = False
+
+try:
+    from helpertips.queries import aggregate_pl_por_tentativa
+    _HAS_AGGREGATE_TENT = True
+except ImportError:
+    _HAS_AGGREGATE_TENT = False
+
+SAMPLE_PL_LIGA = [
+    {"liga": "Copa do Mundo", "resultado": "GREEN", "lucro_principal": 6.5, "lucro_comp": 2.0, "lucro_total": 8.5},
+    {"liga": "Copa do Mundo", "resultado": "RED", "lucro_principal": -10.0, "lucro_comp": -3.0, "lucro_total": -13.0},
+    {"liga": "Euro Cup", "resultado": "GREEN", "lucro_principal": 6.5, "lucro_comp": 1.5, "lucro_total": 8.0},
+]
+
+SAMPLE_PL_TENT = [
+    {"tentativa": 1, "resultado": "GREEN", "lucro_total": 10.0},
+    {"tentativa": 1, "resultado": "GREEN", "lucro_total": 8.0},
+    {"tentativa": 2, "resultado": "GREEN", "lucro_total": 20.0},
+    {"tentativa": 1, "resultado": "RED", "lucro_total": -10.0},
+]
+
+
+def test_aggregate_pl_por_liga_basic():
+    """3 sinais de 2 ligas: verifica soma por liga e ordenacao por pl_total desc."""
+    if not _HAS_AGGREGATE_LIGA:
+        pytest.skip("aggregate_pl_por_liga nao disponivel")
+    result = aggregate_pl_por_liga(SAMPLE_PL_LIGA)
+    assert len(result) == 2
+    # Euro Cup tem pl_total=8.0, Copa do Mundo tem pl_total=-4.5 => Euro Cup primeiro
+    assert result[0]["liga"] == "Euro Cup"
+    assert result[1]["liga"] == "Copa do Mundo"
+    # Verificar chaves presentes
+    keys = {"liga", "lucro_principal", "lucro_complementar", "pl_total", "greens", "reds", "total", "taxa_green"}
+    for row in result:
+        assert keys == set(row.keys())
+    # Copa do Mundo: lucro_principal=6.5+(-10.0)=-3.5, lucro_complementar=2.0+(-3.0)=-1.0
+    copa = result[1]
+    assert copa["lucro_principal"] == -3.5
+    assert copa["lucro_complementar"] == -1.0
+    assert copa["pl_total"] == -4.5
+    assert copa["greens"] == 1
+    assert copa["reds"] == 1
+    assert copa["total"] == 2
+
+
+def test_aggregate_pl_por_liga_empty():
+    """Input vazio retorna lista vazia."""
+    if not _HAS_AGGREGATE_LIGA:
+        pytest.skip("aggregate_pl_por_liga nao disponivel")
+    assert aggregate_pl_por_liga([]) == []
+
+
+def test_aggregate_pl_por_liga_none_liga():
+    """Sinal com liga=None agrupado como 'Desconhecida'."""
+    if not _HAS_AGGREGATE_LIGA:
+        pytest.skip("aggregate_pl_por_liga nao disponivel")
+    sinais = [{"liga": None, "resultado": "GREEN", "lucro_principal": 5.0, "lucro_comp": 1.0}]
+    result = aggregate_pl_por_liga(sinais)
+    assert len(result) == 1
+    assert result[0]["liga"] == "Desconhecida"
+
+
+def test_aggregate_pl_por_liga_taxa_green():
+    """taxa_green = greens/total * 100."""
+    if not _HAS_AGGREGATE_LIGA:
+        pytest.skip("aggregate_pl_por_liga nao disponivel")
+    result = aggregate_pl_por_liga(SAMPLE_PL_LIGA)
+    copa = next(r for r in result if r["liga"] == "Copa do Mundo")
+    assert copa["taxa_green"] == 50.0
+    euro = next(r for r in result if r["liga"] == "Euro Cup")
+    assert euro["taxa_green"] == 100.0
+
+
+def test_aggregate_pl_por_tentativa_basic():
+    """3 sinais: 2 GREEN tent1, 1 GREEN tent2, 1 RED tent1 — verifica lucro_medio correto."""
+    if not _HAS_AGGREGATE_TENT:
+        pytest.skip("aggregate_pl_por_tentativa nao disponivel")
+    result = aggregate_pl_por_tentativa(SAMPLE_PL_TENT)
+    assert len(result) == 2
+    assert result[0]["tentativa"] == 1
+    assert result[1]["tentativa"] == 2
+    # Tentativa 1: 2 greens com lucro 10.0 e 8.0 => media=9.0
+    assert result[0]["greens"] == 2
+    assert result[0]["lucro_medio_green"] == 9.0
+    # Tentativa 2: 1 green com lucro 20.0 => media=20.0
+    assert result[1]["greens"] == 1
+    assert result[1]["lucro_medio_green"] == 20.0
+
+
+def test_aggregate_pl_por_tentativa_empty():
+    """Input vazio retorna lista vazia."""
+    if not _HAS_AGGREGATE_TENT:
+        pytest.skip("aggregate_pl_por_tentativa nao disponivel")
+    assert aggregate_pl_por_tentativa([]) == []
+
+
+def test_aggregate_pl_por_tentativa_none_tentativa():
+    """tentativa=None tratada como 1."""
+    if not _HAS_AGGREGATE_TENT:
+        pytest.skip("aggregate_pl_por_tentativa nao disponivel")
+    sinais = [{"tentativa": None, "resultado": "GREEN", "lucro_total": 15.0}]
+    result = aggregate_pl_por_tentativa(sinais)
+    assert len(result) == 1
+    assert result[0]["tentativa"] == 1
+    assert result[0]["greens"] == 1
+    assert result[0]["lucro_medio_green"] == 15.0
+
+
+def test_aggregate_pl_por_tentativa_no_greens():
+    """Tentativa com apenas REDs: lucro_medio_green = 0.0."""
+    if not _HAS_AGGREGATE_TENT:
+        pytest.skip("aggregate_pl_por_tentativa nao disponivel")
+    sinais = [{"tentativa": 3, "resultado": "RED", "lucro_total": -10.0}]
+    result = aggregate_pl_por_tentativa(sinais)
+    # Nenhum GREEN, entao tentativa 3 nao aparece (nao foi agrupada)
+    assert result == []
