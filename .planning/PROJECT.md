@@ -54,10 +54,10 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - ✓ Listener systemd 24/7 com Restart=on-failure — v1.1
 - ✓ Autenticação Telethon interativa via SSH — v1.1
 - ✓ Dashboard gunicorn systemd + nginx HTTP Basic Auth — v1.1
+- ✓ Listener multi-grupo (Over 2.5 + Ambas Marcam simultaneamente) — v1.2 Phase 9
 
 ### Active
 
-- Listener multi-grupo (Over 2.5 + Ambas Marcam simultaneamente)
 - Cálculo financeiro P&L com complementares, odds de referência e Martingale
 - Redesign completo do Dashboard com foco em análise de lucro/prejuízo
 
@@ -110,6 +110,8 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 | HTTP Basic Auth em vez de OAuth | Suficiente para 1 usuário | ✓ Good — v1.1 |
 | gunicorn + nginx em vez de Dash dev server | Stack de produção, porta 80 | ✓ Good — v1.1 |
 | IAM instance profile em vez de access keys | Sem credenciais estáticas no servidor | ✓ Good — v1.1 |
+| Handler único multi-grupo com chats=[lista] | Telethon nativo, menor mudança, mesmo parser | ✓ Good — v1.2 |
+| group_id + mercado_id no schema signals | Deduplicação correta entre grupos, FK para P&L | ✓ Good — v1.2 |
 
 ## Evolution
 
@@ -129,4 +131,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after v1.2 Multi-Market Analytics milestone started*
+*Last updated: 2026-04-04 after Phase 9 Listener Multi-Grupo completed*
