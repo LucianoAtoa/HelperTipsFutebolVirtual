@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Multi-Market Analytics
-status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-04-04T15:37:56.324Z"
+status: verifying
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-04-04T15:42:15.228Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 Phase: 12 (dashboard-mercados-e-performance) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
@@ -64,6 +64,7 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 - [Phase 11-dashboard-funda-o]: P&L total on-the-fly no callback master: principal + complementares somados. Complementares apenas quando mercado especifico selecionado.
 - [Phase 11-dashboard-funda-o]: entrada como string passada diretamente para queries (nao mercado_id) — evita Pitfall 2 do RESEARCH
 - [Phase 12-dashboard-mercados-e-performance]: Funcoes helper puras sem acesso ao banco testavel por TDD; analytics-placeholder substituido por IDs especificos no layout
+- [Phase 12]: dbc.Table color='dark' em vez de dark=True: parametro dark nao existe em dbc 2.0.4
 
 ### Pending Todos
 
@@ -77,6 +78,6 @@ Decisions archived in PROJECT.md Key Decisions table (v1.0 + v1.1 milestones).
 
 ## Session Continuity
 
-Last session: 2026-04-04T15:37:56.321Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-04-04T15:42:15.226Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
