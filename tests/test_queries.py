@@ -53,10 +53,12 @@ except ImportError as e:
 
 
 def _make_signal_dict(message_id: int, liga="Superliga", entrada="Over 2.5",
-                      resultado=None, placar=None, tentativa=1) -> dict:
+                      resultado=None, placar=None, tentativa=1,
+                      group_id: int = -1001000000001) -> dict:
     """Build a minimal valid signal dict for DB insertion."""
     return {
         "message_id": message_id,
+        "group_id": group_id,
         "liga": liga,
         "entrada": entrada,
         "horario": "10:00",
@@ -75,10 +77,10 @@ def _insert_signal(conn, data: dict) -> None:
         cur.execute(
             """
             INSERT INTO signals (
-                message_id, liga, entrada, horario, periodo,
+                message_id, group_id, liga, entrada, horario, periodo,
                 dia_semana, resultado, placar, tentativa, raw_text, received_at, updated_at
             ) VALUES (
-                %(message_id)s, %(liga)s, %(entrada)s, %(horario)s, %(periodo)s,
+                %(message_id)s, %(group_id)s, %(liga)s, %(entrada)s, %(horario)s, %(periodo)s,
                 %(dia_semana)s, %(resultado)s, %(placar)s, %(tentativa)s, %(raw_text)s,
                 NOW(), NOW()
             )
@@ -857,24 +859,24 @@ def test_get_heatmap_data(db_conn):
     with db_conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO signals (message_id, group_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (8001, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", monday_10h, monday_10h),
+            (8001, -1001000000001, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", monday_10h, monday_10h),
         )
         cur.execute(
             """
-            INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO signals (message_id, group_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (8002, "Liga A", "Over 2.5", "10:00", "RED", "raw", monday_10h, monday_10h),
+            (8002, -1001000000001, "Liga A", "Over 2.5", "10:00", "RED", "raw", monday_10h, monday_10h),
         )
         cur.execute(
             """
-            INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO signals (message_id, group_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (8003, "Liga A", "Over 2.5", "20:00", "GREEN", "raw", friday_20h, friday_20h),
+            (8003, -1001000000001, "Liga A", "Over 2.5", "20:00", "GREEN", "raw", friday_20h, friday_20h),
         )
     db_conn.commit()
 
@@ -917,15 +919,15 @@ def test_get_winrate_by_dow(db_conn):
         # Segunda: 2 GREEN, 1 RED -> win_rate = 66.7%
         for mid, res, ts in [(7001, "GREEN", monday), (7002, "GREEN", monday), (7003, "RED", monday)]:
             cur.execute(
-                "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (mid, "Liga A", "Over 2.5", "10:00", res, "raw", ts, ts),
+                "INSERT INTO signals (message_id, group_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (mid, -1001000000001, "Liga A", "Over 2.5", "10:00", res, "raw", ts, ts),
             )
         # Sexta: 1 GREEN -> win_rate = 100%
         cur.execute(
-            "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-            (7004, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", friday, friday),
+            "INSERT INTO signals (message_id, group_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (7004, -1001000000001, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", friday, friday),
         )
     db_conn.commit()
 
@@ -962,16 +964,16 @@ def test_get_gale_analysis(db_conn):
     # tentativa=2: 2 sinais (2 GREEN) -> win_rate=100.0%
     # tentativa=3: 1 sinal (1 RED) -> win_rate=0.0%
     with db_conn.cursor() as cur:
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (5001, "Liga A", "Over 2.5", "GREEN", 1, "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (5002, "Liga A", "Over 2.5", "RED", 1, "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (5003, "Liga A", "Over 2.5", "GREEN", 2, "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (5004, "Liga A", "Over 2.5", "GREEN", 2, "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (5005, "Liga A", "Over 2.5", "RED", 3, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (5001, -1001000000001, "Liga A", "Over 2.5", "GREEN", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (5002, -1001000000001, "Liga A", "Over 2.5", "RED", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (5003, -1001000000001, "Liga A", "Over 2.5", "GREEN", 2, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (5004, -1001000000001, "Liga A", "Over 2.5", "GREEN", 2, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (5005, -1001000000001, "Liga A", "Over 2.5", "RED", 3, "raw"))
     db_conn.commit()
 
     result = get_gale_analysis(db_conn)
@@ -988,10 +990,10 @@ def test_get_gale_analysis(db_conn):
 def test_get_gale_analysis_excludes_null(db_conn):
     """Sinais com tentativa=None sao excluidos da analise de gale."""
     with db_conn.cursor() as cur:
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (5010, "Liga A", "Over 2.5", "GREEN", 1, "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (5011, "Liga A", "Over 2.5", "RED", None, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (5010, -1001000000001, "Liga A", "Over 2.5", "GREEN", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (5011, -1001000000001, "Liga A", "Over 2.5", "RED", None, "raw"))
     db_conn.commit()
 
     result = get_gale_analysis(db_conn)
@@ -1020,15 +1022,15 @@ def test_get_volume_by_day(db_conn):
     with db_conn.cursor() as cur:
         for mid in [6001, 6002, 6003]:
             cur.execute(
-                "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (mid, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", day1, day1),
+                "INSERT INTO signals (message_id, group_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (mid, -1001000000001, "Liga A", "Over 2.5", "10:00", "GREEN", "raw", day1, day1),
             )
         for mid in [6004, 6005]:
             cur.execute(
-                "INSERT INTO signals (message_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (mid, "Liga A", "Over 2.5", "10:00", "RED", "raw", day2, day2),
+                "INSERT INTO signals (message_id, group_id, liga, entrada, horario, resultado, raw_text, received_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (mid, -1001000000001, "Liga A", "Over 2.5", "10:00", "RED", "raw", day2, day2),
             )
     db_conn.commit()
 
@@ -1054,18 +1056,18 @@ def test_get_cross_dimensional(db_conn):
     """Sinais com combinacoes de liga/entrada -> breakdown cross-dimensional ordenado por win_rate DESC."""
     with db_conn.cursor() as cur:
         # (Liga A, Over 2.5): 2 GREEN, 0 RED -> win_rate=100%
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
-                    (4001, "Liga A", "Over 2.5", "GREEN", "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
-                    (4002, "Liga A", "Over 2.5", "GREEN", "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (4001, -1001000000001, "Liga A", "Over 2.5", "GREEN", "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (4002, -1001000000001, "Liga A", "Over 2.5", "GREEN", "raw"))
         # (Liga A, Ambas Marcam): 1 GREEN, 1 RED -> win_rate=50%
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
-                    (4003, "Liga A", "Ambas Marcam", "GREEN", "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
-                    (4004, "Liga A", "Ambas Marcam", "RED", "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (4003, -1001000000001, "Liga A", "Ambas Marcam", "GREEN", "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (4004, -1001000000001, "Liga A", "Ambas Marcam", "RED", "raw"))
         # (Liga B, Over 2.5): 0 GREEN, 1 RED -> win_rate=0%
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s)",
-                    (4005, "Liga B", "Over 2.5", "RED", "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (4005, -1001000000001, "Liga B", "Over 2.5", "RED", "raw"))
     db_conn.commit()
 
     result = get_cross_dimensional(db_conn)
@@ -1131,18 +1133,18 @@ def test_get_winrate_by_periodo(db_conn):
     """Sinais com periodo definido -> lista com win_rate por periodo (1T/2T), excluindo NULL."""
     with db_conn.cursor() as cur:
         # 2 sinais periodo='1T': 1 GREEN, 1 RED -> win_rate=50%
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (10001, "Liga A", "Over 2.5", "GREEN", "1T", 1, "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (10002, "Liga A", "Over 2.5", "RED", "1T", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (10001, -1001000000001, "Liga A", "Over 2.5", "GREEN", "1T", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (10002, -1001000000001, "Liga A", "Over 2.5", "RED", "1T", 1, "raw"))
         # 2 sinais periodo='2T': 2 GREEN -> win_rate=100%
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (10003, "Liga B", "Over 2.5", "GREEN", "2T", 1, "raw"))
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (10004, "Liga B", "Over 2.5", "GREEN", "2T", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (10003, -1001000000001, "Liga B", "Over 2.5", "GREEN", "2T", 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (10004, -1001000000001, "Liga B", "Over 2.5", "GREEN", "2T", 1, "raw"))
         # 1 sinal com periodo=None (deve ser excluido)
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (10005, "Liga A", "Over 2.5", "GREEN", None, 1, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, periodo, tentativa, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (10005, -1001000000001, "Liga A", "Over 2.5", "GREEN", None, 1, "raw"))
     db_conn.commit()
 
     result = get_winrate_by_periodo(db_conn)
@@ -1161,8 +1163,8 @@ def test_get_winrate_by_periodo_empty(db_conn):
     """Sem sinais com periodo definido -> lista vazia."""
     # Inserir sinal com periodo=None (deve ser excluido)
     with db_conn.cursor() as cur:
-        cur.execute("INSERT INTO signals (message_id, liga, entrada, resultado, periodo, raw_text) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (10010, "Liga A", "Over 2.5", "GREEN", None, "raw"))
+        cur.execute("INSERT INTO signals (message_id, group_id, liga, entrada, resultado, periodo, raw_text) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (10010, -1001000000001, "Liga A", "Over 2.5", "GREEN", None, "raw"))
     db_conn.commit()
 
     result = get_winrate_by_periodo(db_conn)

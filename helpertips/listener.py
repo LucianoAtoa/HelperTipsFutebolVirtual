@@ -76,8 +76,16 @@ conn = None
 # Section 4: Startup summary (TERM-01, TERM-02) — rich Panel with Table (D-03)
 # ---------------------------------------------------------------------------
 
-def print_startup_summary(conn, group_title):
-    """Print a formatted startup summary — rich Panel em TTY, logger.info em daemon."""
+def print_startup_summary(conn, group_titles):
+    """Print a formatted startup summary — rich Panel em TTY, logger.info em daemon.
+
+    Parameters
+    ----------
+    conn : psycopg2 connection
+        Open database connection for stats query.
+    group_titles : list[str]
+        List of group title strings (e.g. ["{VIP} ExtremeTips (123456)", "Ambas Marcam (789012)"]).
+    """
     stats = get_stats(conn)  # returns dict with total, greens, reds, pending, parse_failures, coverage
     taxa = (stats['greens'] / stats['total'] * 100) if stats['total'] > 0 else 0.0
 
@@ -96,7 +104,7 @@ def print_startup_summary(conn, group_title):
 
         panel = Panel(
             table,
-            title=f"[bold]HelperTips[/bold] - {group_title}",
+            title=f"[bold]HelperTips[/bold] - {', '.join(group_titles)}",
             subtitle="Ctrl+C para encerrar",
             border_style="blue",
         )
@@ -104,7 +112,7 @@ def print_startup_summary(conn, group_title):
     else:
         logger.info(
             "HelperTips iniciado — grupo: %s | total: %d | greens: %d | reds: %d | taxa: %.1f%% | cobertura: %.1f%%",
-            group_title, stats['total'], stats['greens'], stats['reds'], taxa, stats['coverage'],
+            ', '.join(group_titles), stats['total'], stats['greens'], stats['reds'], taxa, stats['coverage'],
         )
 
 # ---------------------------------------------------------------------------
@@ -119,33 +127,61 @@ async def main():
 
     api_id = int(os.environ['TELEGRAM_API_ID'])
     api_hash = os.environ['TELEGRAM_API_HASH']
-    group_id_str = os.environ.get('TELEGRAM_GROUP_ID', '').strip()
+
+    # Parse TELEGRAM_GROUP_IDS (CSV) com fallback para TELEGRAM_GROUP_ID (D-14)
+    group_ids_str = os.environ.get('TELEGRAM_GROUP_IDS') or os.environ.get('TELEGRAM_GROUP_ID', '')
+    group_ids = [int(g.strip()) for g in group_ids_str.split(',') if g.strip()]
 
     client = TelegramClient('helpertips_listener', api_id, api_hash)
     await client.start()
     logger.info("Telegram conectado")
 
-    # Se TELEGRAM_GROUP_ID não está configurado, oferece seleção interativa
-    if not group_id_str:
+    # Se group_ids vazio, oferecer selecao interativa em TTY ou abortar em daemon
+    if not group_ids:
         if sys.stdout.isatty():
-            console.print("[yellow]TELEGRAM_GROUP_ID não configurado.[/yellow]")
-        else:
-            logger.warning("TELEGRAM_GROUP_ID nao configurado — selecao interativa nao disponivel em daemon")
-        group_id = await selecionar_grupo(client)
-        if group_id is None:
-            if sys.stdout.isatty():
+            console.print("[yellow]TELEGRAM_GROUP_IDS nao configurado.[/yellow]")
+            # Oferecer selecao interativa se TTY
+            selected = await selecionar_grupo(client)
+            if selected is None:
                 console.print("[red]Nenhum grupo selecionado. Encerrando.[/red]")
-            else:
-                logger.error("Nenhum grupo selecionado. Encerrando.")
+                await client.disconnect()
+                sys.exit(1)
+            group_ids = [selected]
+        else:
+            logger.error("TELEGRAM_GROUP_IDS vazio ou invalido. Encerrando.")
             await client.disconnect()
             sys.exit(1)
-    else:
-        group_id = int(group_id_str)
 
-    @client.on(events.NewMessage(chats=group_id))
-    @client.on(events.MessageEdited(chats=group_id))
+    # Database connection
+    conn = get_connection()
+    ensure_schema(conn)
+    logger.info("Database connected, schema verified")
+
+    # Verificar acesso a cada grupo (D-03)
+    group_titles = []
+    invalid_ids = []
+    for gid in group_ids:
+        try:
+            entity = await client.get_entity(gid)
+            group_titles.append(f"{entity.title} ({gid})")
+        except Exception as e:
+            logger.error("Nao foi possivel acessar grupo %s: %s", gid, e)
+            invalid_ids.append(gid)
+
+    if invalid_ids:
+        logger.warning("Grupos invalidos ignorados: %s", invalid_ids)
+        group_ids = [g for g in group_ids if g not in invalid_ids]
+
+    if not group_ids:
+        logger.error("Nenhum grupo valido encontrado. Encerrando.")
+        conn.close()
+        await client.disconnect()
+        sys.exit(1)
+
+    # Handler multi-grupo — definido apos group_ids estar finalizado (D-01)
+    # Usa add_event_handler para registro dinamico apos filtragem de grupos invalidos
     async def handle_signal(event):
-        """Handle incoming and edited signal messages from the VIP Telegram group."""
+        """Handle incoming and edited signal messages from the VIP Telegram groups."""
         global parse_total, parse_success, parse_fail_count
 
         # LIST-04: ignore media, stickers, photos — only process text messages
@@ -165,6 +201,9 @@ async def main():
 
         parse_success += 1
 
+        # Adicionar group_id ao dict do parsed signal (D-01)
+        parsed['group_id'] = event.chat_id
+
         # DB-04: CRITICAL — never call upsert_signal() directly from async handler.
         # psycopg2 makes blocking syscalls; asyncio.to_thread() wraps it safely.
         await asyncio.to_thread(upsert_signal, conn, parsed)
@@ -181,23 +220,11 @@ async def main():
         else:
             logger.info("%s | %s | %s", resultado or "NOVO", parsed['liga'], parsed['entrada'])
 
-    # Database connection
-    conn = get_connection()
-    ensure_schema(conn)
-    logger.info("Database connected, schema verified")
-
-    # Verify group access (TERM-02) — confirms group name for startup summary
-    try:
-        entity = await client.get_entity(group_id)
-        group_title = entity.title
-    except Exception as e:
-        logger.error("Cannot access group %s: %s", group_id, e)
-        logger.error("Check TELEGRAM_GROUP_ID in .env")
-        conn.close()
-        sys.exit(1)
+    client.add_event_handler(handle_signal, events.NewMessage(chats=group_ids))
+    client.add_event_handler(handle_signal, events.MessageEdited(chats=group_ids))
 
     # Print startup summary (TERM-01)
-    print_startup_summary(conn, group_title)
+    print_startup_summary(conn, group_titles)
 
     # Graceful shutdown (TERM-03) — SIGINT future so we can await it cleanly
     loop = asyncio.get_running_loop()
