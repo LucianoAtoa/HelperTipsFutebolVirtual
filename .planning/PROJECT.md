@@ -10,9 +10,9 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 
 ## Current State
 
-**Shipped:** v1.1 Cloud Deploy (2026-04-04)
-**Codebase:** ~16k LOC Python | 209 testes | ~195 commits
-**Phase 14 complete:** Migração Multi-Page Dash Pages — use_pages=True, shell mínimo + pages/home.py
+**Shipped:** v1.3 Análise Individual de Sinais (2026-04-04)
+**Codebase:** ~17k LOC Python | 224 testes | ~205 commits
+**Phase 15 complete:** Página de Detalhe do Sinal — breakdown P&L por entrada com navegação AG Grid
 **Stack:** Python 3.12+, Telethon 1.42.0, PostgreSQL 16, psycopg2-binary, Plotly Dash 4.1.0, dash-bootstrap-components 2.0, gunicorn 25.x, nginx
 
 **O que funciona (produção na EC2):**
@@ -142,4 +142,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 14 complete*
+*Last updated: 2026-04-04 after Phase 15 complete*
