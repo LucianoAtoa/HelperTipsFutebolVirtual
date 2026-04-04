@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.3 Análise Individual de Sinais (Shipped: 2026-04-04)
+
+**Phases completed:** 7 phases, 13 plans, 13 tasks
+
+**Key accomplishments:**
+
+- Migration idempotente PostgreSQL com group_id + mercado_id em signals, constraint composta UNIQUE(group_id, message_id) e store._resolve_mercado_id() mapeando entrada para FK de mercado
+- listener.py adaptado para escutar Over 2.5 e Ambas Marcam simultaneamente via TELEGRAM_GROUP_IDS (CSV), com verificacao de acesso por grupo, handler unico via add_event_handler e event.chat_id como group_id no upsert
+- One-liner:
+- One-liner:
+- Testes TDD red-first para layout v1.2 com 17 IDs de componentes novos e CSS de contraste DARKLY para RadioItems
+- One-liner:
+- Funcoes helper puras _calcular_stakes_gale, _agregar_por_entrada e _get_colunas_visiveis com testes TDD red-first e placeholders de layout para Config Mercados (DASH-03) e Performance (DASH-04)
+- 1. [Rule 1 - Bug] dbc.Table nao aceita parametro dark=True em dbc 2.0.4
+- Funcoes puras de agregacao por liga/tentativa em queries.py + 3 builders Plotly (stacked bar, equity curve, donut gale) com 17 testes TDD verdes
+- 3 secoes visuais (liga, equity curve, gale) integradas no callback master via _build_phase13_section, substituindo phase13-placeholder com dbc.Cards reativos aos filtros globais
+- Dashboard migrado para Dash Pages com shell mínimo em dashboard.py e todo o conteúdo (layout, callbacks, helpers) em pages/home.py, desbloqueando URL routing para Phase 15
+- Duas novas funcoes em queries.py: get_sinal_detalhado (SELECT com JOIN mercados) e calculate_pl_detalhado_por_sinal (breakdown principal + complementares individuais + totais), com 6 testes TDD cobrindo GREEN/RED/Gale/N/A
+
+---
+
 ## v1.1 Cloud Deploy (Shipped: 2026-04-04)
 
 **Phases completed:** 5 phases, 10 plans, 17 tasks

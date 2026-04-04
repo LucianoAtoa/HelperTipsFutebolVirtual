@@ -23,6 +23,8 @@ Capturar automaticamente todos os sinais do Telegram e transformar em estatísti
 - KPI cards, filtros (liga/entrada/data), ROI com Gale
 - 14 mercados complementares com validação por placar e Martingale
 - 3 abas de analytics: Temporal (heatmap, equity, DOW), Gale & Streaks, Volume
+- Página de detalhe do sinal com breakdown P&L por entrada (principal + complementares numeradas)
+- Navegação AG Grid → detalhe via link markdown
 - Badge de cobertura do parser com modal de falhas
 - Backup diário automático (pg_dump + .session) para S3
 - Budget alert AWS $15/mês
@@ -142,4 +144,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 15 complete*
+*Last updated: 2026-04-04 after v1.3 milestone*
