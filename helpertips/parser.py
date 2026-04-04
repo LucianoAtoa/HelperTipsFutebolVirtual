@@ -74,9 +74,9 @@ RESULTADO_GREEN_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# RED result: ✖ or ✗ followed by "Red" (the real format uses ✖)
+# RED result: ✖ or ✗ or ❌ followed by "Red", with optional variation selector (U+FE0F)
 RESULTADO_RED_PATTERN = re.compile(
-    r'[✖✗]\s*Red',
+    r'[✖✗❌]\uFE0F?\s*Red',
     re.IGNORECASE,
 )
 
